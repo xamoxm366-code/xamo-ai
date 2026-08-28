@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Email Verified — XAMO AI</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="fixed inset-0 w-full flex items-center justify-center p-4 bg-[#0e0e11] text-slate-100 overflow-hidden">
+
+  <!-- Ambient Glowing Background -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0e0e11] to-[#060814] -z-10"></div>
+
+  <!-- Verification Card -->
+  <div class="relative w-full max-w-md bg-[#16171a]/90 border border-slate-800 backdrop-blur-xl p-8 rounded-3xl shadow-2xl text-center">
+    
+    <!-- Top Brand Pill -->
+    <div class="flex items-center justify-center gap-2 mb-6">
+      <div class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30 text-xs">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <span class="font-bold tracking-wider text-sm text-slate-200">XAMO AI</span>
+    </div>
+
+    <!-- Verified Badge Icon -->
+    <div class="relative w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+      <div class="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse"></div>
+      <div class="relative w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 border border-emerald-400/30 flex items-center justify-center text-white text-3xl shadow-xl shadow-emerald-500/20">
+        <i class="fa-solid fa-check"></i>
+      </div>
+    </div>
+
+    <h1 class="text-2xl font-bold text-slate-100 tracking-tight mb-2">Email Verified!</h1>
+    <p class="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto mb-8">
+      Your account is activated with full access, cross-device sync, and custom personas.
+    </p>
+
+    <!-- Action Button -->
+    <a href="index.html" class="w-full inline-flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/30 active:scale-95">
+      <span>Launch XAMO AI</span>
+      <i class="fa-solid fa-arrow-right text-[11px]"></i>
+    </a>
+
+    <!-- Countdown Timer -->
+    <div class="mt-4 text-[11px] text-slate-500">
+      Redirecting in <span id="countdown" class="text-blue-400 font-semibold">5</span> seconds...
+    </div>
+  </div>
+
+  <script>
+    let timeLeft = 5;
+    const countdownEl = document.getElementById('countdown');
+    const timer = setInterval(() => {
+      timeLeft--;
+      if (countdownEl) countdownEl.textContent = timeLeft;
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        window.location.href = "index.html";
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

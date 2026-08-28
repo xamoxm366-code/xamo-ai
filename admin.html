@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XAMO - Admin Dashboard</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f1012; color: #e3e3e3; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 9999px; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- Admin Login Screen -->
+  <div id="auth-lock-screen" class="fixed inset-0 bg-[#0f1012] z-50 flex flex-col items-center justify-center p-6 text-center">
+    <div class="w-full max-w-sm bg-[#16171b] border border-[#26282f] p-6 rounded-2xl shadow-2xl space-y-4">
+      <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto border border-amber-500/20">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      
+      <div>
+        <h2 class="text-base font-bold text-slate-100">XAMO Command Center</h2>
+        <p class="text-xs text-slate-400 mt-1">Admin Access for <span class="font-mono text-amber-400">xamoxm366@gmail.com</span></p>
+      </div>
+
+      <div id="status-box" class="text-xs py-2.5 px-3 rounded-xl break-words text-left hidden"></div>
+
+      <div class="space-y-3 text-left">
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Admin Email</label>
+          <input type="email" id="admin-email" value="xamoxm366@gmail.com" class="w-full bg-[#0f1012] border border-[#2c2e35] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Password</label>
+          <input type="password" id="admin-password" placeholder="Enter password..." onkeydown="if(event.key==='Enter') executeLogin()" class="w-full bg-[#0f1012] border border-[#2c2e35] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+        <button type="button" id="login-btn" onclick="executeLogin()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs py-2.5 rounded-xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-lock-open text-xs"></i>
+          <span>Unlock Dashboard</span>
+        </button>
+      </div>
+
+      <div class="pt-2 border-t border-[#26282f]">
+        <a href="/" class="text-xs text-slate-400 hover:text-slate-200"><i class="fa-solid fa-arrow-left mr-1"></i> Back to Main Chat</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Main Dashboard View -->
+  <div id="admin-view" class="flex-1 flex flex-col h-full hidden">
+    
+    <!-- Top Bar -->
+    <header class="h-14 border-b border-[#24262b] bg-[#141518] px-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md text-sm font-bold">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm text-slate-100">XAMO Command Center</span>
+          <span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">Owner</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="fetchAllChats()" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-arrows-rotate text-xs"></i> Refresh
+        </button>
+        <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors">
+          Sign Out
+        </button>
+        <a href="/" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-xl transition-colors">
+          Open XAMO App
+        </a>
+      </div>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-[#24262b] bg-[#111215]">
+      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-400 font-medium">Total Conversations</div>
+          <div id="stat-total" class="text-lg font-bold text-slate-100 mt-0.5">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm"><i class="fa-solid fa-comments"></i></div>
+      </div>
+
+      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-400 font-medium">Logged-In Users</div>
+          <div id="stat-users" class="text-lg font-bold text-emerald-400 mt-0.5">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm"><i class="fa-solid fa-users"></i></div>
+      </div>
+
+      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-400 font-medium">Guest Chats</div>
+          <div id="stat-guests" class="text-lg font-bold text-purple-400 mt-0.5">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm"><i class="fa-solid fa-user-secret"></i></div>
+      </div>
+
+      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-400 font-medium">Uploaded Photos/Files</div>
+          <div id="stat-media" class="text-lg font-bold text-amber-400 mt-0.5">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm"><i class="fa-solid fa-photo-film"></i></div>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex min-h-0">
+      
+      <!-- Left Panel: Chat List -->
+      <aside class="w-80 md:w-96 border-r border-[#24262b] bg-[#141518] flex flex-col min-h-0">
+        <div class="p-3 border-b border-[#24262b] space-y-2">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+            <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, nickname, topic..." class="w-full bg-[#1c1d22] border border-[#2c2e35] rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+          </div>
+          
+          <div class="flex gap-1.5">
+            <button class="filter-tab active flex-1 py-1 text-[11px] font-medium rounded-lg bg-blue-600 text-white" onclick="changeFilter('all', this)">All</button>
+            <button class="filter-tab flex-1 py-1 text-[11px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('users', this)">Users</button>
+            <button class="filter-tab flex-1 py-1 text-[11px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('guests', this)">Guests</button>
+          </div>
+        </div>
+
+        <div id="chats-container" class="flex-1 overflow-y-auto divide-y divide-[#22242a] p-1"></div>
+      </aside>
+
+      <!-- Right Panel: Message Feed & Media Display -->
+      <main class="flex-1 flex flex-col bg-[#0f1012] min-h-0">
+        <div id="thread-header" class="h-14 border-b border-[#24262b] px-6 flex items-center justify-between bg-[#141518]">
+          <div class="flex items-center gap-3 truncate">
+            <div id="thread-user-badge" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-800 text-slate-300">Select a conversation</div>
+            <span id="thread-title" class="text-xs font-semibold text-slate-200 truncate"></span>
+          </div>
+          <div id="thread-actions" class="hidden">
+            <button onclick="deleteSelectedChat()" class="text-xs text-red-400 hover:bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors">
+              <i class="fa-solid fa-trash-can mr-1"></i> Delete Chat
+            </button>
+          </div>
+        </div>
+
+        <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+          <div class="flex flex-col items-center justify-center h-full text-slate-500 text-xs text-center">
+            <i class="fa-solid fa-comments text-3xl mb-2 text-slate-600"></i>
+            Select any chat from the left panel to inspect prompts, responses, and photos.
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZubGhjdG14bGN0c3Z5aHd5dnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3MzE0NzgsImV4cCI6MjEwMzMwNzQ3OH0.uj2A-itY_CPhZDmWgF9TCYXgR5PXMGeGXa7L58DD_3w";
+    const ADMIN_EMAIL = "xamoxm366@gmail.com";
+
+    let adminToken = localStorage.getItem("xamo_admin_token") || "";
+    let chatRecords = [];
+    let activeChatRecord = null;
+    let activeFilter = "all";
+
+    function updateStatus(message, state) {
+      const box = document.getElementById("status-box");
+      box.textContent = message;
+      box.classList.remove("hidden");
+
+      if (state === "error") {
+        box.className = "text-xs text-red-400 bg-red-500/10 border border-red-500/20 py-2.5 px-3 rounded-xl break-words text-left block";
+      } else if (state === "success") {
+        box.className = "text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-2.5 px-3 rounded-xl break-words text-left block";
+      } else {
+        box.className = "text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 py-2.5 px-3 rounded-xl break-words text-left block";
+      }
+    }
+
+    function isGuestChat(chat) {
+      return !chat.user_id || chat.user_email === 'Guest' || chat.user_email === null || chat.user_email === '';
+    }
+
+    async function executeLogin() {
+      const email = document.getElementById("admin-email").value.trim();
+      const password = document.getElementById("admin-password").value.trim();
+      const btn = document.getElementById("login-btn");
+
+      if (!password) {
+        updateStatus("Please enter your password.", "error");
+        return;
+      }
+
+      if (SUPABASE_ANON_KEY.includes("PASTE_YOUR")) {
+        updateStatus("Missing ANON Key. Paste your Supabase Anon Key into line 118 of admin.html.", "error");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> <span>Connecting...</span>';
+      updateStatus("Contacting Supabase Auth...", "info");
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errMsg = data.error_description || data.msg || data.message || "Invalid credentials.";
+          updateStatus(`Login Failed: ${errMsg}`, "error");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
+          return;
+        }
+
+        if (data.user && data.user.email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase().trim()) {
+          updateStatus(`Access Denied: ${data.user.email} is not authorized.`, "error");
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
+          return;
+        }
+
+        adminToken = data.access_token;
+        localStorage.setItem("xamo_admin_token", adminToken);
+
+        updateStatus("Access verified. Opening Command Center...", "success");
+        setTimeout(showDashboard, 300);
+
+      } catch (err) {
+        updateStatus(`Network Error: ${err.message}`, "error");
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
+      }
+    }
+
+    function showDashboard() {
+      document.getElementById("auth-lock-screen").classList.add("hidden");
+      document.getElementById("admin-view").classList.remove("hidden");
+      fetchAllChats();
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem("xamo_admin_token");
+      location.reload();
+    }
+
+    async function fetchAllChats() {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
+          method: "GET",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${adminToken}`
+          }
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          alert(`Failed to load chats: ${err.message || "Unauthorized"}`);
+          return;
+        }
+
+        chatRecords = await response.json();
+        calculateStats();
+        renderChatList();
+
+      } catch (err) {
+        alert(`Error fetching chat records: ${err.message}`);
+      }
+    }
+
+    function calculateStats() {
+      document.getElementById("stat-total").textContent = chatRecords.length;
+
+      const userCount = chatRecords.filter(c => !isGuestChat(c)).length;
+      const guestCount = chatRecords.filter(c => isGuestChat(c)).length;
+
+      let fileCount = 0;
+      chatRecords.forEach(c => {
+        let history = typeof c.history === 'string' ? JSON.parse(c.history) : c.history;
+        if (Array.isArray(history)) {
+          history.forEach(msg => {
+            if (msg.file) fileCount++;
+          });
+        }
+      });
+
+      document.getElementById("stat-users").textContent = userCount;
+      document.getElementById("stat-guests").textContent = guestCount;
+      document.getElementById("stat-media").textContent = fileCount;
+    }
+
+    function changeFilter(type, button) {
+      activeFilter = type;
+      document.querySelectorAll(".filter-tab").forEach(tab => {
+        tab.classList.remove("bg-blue-600", "text-white");
+        tab.classList.add("bg-[#1c1d22]", "text-slate-400");
+      });
+      button.classList.add("bg-blue-600", "text-white");
+      button.classList.remove("bg-[#1c1d22]", "text-slate-400");
+      renderChatList();
+    }
+
+    function renderChatList() {
+      const list = document.getElementById("chats-container");
+      const search = (document.getElementById("chat-search").value || "").toLowerCase();
+      list.innerHTML = "";
+
+      const filtered = chatRecords.filter(chat => {
+        const isGuest = isGuestChat(chat);
+        if (activeFilter === "users" && isGuest) return false;
+        if (activeFilter === "guests" && !isGuest) return false;
+
+        const email = (chat.user_email || "").toLowerCase();
+        const nick = (chat.nickname || "").toLowerCase();
+        const title = (chat.title || "").toLowerCase();
+        return email.includes(search) || nick.includes(search) || title.includes(search);
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="p-4 text-xs text-slate-500 text-center">No matching conversations found</div>';
+        return;
+      }
+
+      filtered.forEach(chat => {
+        const isGuest = isGuestChat(chat);
+        const item = document.createElement("div");
+        const isSelected = activeChatRecord && activeChatRecord.id === chat.id;
+
+        item.className = `p-3 rounded-xl cursor-pointer transition-all mb-1 ${isSelected ? "bg-[#22242a] border border-blue-500/40" : "hover:bg-[#1b1c21]"}`;
+
+        let containsMedia = false;
+        let history = typeof chat.history === 'string' ? JSON.parse(chat.history) : chat.history;
+        if (Array.isArray(history)) {
+          containsMedia = history.some(msg => !!msg.file);
+        }
+
+        const date = new Date(chat.updated_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        const badgeColor = isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        const badgeText = isGuest ? `Guest: ${chat.nickname || "Guest"}` : (chat.user_email || "User");
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${badgeColor}">${badgeText}</span>
+            <span class="text-[10px] text-slate-500">${date}</span>
+          </div>
+          <div class="text-xs font-medium text-slate-200 truncate">${chat.title || "Untitled Conversation"}</div>
+          ${containsMedia ? '<div class="mt-1 flex items-center gap-1 text-[10px] text-amber-400"><i class="fa-solid fa-paperclip"></i> Contains Uploaded Media</div>' : ""}
+        `;
+
+        item.onclick = () => selectChat(chat);
+        list.appendChild(item);
+      });
+    }
+
+    function selectChat(chat) {
+      activeChatRecord = chat;
+      renderChatList();
+
+      const badge = document.getElementById("thread-user-badge");
+      const title = document.getElementById("thread-title");
+      const box = document.getElementById("messages-container");
+      const actions = document.getElementById("thread-actions");
+
+      const isGuest = isGuestChat(chat);
+      badge.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-semibold ${isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`;
+      badge.textContent = isGuest ? `Guest Nickname: ${chat.nickname || "Unknown"}` : chat.user_email;
+
+      title.textContent = chat.title || "Untitled Chat";
+      actions.classList.remove("hidden");
+      box.innerHTML = "";
+
+      let history = typeof chat.history === 'string' ? JSON.parse(chat.history) : chat.history;
+
+      if (!Array.isArray(history) || history.length === 0) {
+        box.innerHTML = '<div class="text-xs text-slate-500 text-center">Empty conversation history.</div>';
+        return;
+      }
+
+      history.forEach(msg => {
+        const isUser = msg.role === "user";
+        const row = document.createElement("div");
+        row.className = isUser ? "flex flex-col items-end my-3 w-full" : "flex flex-col items-start my-3 w-full";
+
+        let mediaBlock = "";
+        if (msg.file) {
+          const src = msg.file.uri || (msg.file.base64 ? `data:${msg.file.mimeType};base64,${msg.file.base64}` : "");
+          if (msg.file.category === "image" && src) {
+            mediaBlock = `
+              <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
+                <img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto" />
+                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${msg.file.name || "Image"}</div>
+              </div>
+            `;
+          } else {
+            mediaBlock = `
+              <div class="mb-2 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs flex items-center gap-2">
+                <i class="fa-solid fa-file text-blue-400"></i>
+                <span class="font-mono text-slate-300 truncate">${msg.file.name || "File"}</span>
+              </div>
+            `;
+          }
+        }
+
+        let body = msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : "");
+        body = body.replace(/\[Real-Time Web Search Context:[\s\S]*?\]/g, "");
+
+        if (isUser) {
+          row.innerHTML = `
+            ${mediaBlock}
+            <div class="bg-[#26282e] border border-[#34373f] text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-xs leading-relaxed whitespace-pre-wrap font-sans">
+              ${DOMPurify.sanitize(body)}
+            </div>
+          `;
+        } else {
+          row.innerHTML = `
+            <div class="bg-[#18191d] border border-[#27292f] text-slate-200 px-4 py-3 rounded-2xl max-w-[90%] text-xs leading-relaxed break-words">
+              ${DOMPurify.sanitize(marked.parse(body))}
+            </div>
+          `;
+        }
+
+        box.appendChild(row);
+      });
+
+      box.scrollTop = 0;
+    }
+
+    async function deleteSelectedChat() {
+      if (!activeChatRecord || !confirm("Delete this conversation permanently from Supabase?")) return;
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?id=eq.${activeChatRecord.id}`, {
+          method: "DELETE",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${adminToken}`
+          }
+        });
+
+        if (response.ok) {
+          chatRecords = chatRecords.filter(c => c.id !== activeChatRecord.id);
+          activeChatRecord = null;
+          calculateStats();
+          renderChatList();
+          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center">Chat deleted successfully.</div>';
+        } else {
+          const err = await response.json();
+          alert(`Failed to delete: ${err.message || "Error"}`);
+        }
+      } catch (err) {
+        alert(`Delete error: ${err.message}`);
+      }
+    }
+
+    window.addEventListener("load", async () => {
+      if (adminToken) {
+        try {
+          const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${adminToken}`
+            }
+          });
+          const user = await res.json();
+          if (res.ok && user.email && user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
+            showDashboard();
+          }
+        } catch (e) {}
+      }
+    });
+  </script>
+</body>
+</html>
