@@ -193,7 +193,7 @@ const viewerCopyBtn = document.getElementById('viewer-copy-btn');
 const verifiedModal = document.getElementById('verified-modal');
 const closeVerifiedBtn = document.getElementById('close-verified-btn');
 
-// Auth & Multi-Account References
+// Auth References
 const authModal = document.getElementById('auth-modal');
 const closeAuthModal = document.getElementById('close-auth-modal');
 const authActionBtn = document.getElementById('auth-action-btn');
@@ -208,6 +208,9 @@ const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
 const forgotPasswordLink = document.getElementById('forgot-password-link');
 const authPasswordEyeBtn = document.getElementById('auth-password-eye-btn');
 const authPasswordEyeIcon = document.getElementById('auth-password-eye-icon');
+
+const authErrorBanner = document.getElementById('auth-error-banner');
+const authErrorText = document.getElementById('auth-error-text');
 
 const userLoggedInView = document.getElementById('user-logged-in-view');
 const userEmailDisplay = document.getElementById('user-email-display');
@@ -228,6 +231,18 @@ function getChatStorageKey() {
 
 function getPersonaStorageKey() {
   return currentUser ? `xamo_personas_${currentUser.id}` : null;
+}
+
+// In-App Error Handler (Replaces browser popups)
+function showAuthError(msg) {
+  if (authErrorBanner && authErrorText) {
+    authErrorText.textContent = msg;
+    authErrorBanner.classList.remove('hidden');
+  }
+}
+
+function hideAuthError() {
+  if (authErrorBanner) authErrorBanner.classList.add('hidden');
 }
 
 // --- Multi-Account Registry Engine ---
@@ -316,6 +331,7 @@ if (addAnotherAccountBtn) {
     if (authModalTitle) authModalTitle.textContent = "Add Another Account";
     if (authEmailInput) authEmailInput.value = "";
     if (authPasswordInput) authPasswordInput.value = "";
+    hideAuthError();
     if (authModal) authModal.classList.remove('hidden');
   });
 }
@@ -356,9 +372,10 @@ if (authPasswordEyeBtn && authPasswordInput && authPasswordEyeIcon) {
   });
 }
 
-// --- Mode Switcher (Forgot Password Link ONLY on Sign In & Add Account) ---
+// --- Mode Switcher (Sign In, Sign Up, Forgot Password) ---
 function setAuthMode(mode) {
   authMode = mode;
+  hideAuthError();
   if (!authModalTitle || !authModalDesc || !authSubmitBtn || !toggleAuthModeBtn || !authPasswordGroup) return;
 
   if (authMode === 'forgot') {
@@ -807,7 +824,7 @@ if (savePersonaBtn && personaModal) {
     const name = newPersonaName ? newPersonaName.value.trim() : "";
     const prompt = newPersonaPrompt ? newPersonaPrompt.value.trim() : "";
     if (!name || !prompt) {
-      alert("Please fill in both name and instructions.");
+      showAuthError("Please fill in both name and instructions.");
       return;
     }
     customPersonas.push({ name, prompt });
@@ -1168,15 +1185,16 @@ if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => 
 
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async () => {
+    hideAuthError();
     if (!supabaseClient) {
-      alert("Please configure your Supabase URL & Anon Key in app.js first.");
+      showAuthError("Supabase connection is not initialized.");
       return;
     }
     const email = authEmailInput ? authEmailInput.value.trim() : "";
     const password = authPasswordInput ? authPasswordInput.value.trim() : "";
 
     if (!email) {
-      alert("Please enter your email address.");
+      showAuthError("Please enter your email address.");
       return;
     }
 
@@ -1185,14 +1203,13 @@ if (authSubmitBtn) {
     try {
       if (authMode === 'forgot') {
         if (resetEmailCooldown) {
-          showXamoToast("Please wait a moment before requesting another reset email.");
+          showAuthError("Please wait a moment before requesting another reset email.");
           return;
         }
 
         btnTextSpan.textContent = "Sending...";
         authSubmitBtn.disabled = true;
 
-        // Hardcode production URL to eliminate 127.0.0.1 from email links
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
 
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
@@ -1209,7 +1226,7 @@ if (authSubmitBtn) {
         setTimeout(() => { resetEmailCooldown = false; }, 45000);
 
       } else if (authMode === 'signup') {
-        if (!password) { alert("Please enter a password."); return; }
+        if (!password) { showAuthError("Please enter a password."); return; }
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
 
@@ -1223,12 +1240,17 @@ if (authSubmitBtn) {
         if (authModal) authModal.classList.add('hidden');
 
       } else {
-        if (!password) { alert("Please enter your password."); return; }
+        if (!password) { showAuthError("Please enter your password."); return; }
         btnTextSpan.textContent = "Signing In...";
         authSubmitBtn.disabled = true;
 
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error("Invalid email or password. Please check your credentials.");
+          }
+          throw error;
+        }
         if (data.session) storeCurrentAccount(data.session);
         showXamoToast("Signed in successfully!");
         if (authModal) authModal.classList.add('hidden');
@@ -1237,7 +1259,7 @@ if (authSubmitBtn) {
       if (authEmailInput) authEmailInput.value = "";
       if (authPasswordInput) authPasswordInput.value = "";
     } catch (err) {
-      alert(err.message);
+      showAuthError(err.message);
     } finally {
       authSubmitBtn.disabled = false;
       if (authMode === 'forgot') {
