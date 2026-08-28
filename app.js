@@ -15,7 +15,7 @@ try {
 let currentUser = null;
 let userNickname = "";
 
-// --- Account-Scoped Nickname Engine ---
+// --- Persistent Guest & Account Nickname Engine ---
 const nicknameModal = document.getElementById('nickname-modal');
 const nicknameInput = document.getElementById('nickname-input');
 const saveNicknameBtn = document.getElementById('save-nickname-btn');
@@ -24,16 +24,11 @@ const welcomeHeading = document.getElementById('welcome-heading');
 const adminPanelLink = document.getElementById('admin-panel-link');
 
 function getNicknameStorageKey() {
-  return currentUser ? `xamo_nickname_${currentUser.id}` : null;
+  return currentUser ? `xamo_nickname_${currentUser.id}` : 'xamo_guest_nickname';
 }
 
 function loadCurrentNickname() {
-  if (currentUser) {
-    userNickname = localStorage.getItem(getNicknameStorageKey()) || "";
-  } else {
-    userNickname = sessionStorage.getItem('xamo_guest_nickname') || "";
-  }
-
+  userNickname = localStorage.getItem(getNicknameStorageKey()) || "";
   updateWelcomeText();
 
   if (!userNickname) {
@@ -46,11 +41,7 @@ function loadCurrentNickname() {
 
 function saveCurrentNickname(name) {
   userNickname = name;
-  if (currentUser) {
-    localStorage.setItem(getNicknameStorageKey(), name);
-  } else {
-    sessionStorage.setItem('xamo_guest_nickname', name);
-  }
+  localStorage.setItem(getNicknameStorageKey(), name);
   updateWelcomeText();
 }
 
@@ -226,14 +217,13 @@ let resetEmailCooldown = false;
 const voiceBtn = document.getElementById('voice-btn');
 
 function getChatStorageKey() {
-  return currentUser ? `xamo_sessions_${currentUser.id}` : null;
+  return currentUser ? `xamo_sessions_${currentUser.id}` : 'xamo_guest_sessions';
 }
 
 function getPersonaStorageKey() {
   return currentUser ? `xamo_personas_${currentUser.id}` : null;
 }
 
-// In-App Error Handler (Replaces browser popups)
 function showAuthError(msg) {
   if (authErrorBanner && authErrorText) {
     authErrorText.textContent = msg;
@@ -372,7 +362,7 @@ if (authPasswordEyeBtn && authPasswordInput && authPasswordEyeIcon) {
   });
 }
 
-// --- Mode Switcher (Sign In, Sign Up, Forgot Password) ---
+// --- Mode Switcher ---
 function setAuthMode(mode) {
   authMode = mode;
   hideAuthError();
@@ -715,11 +705,11 @@ if (saveSettings && settingsModal) {
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an elite AI assistant created by Zaeem. Provide clean, well-structured answers using Markdown tables, bullet points, and code blocks.\nCRITICAL FORMATTING RULES:\n- NEVER use LaTeX ($ or $$) for plain currency (e.g., write '$120k - $160k'), simple percentages ('10%'), temperatures ('180°C'), or numbers.\n- Use LaTeX strictly for complex mathematical/scientific formulas.\n- Render tables with standard markdown." 
+    prompt: "You are XAMO, an elite AI assistant created by Zaeem. Provide clean, well-structured answers using Markdown tables, bullet points, and code blocks.\nCRITICAL FORMATTING RULES:\n- NEVER use LaTeX ($ or $$) for plain currency (e.g., write '$120k - $160k'), simple percentages ('10%'), temperatures ('180°C'), or numbers.\n- Use LaTeX strictly for complex mathematical/scientific formulas.\n- Render tables with standard markdown."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Write production-grade, optimized code with clean formatting." 
+    prompt: "You are XAMO, a principal software architect created by Zaeem. Write production-grade, optimized code with clean formatting."
   }
 ];
 
@@ -1129,9 +1119,7 @@ async function handleAuthStateChange(user) {
     if (authBtnLabel) authBtnLabel.textContent = "Sign In";
     if (adminPanelLink) adminPanelLink.classList.add('hidden');
 
-    sessionStorage.removeItem('xamo_guest_nickname');
     loadCurrentNickname();
-    
     sessions = [];
     loadUserPersonas();
     startNewChat();
