@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - COMPLETE PRODUCTION CLIENT ENGINE
+// XAMO AI - CLIENT ARCHITECTURE WITH MULTI-ACCOUNT & PINNED VAULT
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -18,7 +18,7 @@ try {
 let currentUser = null;
 let userNickname = "";
 
-// Settings Configuration (Option C)
+// Settings Configuration
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
 // --- Persistent Nickname Engine ---
@@ -128,6 +128,7 @@ themeOptions.forEach(opt => {
 document.addEventListener('click', () => {
   if (personaDropdown) personaDropdown.classList.add('hidden');
   if (themeDropdown) themeDropdown.classList.add('hidden');
+  if (accountSwitcherMenu) accountSwitcherMenu.classList.add('hidden');
 });
 
 applyTheme(localStorage.getItem('xamo_theme') || 'default');
@@ -185,7 +186,18 @@ const viewerCopyBtn = document.getElementById('viewer-copy-btn');
 const verifiedModal = document.getElementById('verified-modal');
 const closeVerifiedBtn = document.getElementById('close-verified-btn');
 
-// Pinned Notes Selectors (Option B)
+// Multi-Account Selectors
+const userLoggedInView = document.getElementById('user-logged-in-view');
+const guestSigninView = document.getElementById('guest-signin-view');
+const guestSigninBtn = document.getElementById('guest-signin-btn');
+const userEmailDisplay = document.getElementById('user-email-display');
+const accountSwitcherBtn = document.getElementById('account-switcher-btn');
+const accountSwitcherMenu = document.getElementById('account-switcher-menu');
+const savedAccountsList = document.getElementById('saved-accounts-list');
+const addAnotherAccountBtn = document.getElementById('add-another-account-btn');
+const signoutCurrentAccountBtn = document.getElementById('signout-current-account-btn');
+
+// Pinned Notes Selectors
 const pinnedNotesModal = document.getElementById('pinned-notes-modal');
 const pinnedNotesTriggerBtn = document.getElementById('pinned-notes-trigger-btn');
 const closePinnedModal = document.getElementById('close-pinned-modal');
@@ -195,8 +207,6 @@ const pinnedCountBadge = document.getElementById('pinned-count-badge');
 // Auth References
 const authModal = document.getElementById('auth-modal');
 const closeAuthModal = document.getElementById('close-auth-modal');
-const authActionBtn = document.getElementById('auth-action-btn');
-const authBtnLabel = document.getElementById('auth-btn-label');
 const authSubmitBtn = document.getElementById('auth-submit-btn');
 const authEmailInput = document.getElementById('auth-email');
 const authPasswordInput = document.getElementById('auth-password');
@@ -234,7 +244,127 @@ function hideAuthError() {
   if (authErrorBanner) authErrorBanner.classList.add('hidden');
 }
 
-// --- Pinned Notes System (Option B) ---
+// --- Multi-Account Registry Engine ---
+function getStoredAccounts() {
+  try {
+    return JSON.parse(localStorage.getItem('xamo_multi_accounts') || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function storeCurrentAccount(session) {
+  if (!session || !session.user) return;
+  let accounts = getStoredAccounts();
+  const existingIdx = accounts.findIndex(a => a.user.id === session.user.id);
+  const accData = {
+    user: session.user,
+    access_token: session.access_token,
+    refresh_token: session.refresh_token
+  };
+
+  if (existingIdx !== -1) {
+    accounts[existingIdx] = accData;
+  } else {
+    accounts.push(accData);
+  }
+  localStorage.setItem('xamo_multi_accounts', JSON.stringify(accounts));
+  renderAccountSwitcher();
+}
+
+function removeAccountFromStorage(userId) {
+  let accounts = getStoredAccounts().filter(a => a.user.id !== userId);
+  localStorage.setItem('xamo_multi_accounts', JSON.stringify(accounts));
+  renderAccountSwitcher();
+}
+
+function renderAccountSwitcher() {
+  if (!savedAccountsList) return;
+  const accounts = getStoredAccounts();
+  savedAccountsList.innerHTML = "";
+
+  accounts.forEach(acc => {
+    const isCurrent = currentUser && currentUser.id === acc.user.id;
+    const div = document.createElement('div');
+    div.className = `flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer transition-colors text-xs ${isCurrent ? 'bg-blue-600/15 text-blue-400 font-semibold border border-blue-500/20' : 'hover:bg-slate-500/10 text-slate-300'}`;
+    
+    div.innerHTML = `
+      <div class="flex items-center gap-2 truncate flex-1">
+        <i class="fa-solid ${isCurrent ? 'fa-circle-check text-blue-400' : 'fa-user text-slate-500'} text-[10px]"></i>
+        <span class="truncate font-mono">${acc.user.email}</span>
+      </div>
+      ${isCurrent ? '<span class="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded ml-1">Active</span>' : ''}
+    `;
+
+    if (!isCurrent) {
+      div.onclick = async () => {
+        if (!supabaseClient) return;
+        showXamoToast(`Switching to ${acc.user.email}...`);
+        const { error } = await supabaseClient.auth.setSession({
+          access_token: acc.access_token,
+          refresh_token: acc.refresh_token
+        });
+        if (error) {
+          showXamoToast("Session expired. Please sign in again.");
+          removeAccountFromStorage(acc.user.id);
+        }
+        if (accountSwitcherMenu) accountSwitcherMenu.classList.add('hidden');
+      };
+    }
+
+    savedAccountsList.appendChild(div);
+  });
+}
+
+if (accountSwitcherBtn && accountSwitcherMenu) {
+  accountSwitcherBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    accountSwitcherMenu.classList.toggle('hidden');
+  });
+}
+
+if (addAnotherAccountBtn) {
+  addAnotherAccountBtn.addEventListener('click', () => {
+    if (accountSwitcherMenu) accountSwitcherMenu.classList.add('hidden');
+    setAuthMode('signin');
+    if (authModalTitle) authModalTitle.textContent = "Add Another Account";
+    if (authEmailInput) authEmailInput.value = "";
+    if (authPasswordInput) authPasswordInput.value = "";
+    hideAuthError();
+    if (authModal) authModal.classList.remove('hidden');
+  });
+}
+
+if (guestSigninBtn) {
+  guestSigninBtn.addEventListener('click', () => {
+    setAuthMode('signin');
+    if (authModal) authModal.classList.remove('hidden');
+  });
+}
+
+if (signoutCurrentAccountBtn) {
+  signoutCurrentAccountBtn.addEventListener('click', async () => {
+    if (accountSwitcherMenu) accountSwitcherMenu.classList.add('hidden');
+    if (currentUser) {
+      const leavingId = currentUser.id;
+      removeAccountFromStorage(leavingId);
+      
+      const remaining = getStoredAccounts();
+      if (remaining.length > 0) {
+        showXamoToast(`Switching to ${remaining[0].user.email}...`);
+        await supabaseClient.auth.setSession({
+          access_token: remaining[0].access_token,
+          refresh_token: remaining[0].refresh_token
+        });
+      } else {
+        await supabaseClient.auth.signOut();
+        showXamoToast("Signed out. Guest session active.");
+      }
+    }
+  });
+}
+
+// --- Pinned Notes System ---
 if (pinnedNotesTriggerBtn && pinnedNotesModal) {
   pinnedNotesTriggerBtn.addEventListener('click', () => {
     renderPinnedNotes();
@@ -608,7 +738,7 @@ if (input && slashMenu) {
   });
 }
 
-// --- Settings Modal Logic (Option C) ---
+// --- Settings Modal Logic ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
   if (settingsLangSelect) settingsLangSelect.value = appSettings.language || "auto";
@@ -1002,9 +1132,11 @@ async function initAuth() {
   
   try {
     const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) storeCurrentAccount(session);
     handleAuthStateChange(session?.user || null);
 
     supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (session) storeCurrentAccount(session);
       handleAuthStateChange(session?.user || null);
     });
   } catch (e) {
@@ -1029,7 +1161,9 @@ async function handleAuthStateChange(user) {
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
   if (currentUser) {
-    if (authBtnLabel) authBtnLabel.textContent = currentUser.email.split('@')[0];
+    if (userLoggedInView) userLoggedInView.classList.remove('hidden');
+    if (guestSigninView) guestSigninView.classList.add('hidden');
+    if (userEmailDisplay) userEmailDisplay.textContent = currentUser.email;
     
     if (adminPanelLink) {
       if (currentUser.email && currentUser.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
@@ -1039,12 +1173,14 @@ async function handleAuthStateChange(user) {
       }
     }
 
+    renderAccountSwitcher();
     loadCurrentNickname();
     loadUserPersonas();
     startNewChat();
     await syncCloudChats();
   } else {
-    if (authBtnLabel) authBtnLabel.textContent = "Sign In";
+    if (userLoggedInView) userLoggedInView.classList.add('hidden');
+    if (guestSigninView) guestSigninView.classList.remove('hidden');
     if (adminPanelLink) adminPanelLink.classList.add('hidden');
 
     loadCurrentNickname();
@@ -1079,20 +1215,6 @@ async function syncCloudChats() {
   } catch (err) {
     console.error("Cloud fetch error:", err);
   }
-}
-
-if (authActionBtn) {
-  authActionBtn.addEventListener('click', () => {
-    if (currentUser) {
-      if (confirm(`Currently signed in as ${currentUser.email}. Do you want to sign out?`)) {
-        supabaseClient.auth.signOut();
-        showXamoToast("Signed out. Guest session active.");
-      }
-    } else {
-      setAuthMode('signin');
-      if (authModal) authModal.classList.remove('hidden');
-    }
-  });
 }
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
@@ -1150,7 +1272,7 @@ if (authSubmitBtn) {
           options: { emailRedirectTo: "https://xamo-ai.vercel.app/verified.html" }
         });
         if (error) throw error;
-        showXamoToast("Account created successfully!");
+        showXamoToast("Account created! Check your email to verify.");
         if (authModal) authModal.classList.add('hidden');
 
       } else {
@@ -1160,11 +1282,14 @@ if (authSubmitBtn) {
 
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            throw new Error("Invalid email or password. Please check your credentials.");
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            throw new Error("Email not verified yet. Please check your inbox or sign up first.");
+          } else if (error.message.toLowerCase().includes('invalid login credentials')) {
+            throw new Error("Account not found or password incorrect. Please sign up first.");
           }
           throw error;
         }
+        if (data.session) storeCurrentAccount(data.session);
         showXamoToast("Signed in successfully!");
         if (authModal) authModal.classList.add('hidden');
       }
@@ -1694,7 +1819,7 @@ async function triggerApiCall() {
       : "";
 
     const langInstruction = appSettings.language && appSettings.language !== 'auto'
-      ? `\nLANGUAGE RULE: Respond strictly in ${appSettings.language}.`
+      ? `\nLANGUAGE INSTRUCTION: You must formulate your response strictly and entirely in ${appSettings.language}.`
       : "";
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressingInstruction}${langInstruction}\n\nSYSTEM CLOCK:\nUser Local Time: ${currentDateLocal}\nUTC Time: ${currentDateUTC} UTC\n\nCRITICAL RULE: If the prompt includes [Real-Time Web Search Context: ...], use the info silently. DO NOT echo or acknowledge that string in your output.`;

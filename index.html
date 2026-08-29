@@ -251,20 +251,54 @@
         <i class="fa-solid fa-crown text-xs"></i> Admin Command Center
       </a>
 
-      <!-- Pinned Notes Trigger Button (Option B) -->
-      <button id="pinned-notes-trigger-btn" class="w-full flex items-center justify-between px-3 py-2 border rounded-xl text-xs transition-colors hover:bg-slate-500/10 cursor-pointer" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
-        <div class="flex items-center gap-2 truncate">
-          <i class="fa-solid fa-bookmark text-blue-400 text-xs"></i>
-          <span class="font-semibold">Pinned Notes Vault</span>
-        </div>
-        <span id="pinned-count-badge" class="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded-full font-mono font-bold">0</span>
-      </button>
+      <!-- 1. Top Wide Slot: User Account Bar / Multi-Account Switcher (When Logged In) -->
+      <div id="user-logged-in-view" class="hidden relative">
+        <button id="account-switcher-btn" class="w-full px-2.5 py-2 border rounded-xl flex items-center justify-between transition-colors hover:bg-slate-500/10 cursor-pointer" style="background-color: var(--bg-app); border-color: var(--border-main);">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="flex flex-col text-left min-w-0 flex-1">
+              <span id="user-email-display" class="text-xs truncate font-mono" style="color: var(--text-main);"></span>
+              <span class="text-[10px] text-slate-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Active Account</span>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-up text-[10px] text-slate-400 ml-1.5 flex-shrink-0"></i>
+        </button>
 
-      <!-- Action Buttons Row -->
+        <!-- Account Switcher Popover Menu -->
+        <div id="account-switcher-menu" class="absolute bottom-full left-0 w-full mb-1.5 border rounded-2xl shadow-2xl p-2 z-50 hidden space-y-1" style="background-color: var(--bg-card); border-color: var(--border-main);">
+          <div class="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Switch Accounts</div>
+          <div id="saved-accounts-list" class="space-y-1 max-h-36 overflow-y-auto"></div>
+          
+          <div class="pt-1.5 border-t space-y-1" style="border-color: var(--border-main);">
+            <button id="add-another-account-btn" class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors font-medium text-left">
+              <i class="fa-solid fa-user-plus text-[11px]"></i> Add another account
+            </button>
+            <button id="signout-current-account-btn" class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-colors font-medium text-left">
+              <i class="fa-solid fa-right-from-bracket text-[11px]"></i> Sign out of this account
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Wide Slot: Guest Sign In Button (When Signed Out) -->
+      <div id="guest-signin-view">
+        <button id="guest-signin-btn" class="w-full flex items-center justify-between px-3 py-2 border rounded-xl text-xs transition-colors hover:bg-blue-600/10 hover:border-blue-500/30 cursor-pointer" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-user text-blue-400 text-sm"></i>
+            <span class="font-semibold">Sign In / Register</span>
+          </div>
+          <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i>
+        </button>
+      </div>
+
+      <!-- 2. Action Buttons Row: [ Pinned Notes | Clear | Export ] -->
       <div class="grid grid-cols-3 gap-1.5 pt-1">
-        <button id="auth-action-btn" class="flex flex-col items-center justify-center p-2 rounded-xl border transition-colors text-[10px]" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
-          <i class="fa-solid fa-circle-user text-xs mb-1 text-blue-400"></i>
-          <span id="auth-btn-label">Sign In</span>
+        <button id="pinned-notes-trigger-btn" class="relative flex flex-col items-center justify-center p-2 rounded-xl border transition-colors text-[10px]" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);" title="Saved Pinned Notes">
+          <i class="fa-solid fa-bookmark text-xs mb-1 text-blue-400"></i>
+          <span>Pinned</span>
+          <span id="pinned-count-badge" class="absolute top-1 right-1 text-[8px] bg-blue-500/30 text-blue-300 px-1 rounded-full font-mono font-bold">0</span>
         </button>
 
         <button id="clear-btn" class="flex flex-col items-center justify-center p-2 rounded-xl border transition-colors text-[10px]" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);" title="Clear Current Chat">
@@ -272,7 +306,7 @@
           <span>Clear</span>
         </button>
 
-        <button id="export-btn" class="flex flex-col items-center justify-center p-2 rounded-xl border transition-colors text-[10px]" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
+        <button id="export-btn" class="flex flex-col items-center justify-center p-2 rounded-xl border transition-colors text-[10px]" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);" title="Export Markdown">
           <i class="fa-solid fa-file-export text-xs mb-1 text-emerald-400"></i>
           <span>Export</span>
         </button>
@@ -396,7 +430,7 @@
     </div>
   </div>
 
-  <!-- 2. Settings Modal (Option C: Language & Time Format Settings) -->
+  <!-- 2. Settings Modal (Complete Global Language Registry) -->
   <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
     <div class="border w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4" style="background-color: var(--bg-card); border-color: var(--border-main);">
       <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-main);">
@@ -406,22 +440,84 @@
         <button id="close-settings" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="space-y-3.5">
+      <div class="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1">
         <div>
           <label class="text-xs font-semibold block mb-1" style="color: var(--text-main);">Your Nickname</label>
           <input type="text" id="settings-nickname-input" placeholder="Your name" class="w-full border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
         </div>
 
         <div>
-          <label class="text-xs font-semibold block mb-1" style="color: var(--text-main);">Response Language (Option C)</label>
+          <label class="text-xs font-semibold block mb-1" style="color: var(--text-main);">AI Response Language</label>
           <select id="settings-language-select" class="w-full border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 cursor-pointer" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
-            <option value="auto">Auto-Detect (Default)</option>
-            <option value="English">English</option>
-            <option value="Urdu">Urdu</option>
-            <option value="Hindi">Hindi</option>
-            <option value="Spanish">Spanish</option>
-            <option value="French">French</option>
-            <option value="Arabic">Arabic</option>
+            <option value="auto">Auto-Detect / User's Query Language (Default)</option>
+            <optgroup label="Popular Global Languages">
+              <option value="English">English</option>
+              <option value="Spanish">Spanish (Español)</option>
+              <option value="French">French (Français)</option>
+              <option value="German">German (Deutsch)</option>
+              <option value="Italian">Italian (Italiano)</option>
+              <option value="Portuguese">Portuguese (Português)</option>
+              <option value="Russian">Russian (Русский)</option>
+              <option value="Chinese (Simplified)">Chinese Simplified (简体中文)</option>
+              <option value="Chinese (Traditional)">Chinese Traditional (繁體中文)</option>
+              <option value="Japanese">Japanese (日本語)</option>
+              <option value="Korean">Korean (한국어)</option>
+              <option value="Arabic">Arabic (العربية)</option>
+              <option value="Hindi">Hindi (हिन्दी)</option>
+              <option value="Urdu">Urdu (اردو)</option>
+              <option value="Bengali">Bengali (বাংলা)</option>
+              <option value="Turkish">Turkish (Türkçe)</option>
+              <option value="Persian">Persian / Farsi (فارسی)</option>
+            </optgroup>
+            <optgroup label="South Asian & Regional">
+              <option value="Kashmiri">Kashmiri (کٲشُر / डोगरी)</option>
+              <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ / پنجابی)</option>
+              <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+              <option value="Marathi">Marathi (मराठी)</option>
+              <option value="Tamil">Tamil (தமிழ்)</option>
+              <option value="Telugu">Telugu (తెలుగు)</option>
+              <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+              <option value="Malayalam">Malayalam (മലയാളം)</option>
+              <option value="Pashto">Pashto (پښتو)</option>
+              <option value="Sindhi">Sindhi (سنڌي)</option>
+              <option value="Nepali">Nepali (नेपाली)</option>
+              <option value="Sinhala">Sinhala (සිංහල)</option>
+            </optgroup>
+            <optgroup label="European & Slavic">
+              <option value="Dutch">Dutch (Nederlands)</option>
+              <option value="Polish">Polish (Polski)</option>
+              <option value="Swedish">Swedish (Svenska)</option>
+              <option value="Norwegian">Norwegian (Norsk)</option>
+              <option value="Danish">Danish (Dansk)</option>
+              <option value="Finnish">Finnish (Suomi)</option>
+              <option value="Greek">Greek (Ελληνικά)</option>
+              <option value="Czech">Czech (Čeština)</option>
+              <option value="Hungarian">Hungarian (Magyar)</option>
+              <option value="Romanian">Romanian (Română)</option>
+              <option value="Ukrainian">Ukrainian (Українська)</option>
+              <option value="Serbo-Croatian">Serbo-Croatian (Srpskohrvatski)</option>
+              <option value="Bulgarian">Bulgarian (Български)</option>
+              <option value="Slovak">Slovak (Slovenčina)</option>
+              <option value="Irish">Irish Gaelic (Gaeilge)</option>
+              <option value="Latin">Latin (Lingua Latina)</option>
+            </optgroup>
+            <optgroup label="Middle Eastern & African">
+              <option value="Hebrew">Hebrew (עברית)</option>
+              <option value="Swahili">Swahili (Kiswahili)</option>
+              <option value="Amharic">Amharic (አማርኛ)</option>
+              <option value="Yoruba">Yoruba (Èdè Yorùbá)</option>
+              <option value="Hausa">Hausa (Harshen Hausa)</option>
+              <option value="Zulu">Zulu (isiZulu)</option>
+              <option value="Afrikaans">Afrikaans</option>
+            </optgroup>
+            <optgroup label="Southeast Asian & Pacific">
+              <option value="Indonesian">Indonesian (Bahasa Indonesia)</option>
+              <option value="Malay">Malay (Bahasa Melayu)</option>
+              <option value="Vietnamese">Vietnamese (Tiếng Việt)</option>
+              <option value="Thai">Thai (ภาษาไทย)</option>
+              <option value="Filipino">Filipino / Tagalog</option>
+              <option value="Burmese">Burmese (မြန်မာဘာသာ)</option>
+            </optgroup>
           </select>
         </div>
 
@@ -440,7 +536,7 @@
     </div>
   </div>
 
-  <!-- 3. Pinned Notes Vault Modal (Option B) -->
+  <!-- 3. Pinned Notes Vault Modal -->
   <div id="pinned-notes-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
     <div class="border w-full max-w-lg max-h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden" style="background-color: var(--bg-card); border-color: var(--border-main);">
       <div class="flex items-center justify-between px-5 py-3.5 border-b" style="border-color: var(--border-main);">
