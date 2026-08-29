@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
   try {
     const { systemInstruction, contents } = req.body;
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     // Helper to send Gemini request
     const sendRequest = async (useSearchTool = true) => {
