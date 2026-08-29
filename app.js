@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL CORE ENGINE (MULTI-ACCOUNT, PINNED VAULT & WORLD TIME)
+// XAMO AI - ULTRA-LOW LATENCY CORE ENGINE (GEMINI 3.5 FLASH-LITE)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -17,8 +17,8 @@ try {
 
 let currentUser = null;
 let userNickname = "";
+let activeStreamAbortController = null; // Prevents duplicate responses on message edits
 
-// Settings Configuration
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
 // --- Persistent Nickname Engine ---
@@ -766,11 +766,11 @@ if (saveSettings && settingsModal) {
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an authentic, adaptive AI assistant with full real-time internet search access and exact live world clock awareness created by Zaeem. Provide clear, accurate, and concise responses. Use Markdown tables, bullet points, and code blocks generously for high readability."
+    prompt: "You are XAMO, an authentic, adaptive AI assistant with live world clock awareness created by Zaeem. Answer with extreme speed, direct accuracy, and concise formatting. Use Markdown tables, bullet points, and code blocks."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code with clean formatting."
+    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code immediately with clean syntax."
   }
 ];
 
@@ -891,7 +891,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- Document Processor ---
+// --- Ultra-Fast Document & Media Compressor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -908,7 +908,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 800;
+        const maxDim = 600; // Ultralight max dimension for instantaneous transfer
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -923,7 +923,7 @@ if (imageInput) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.55);
         
         attachedFile = {
           category: 'image',
@@ -962,24 +962,24 @@ if (imageInput) {
             const pdf = await loadingTask.promise;
             let fullPdfText = "";
             
-            const maxPages = Math.min(pdf.numPages, 50);
+            const maxPages = Math.min(pdf.numPages, 35);
             for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
               const page = await pdf.getPage(pageNum);
               const textContent = await page.getTextContent();
               const pageText = textContent.items.map(item => item.str).join(" ");
-              fullPdfText += `\n--- [Page ${pageNum}] ---\n` + pageText;
+              fullPdfText += `\n[Page ${pageNum}] ` + pageText;
             }
 
-            if (fullPdfText.trim().length > 30) {
+            if (fullPdfText.trim().length > 20) {
               attachedFile = {
                 category: 'text',
-                content: `[Extracted Document: ${fileName} (${pdf.numPages} pages total)]\n\n${fullPdfText.trim()}`,
+                content: `[Document Content: ${fileName}]\n${fullPdfText.trim()}`,
                 name: fileName
               };
             } else {
               let binary = '';
               const bytes = new Uint8Array(typedarray);
-              const len = Math.min(bytes.byteLength, 4 * 1024 * 1024);
+              const len = Math.min(bytes.byteLength, 3 * 1024 * 1024);
               for (let i = 0; i < len; i++) {
                 binary += String.fromCharCode(bytes[i]);
               }
@@ -1150,6 +1150,11 @@ async function initAuth() {
 async function handleAuthStateChange(user) {
   currentUser = user;
   
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+    activeStreamAbortController = null;
+  }
+
   currentChatHistory = [];
   activeSessionId = null;
   if (input) { input.value = ''; input.style.height = 'auto'; }
@@ -1477,6 +1482,10 @@ async function saveCurrentSession() {
 }
 
 function loadSession(id) {
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+    activeStreamAbortController = null;
+  }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   const session = sessions.find(s => s.id === id);
   if (!session) return;
@@ -1487,7 +1496,13 @@ function loadSession(id) {
 }
 
 window.editMessage = function(index) {
+  // 1. Immediately cancel any running stream to eliminate duplicate generations
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+    activeStreamAbortController = null;
+  }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
   const msg = currentChatHistory[index];
   if (!msg || !input) return;
 
@@ -1670,6 +1685,10 @@ function renderChatBox() {
 }
 
 window.regenerateLastResponse = function() {
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+    activeStreamAbortController = null;
+  }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   if (currentChatHistory.length > 1 && currentChatHistory[currentChatHistory.length-1].role === 'model') {
     currentChatHistory.pop();
@@ -1680,6 +1699,10 @@ window.regenerateLastResponse = function() {
 
 // Soft Delete
 async function deleteSession(id) {
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+    activeStreamAbortController = null;
+  }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   sessions = sessions.filter(s => s.id !== id);
   
@@ -1689,9 +1712,7 @@ async function deleteSession(id) {
         .from('chats')
         .update({ is_deleted_by_user: true })
         .eq('id', id);
-    } catch (err) {
-      console.error("Cloud soft-delete error:", err);
-    }
+    } catch (err) {}
 
     try {
       const key = getChatStorageKey();
@@ -1707,6 +1728,10 @@ async function deleteSession(id) {
 }
 
 function startNewChat() {
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+    activeStreamAbortController = null;
+  }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   activeSessionId = null;
   currentChatHistory = [];
@@ -1763,7 +1788,7 @@ if (exportBtn) {
   });
 }
 
-// Instant Dispatch
+// Instant Dispatch Handler
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -1780,7 +1805,7 @@ if (form) {
 
     if (attachedFile) {
       if (attachedFile.category === 'text') {
-        promptPayloadText = `[File Attachment: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\n${rawTypedText}`;
+        promptPayloadText = `[Attached Document: ${attachedFile.name}]\n${attachedFile.content}\n\n${rawTypedText}`;
       } else {
         userParts.push({ inline_data: { mime_type: attachedFile.mimeType, data: attachedFile.base64 } });
       }
@@ -1812,8 +1837,14 @@ if (form) {
   });
 }
 
-// Real-Time Grounded Stream Handler
+// High-Throughput Sub-Second Streaming Handler
 async function triggerApiCall() {
+  if (activeStreamAbortController) {
+    activeStreamAbortController.abort();
+  }
+  activeStreamAbortController = new AbortController();
+  const signal = activeStreamAbortController.signal;
+
   const isLocalEnvironment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
 
   const botDiv = document.createElement('div');
@@ -1839,23 +1870,23 @@ async function triggerApiCall() {
     const currentDateUTC = now.toUTCString();
 
     const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
-    const userAddressing = userNickname ? `\nUSER IDENTITY: The user's name is "${userNickname}".` : "";
-    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nLANGUAGE REQUIREMENT: Respond strictly in ${appSettings.language}.` : "";
+    const userAddressing = userNickname ? `\nUser: ${userNickname}.` : "";
+    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond strictly in ${appSettings.language}.` : "";
 
-    const liveClockInstruction = `
-REAL-TIME CLOCK & WORLD TIME CAPABILITY:
-- Base UTC Time: ${currentDateUTC} (ISO: ${now.toISOString()})
-- User Device Timezone: ${userTimeZone} (${currentDateLocal})
-- Current Year: ${now.getFullYear()}
-- WORLD TIME & CURRENT DATE RULES: When asked for the current time, date, day, or news in ANY city or country, calculate from this UTC reference or use your built-in Google Search tool to answer accurately in real-time.`;
+    const liveClockInstruction = `\n[Reference Time: UTC ${currentDateUTC} | Local ${currentDateLocal} (${userTimeZone})]`;
 
-    const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}\n${liveClockInstruction}`;
+    const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    const payloadHistory = currentChatHistory.slice(-6).map(m => ({ role: m.role, parts: m.parts }));
+    // Has any attachment in current chat to bypass external web search for speed
+    const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
+
+    // Limit payload history to the most recent 4 turns to avoid re-tokenizing large PDFs
+    const payloadHistory = currentChatHistory.slice(-4).map(m => ({ role: m.role, parts: m.parts }));
 
     const requestBody = {
       systemInstruction: { parts: [{ text: dynamicSystemInstruction }] },
-      contents: payloadHistory
+      contents: payloadHistory,
+      hasAttachment: hasAnyAttachment
     };
 
     const targetUrl = isLocalEnvironment ? 'https://xamo-ai.vercel.app/api/chat' : '/api/chat';
@@ -1863,7 +1894,8 @@ REAL-TIME CLOCK & WORLD TIME CAPABILITY:
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: signal
     });
 
     if (!response.ok) {
@@ -1905,21 +1937,49 @@ REAL-TIME CLOCK & WORLD TIME CAPABILITY:
     enhanceMarkdownOutput(botDiv);
     if (window.hljs) hljs.highlightAll();
 
+    // Push bot message and save without executing double-render
     currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
     
     try {
       await saveCurrentSession();
     } catch (saveErr) {}
+
+    // Attach interaction actions to completed message cleanly
+    const footerDiv = document.createElement('div');
+    footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
     
-    renderChatBox();
-    
-    if (chatBox && chatBox.children.length > 0) {
-      chatBox.children[chatBox.children.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    const pinBtn = document.createElement('button');
+    pinBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    pinBtn.title = "Pin to Notes Vault";
+    pinBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
+    pinBtn.onclick = () => pinMessageDirect(encodeURIComponent(fullText));
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    copyBtn.title = "Copy";
+    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(fullText);
+      showXamoToast("Copied to clipboard!");
+    };
+
+    const speakBtn = document.createElement('button');
+    speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    speakBtn.title = "Read Aloud";
+    speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+    speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+
+    footerDiv.appendChild(pinBtn);
+    footerDiv.appendChild(copyBtn);
+    footerDiv.appendChild(speakBtn);
+    botDiv.appendChild(footerDiv);
     
   } catch (err) {
+    if (err.name === 'AbortError') return; // Clean exit if message was edited
     responseContent.classList.remove('animate-pulse');
     responseContent.innerHTML = `<span class="text-red-400">System Error: ${err.message}</span>`;
+  } finally {
+    activeStreamAbortController = null;
   }
 }
 

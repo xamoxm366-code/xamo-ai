@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS Pre-flight Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -23,23 +22,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { systemInstruction, contents } = req.body;
+    const { systemInstruction, contents, hasAttachment } = req.body;
 
-    // Gemini 3.5 Flash-Lite Endpoint
+    // Direct Gemini 3.5 Flash-Lite Endpoint
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    const sendRequest = async (useSearchTool = true) => {
+    const sendRequest = async (useSearchTool = false) => {
       const payload = {
         systemInstruction,
         contents,
         generationConfig: {
-          temperature: 0.5,
-          topP: 0.9,
+          thinkingConfig: {
+            thinkingBudget: 0 // Completely disables reasoning latency for sub-second generation
+          },
+          temperature: 0.3,
+          topP: 0.85,
           maxOutputTokens: 2048
         }
       };
 
-      if (useSearchTool) {
+      // Only attach Google Search if NO local file/document is attached
+      if (useSearchTool && !hasAttachment) {
         payload.tools = [{ google_search: {} }];
       }
 
@@ -50,10 +53,9 @@ export default async function handler(req, res) {
       });
     };
 
-    // 1. Send with Google Search grounding enabled
-    let response = await sendRequest(true);
+    // If a document or photo is attached, skip web search completely for instant ~1-2s analysis
+    let response = await sendRequest(!hasAttachment);
 
-    // 2. Automatic fallback if search quota (429) or rate limit is hit
     if (response.status === 429 || !response.ok) {
       response = await sendRequest(false);
     }
