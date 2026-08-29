@@ -71,13 +71,10 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <button onclick="downloadAllChatArchive()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20">
-          <i class="fa-solid fa-file-arrow-down text-xs"></i> Export History (.JSON)
-        </button>
-        <button onclick="fetchAllChats()" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5">
+        <button onclick="fetchAllChats()" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
           <i class="fa-solid fa-arrows-rotate text-xs"></i> Refresh
         </button>
-        <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors">
+        <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
           Sign Out
         </button>
         <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-1.5 rounded-xl transition-colors">
@@ -151,7 +148,7 @@
         <div id="chats-container" class="flex-1 overflow-y-auto divide-y divide-[#22242a] p-1"></div>
       </aside>
 
-      <!-- Right Panel: Message Feed & Media Display -->
+      <!-- Right Panel: Message Feed -->
       <main class="flex-1 flex flex-col bg-[#0f1012] min-h-0">
         <div id="thread-header" class="h-14 border-b border-[#24262b] px-6 flex items-center justify-between bg-[#141518]">
           <div class="flex items-center gap-3 truncate">
@@ -159,10 +156,7 @@
             <span id="thread-title" class="text-xs font-semibold text-slate-200 truncate"></span>
           </div>
           <div id="thread-actions" class="hidden flex items-center gap-2">
-            <button onclick="downloadSingleChatArchive()" class="text-xs text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5">
-              <i class="fa-solid fa-download"></i> Download Chat (.JSON)
-            </button>
-            <button onclick="deleteSelectedChat()" class="text-xs text-red-400 hover:bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors">
+            <button onclick="deleteSelectedChat()" class="text-xs text-red-400 hover:bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
               <i class="fa-solid fa-trash-can mr-1"></i> Purge from Cloud
             </button>
           </div>
@@ -458,34 +452,6 @@
       });
 
       box.scrollTop = 0;
-    }
-
-    // Direct Safe Blob Downloader for Desktop & Mobile
-    function triggerUniversalDownload(jsonData, fileName) {
-      const jsonBlob = new Blob([jsonData], { type: 'application/json;charset=utf-8' });
-      const objectUrl = URL.createObjectURL(jsonBlob);
-      const tempLink = document.createElement('a');
-      tempLink.href = objectUrl;
-      tempLink.setAttribute('download', fileName);
-      document.body.appendChild(tempLink);
-      tempLink.click();
-      document.body.removeChild(tempLink);
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
-    }
-
-    function downloadAllChatArchive() {
-      if (!chatRecords.length) {
-        alert("No conversations found to export.");
-        return;
-      }
-      const dataStr = JSON.stringify(chatRecords, null, 2);
-      triggerUniversalDownload(dataStr, `xamo_full_admin_archive_${new Date().toISOString().slice(0,10)}.json`);
-    }
-
-    function downloadSingleChatArchive() {
-      if (!activeChatRecord) return;
-      const dataStr = JSON.stringify(activeChatRecord, null, 2);
-      triggerUniversalDownload(dataStr, `xamo_chat_${activeChatRecord.id}.json`);
     }
 
     async function deleteSelectedChat() {

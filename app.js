@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL LOW LATENCY CORE ENGINE (MULTI-ACCOUNT & PINNED VAULT FIXED)
+// XAMO AI - CORE CLIENT ENGINE (GEMINI 3.5 FLASH-LITE)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -364,7 +364,7 @@ if (signoutCurrentAccountBtn) {
   });
 }
 
-// --- Pinned Notes System (Fixed Delete & Update) ---
+// --- Pinned Notes System ---
 if (pinnedNotesTriggerBtn && pinnedNotesModal) {
   pinnedNotesTriggerBtn.addEventListener('click', () => {
     renderPinnedNotes();
@@ -431,9 +431,9 @@ async function renderPinnedNotes() {
   pinnedNotesContainer.innerHTML = notes.map(n => `
     <div class="p-3.5 rounded-xl border flex items-start justify-between gap-3 shadow-inner" style="background-color: var(--bg-app); border-color: var(--border-main);">
       <div class="text-xs leading-relaxed whitespace-pre-wrap flex-1 break-words font-sans" style="color: var(--text-main);">${DOMPurify.sanitize(marked.parse(n.note_text))}</div>
-      <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button onclick="navigator.clipboard.writeText(\`${encodeURIComponent(n.note_text)}\`); showXamoToast('Copied note!');" class="text-slate-400 hover:text-blue-400 p-1.5 transition-colors"><i class="fa-solid fa-copy"></i></button>
-        <button onclick="event.stopPropagation(); deletePinnedNote('${n.id}')" class="text-slate-400 hover:text-red-400 p-1.5 transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+      <div class="flex items-center gap-2 flex-shrink-0 bg-slate-800/60 p-1 rounded-lg">
+        <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(n.note_text)}')); showXamoToast('Copied note!');" class="text-slate-300 hover:text-blue-400 p-1.5 transition-colors" title="Copy"><i class="fa-solid fa-copy text-xs"></i></button>
+        <button onclick="event.stopPropagation(); deletePinnedNote('${n.id}')" class="text-red-400 hover:text-red-300 p-1.5 transition-colors" title="Delete Note"><i class="fa-solid fa-trash-can text-xs"></i></button>
       </div>
     </div>
   `).join('');
@@ -765,15 +765,15 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Personas Setup ---
+// --- Authentic Personas Setup ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an authentic, low-latency AI assistant created by Zaeem. Answer with rapid precision, direct clarity, and concise formatting using Markdown tables, bullet points, and code blocks."
+    prompt: "You are XAMO, an intelligent, helpful AI assistant created by Zaeem. Respond naturally in fluent, clean prose with thorough explanations. NEVER format standard conversational replies or short answers as rigid tables or metadata status boxes unless the user explicitly requests tabular data. Use bullet points and markdown bolding for scannability."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code with clean formatting."
+    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code immediately with clean syntax and concise explanations."
   }
 ];
 
@@ -911,7 +911,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 600;
+        const maxDim = 800;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -926,7 +926,7 @@ if (imageInput) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.55);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
         
         attachedFile = {
           category: 'image',
@@ -965,7 +965,7 @@ if (imageInput) {
             const pdf = await loadingTask.promise;
             let fullPdfText = "";
             
-            const maxPages = Math.min(pdf.numPages, 30);
+            const maxPages = Math.min(pdf.numPages, 40);
             for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
               const page = await pdf.getPage(pageNum);
               const textContent = await page.getTextContent();
@@ -976,7 +976,7 @@ if (imageInput) {
             if (fullPdfText.trim().length > 20) {
               attachedFile = {
                 category: 'text',
-                content: `[Document: ${fileName}]\n${fullPdfText.trim()}`,
+                content: `[Attached Document: ${fileName}]\n${fullPdfText.trim()}`,
                 name: fileName
               };
             } else {
@@ -1120,7 +1120,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- Auth State Handshake ---
+// --- Auth State Handshake & Accurate Verification ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1249,16 +1249,28 @@ if (authSubmitBtn) {
           return;
         }
 
-        btnTextSpan.textContent = "Sending...";
+        btnTextSpan.textContent = "Checking...";
         authSubmitBtn.disabled = true;
 
-        const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
+        // Check if user exists in database
+        const { data: userRecords } = await supabaseClient
+          .from('chats')
+          .select('user_email')
+          .eq('user_email', email)
+          .limit(1);
 
+        const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTarget
         });
 
-        if (error) throw error;
+        if (error) {
+          const msg = error.message.toLowerCase();
+          if (msg.includes('user not found') || msg.includes('invalid') || (userRecords && userRecords.length === 0)) {
+            throw new Error("This email is not registered yet. Please sign up first.");
+          }
+          throw error;
+        }
 
         showXamoToast("Reset link sent! Check your Inbox & Spam folders.");
         if (authModal) authModal.classList.add('hidden');
@@ -1269,15 +1281,29 @@ if (authSubmitBtn) {
 
       } else if (authMode === 'signup') {
         if (!password) { showAuthError("Please enter a password."); return; }
+        if (password.length < 6) { showAuthError("Password must be at least 6 characters."); return; }
+
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
 
-        const { error } = await supabaseClient.auth.signUp({ 
+        const { data, error } = await supabaseClient.auth.signUp({ 
           email, 
           password,
           options: { emailRedirectTo: "https://xamo-ai.vercel.app/verified.html" }
         });
-        if (error) throw error;
+
+        if (error) {
+          const msg = error.message.toLowerCase();
+          if (msg.includes('already registered') || msg.includes('user already exists')) {
+            throw new Error("This email is already registered and verified. Please sign in instead.");
+          }
+          throw error;
+        }
+
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          throw new Error("This email is already registered and verified. Please sign in instead.");
+        }
+
         showXamoToast("Account created! Check your email to verify.");
         if (authModal) authModal.classList.add('hidden');
 
@@ -1287,15 +1313,18 @@ if (authSubmitBtn) {
         authSubmitBtn.disabled = true;
 
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        
         if (error) {
           const errMsg = error.message.toLowerCase();
           if (errMsg.includes('email not confirmed')) {
             throw new Error("Email not verified yet. Please check your inbox or sign up first.");
-          } else if (errMsg.includes('invalid login credentials')) {
-            throw new Error("Account not found or password incorrect. Please sign up first.");
+          } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid password')) {
+            throw new Error("Incorrect password. Please verify your password and try again.");
+          } else {
+            throw new Error(error.message);
           }
-          throw error;
         }
+
         if (data.session) storeCurrentAccount(data.session);
         showXamoToast("Signed in successfully!");
         if (authModal) authModal.classList.add('hidden');
@@ -1550,6 +1579,7 @@ function renderChatBox() {
     startNewChat();
     return;
   }
+
   currentChatHistory.forEach((msg, index) => {
     const isUser = msg.role === 'user';
     const div = document.createElement('div');
@@ -1589,10 +1619,13 @@ function renderChatBox() {
       const textVal = msg.parts[0].text;
       const isLastBotMsg = index === currentChatHistory.length - 1;
       
-      let regenBtnHtml = isLastBotMsg ? `<div class="mt-2 transition-opacity"><button onclick="regenerateLastResponse()" class="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1"><i class="fa-solid fa-rotate-right"></i> Regenerate</button></div>` : '';
+      div.innerHTML = `
+        <div class="gemini-response-container w-full leading-relaxed break-words">${parseMarkdownSafely(textVal)}</div>
+      `;
 
+      // Full Instant Action Controls Row
       const footerDiv = document.createElement('div');
-      footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
+      footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
       
       const pinBtn = document.createElement('button');
       pinBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
@@ -1665,16 +1698,15 @@ function renderChatBox() {
       footerDiv.appendChild(shareBtn);
       footerDiv.appendChild(speakBtn);
 
-      div.innerHTML = `
-        <div class="gemini-response-container w-full leading-relaxed break-words">${parseMarkdownSafely(textVal)}</div>
-      `;
-      div.appendChild(footerDiv);
-      if (regenBtnHtml) {
-        const regenContainer = document.createElement('div');
-        regenContainer.innerHTML = regenBtnHtml;
-        div.appendChild(regenContainer);
+      if (isLastBotMsg) {
+        const regenBtn = document.createElement('button');
+        regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
+        regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
+        regenBtn.onclick = () => regenerateLastResponse();
+        footerDiv.appendChild(regenBtn);
       }
 
+      div.appendChild(footerDiv);
       renderMath(div);
       enhanceMarkdownOutput(div);
     }
@@ -1837,7 +1869,7 @@ if (form) {
   });
 }
 
-// High-Throughput Streaming Handler
+// Fast Streaming Execution
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -1870,10 +1902,10 @@ async function triggerApiCall() {
     const currentDateUTC = now.toUTCString();
 
     const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
-    const userAddressing = userNickname ? `\nUser: ${userNickname}.` : "";
+    const userAddressing = userNickname ? `\nUser's Nickname: "${userNickname}".` : "";
     const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond strictly in ${appSettings.language}.` : "";
 
-    const liveClockInstruction = `\n[Reference Time: UTC ${currentDateUTC} | Local ${currentDateLocal} (${userTimeZone})]`;
+    const liveClockInstruction = `\n[Reference System Clock: UTC ${currentDateUTC} | Local ${currentDateLocal} (${userTimeZone})]`;
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
@@ -1940,14 +1972,41 @@ async function triggerApiCall() {
       await saveCurrentSession();
     } catch (saveErr) {}
 
+    // Complete Instant Interaction Controls Row
     const footerDiv = document.createElement('div');
-    footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
+    footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
     
     const pinBtn = document.createElement('button');
     pinBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
     pinBtn.title = "Pin to Notes Vault";
     pinBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
     pinBtn.onclick = () => pinMessageDirect(encodeURIComponent(fullText));
+
+    const likeBtn = document.createElement('button');
+    likeBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    likeBtn.title = "Good response";
+    likeBtn.innerHTML = '<i class="fa-regular fa-thumbs-up"></i>';
+    likeBtn.onclick = () => {
+      const existingNotice = footerDiv.querySelector('.feedback-notice');
+      if (existingNotice) existingNotice.remove();
+      const notice = document.createElement('span');
+      notice.className = "feedback-notice text-xs text-blue-400 ml-2 font-medium";
+      notice.textContent = "Glad that it was helpful for you!";
+      footerDiv.appendChild(notice);
+    };
+
+    const dislikeBtn = document.createElement('button');
+    dislikeBtn.className = "hover:text-red-400 transition-colors focus:outline-none";
+    dislikeBtn.title = "Bad response";
+    dislikeBtn.innerHTML = '<i class="fa-regular fa-thumbs-down"></i>';
+    dislikeBtn.onclick = () => {
+      const existingNotice = footerDiv.querySelector('.feedback-notice');
+      if (existingNotice) existingNotice.remove();
+      const notice = document.createElement('span');
+      notice.className = "feedback-notice text-xs text-red-400 ml-2 font-medium";
+      notice.textContent = "I apologize for that. Let me know how I can improve!";
+      footerDiv.appendChild(notice);
+    };
 
     const copyBtn = document.createElement('button');
     copyBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
@@ -1958,15 +2017,41 @@ async function triggerApiCall() {
       showXamoToast("Copied to clipboard!");
     };
 
+    const shareBtn = document.createElement('button');
+    shareBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    shareBtn.title = "Share";
+    shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
+    shareBtn.onclick = () => {
+      if (navigator.share) {
+        navigator.share({
+          title: 'XAMO AI Response',
+          text: textVal
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(textVal);
+        showXamoToast("Copied to clipboard for sharing!");
+      }
+    };
+
     const speakBtn = document.createElement('button');
     speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
     speakBtn.title = "Read Aloud";
     speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
     speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
 
+    const regenBtn = document.createElement('button');
+    regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
+    regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
+    regenBtn.onclick = () => regenerateLastResponse();
+
     footerDiv.appendChild(pinBtn);
+    footerDiv.appendChild(likeBtn);
+    footerDiv.appendChild(dislikeBtn);
     footerDiv.appendChild(copyBtn);
+    footerDiv.appendChild(shareBtn);
     footerDiv.appendChild(speakBtn);
+    footerDiv.appendChild(regenBtn);
+
     botDiv.appendChild(footerDiv);
     
   } catch (err) {

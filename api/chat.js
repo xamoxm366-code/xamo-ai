@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents, hasAttachment } = req.body;
 
-    // Gemini 3.5 Flash-Lite Endpoint
+    // Gemini 3.5 Flash-Lite Production Endpoint
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const sendRequest = async (useSearchTool = false) => {
@@ -33,13 +33,12 @@ export default async function handler(req, res) {
         systemInstruction,
         contents,
         generationConfig: {
-          temperature: 0.4,
-          topP: 0.9,
-          maxOutputTokens: 2048
+          temperature: 0.6,
+          topP: 0.95,
+          maxOutputTokens: 2500
         }
       };
 
-      // Only attach Google Search if NO local file/document is attached
       if (useSearchTool && !hasAttachment) {
         payload.tools = [{ google_search: {} }];
       }
@@ -51,7 +50,6 @@ export default async function handler(req, res) {
       });
     };
 
-    // Attempt request with Google search if no attachment, fallback to non-grounded if 429
     let response = await sendRequest(!hasAttachment);
 
     if (response.status === 429 || !response.ok) {
