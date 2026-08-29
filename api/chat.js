@@ -25,8 +25,8 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents } = req.body;
 
-    // Gemini 2.5 Flash with Real-Time Google Search Grounding Enabled
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Gemini 3.5 Flash with Real-Time Google Search Grounding Enabled
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
