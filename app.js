@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL CORE ENGINE (MULTI-ACCOUNT & PINNED VAULT INTEGRATED)
+// XAMO AI - FULL CORE ENGINE (LIVE INTERNET & WORLD TIME GROUNDING)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -766,11 +766,11 @@ if (saveSettings && settingsModal) {
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an elite AI assistant created by Zaeem. Provide direct, highly accurate, and rapid responses. Use Markdown tables, bullet points, and code blocks where appropriate."
+    prompt: "You are XAMO, an authentic, adaptive AI assistant with full real-time internet search access and exact live world clock awareness created by Zaeem. Provide clear, accurate, and concise responses. Use Markdown tables, bullet points, and code blocks generously for high readability."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code with concise explanations."
+    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code with clean formatting."
   }
 ];
 
@@ -891,7 +891,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- Optimized File & Document Processor ---
+// --- Document Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -923,7 +923,7 @@ if (imageInput) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
         
         attachedFile = {
           category: 'image',
@@ -1763,7 +1763,7 @@ if (exportBtn) {
   });
 }
 
-// Instant Dispatch (Zero Pre-Fetch Lag)
+// Instant Dispatch
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -1812,7 +1812,7 @@ if (form) {
   });
 }
 
-// Optimized Fast Stream Handler
+// Real-Time Grounded Stream Handler
 async function triggerApiCall() {
   const isLocalEnvironment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
 
@@ -1829,13 +1829,30 @@ async function triggerApiCall() {
   }
 
   try {
+    // Exact dynamic live timestamps and timezone reference
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const now = new Date();
+    const currentDateLocal = now.toLocaleString('en-US', { 
+      timeZone: userTimeZone,
+      hour12: appSettings.timeFormat !== '24',
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' 
+    });
+    const currentDateUTC = now.toUTCString();
+
     const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
-    const userAddressing = userNickname ? `\nUser Name: ${userNickname}.` : "";
-    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond in ${appSettings.language}.` : "";
+    const userAddressing = userNickname ? `\nUSER IDENTITY: The user's name is "${userNickname}".` : "";
+    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nLANGUAGE REQUIREMENT: Respond strictly in ${appSettings.language}.` : "";
 
-    const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}`;
+    const liveClockInstruction = `
+REAL-TIME CLOCK & WORLD TIME CAPABILITY:
+- Base UTC Time: ${currentDateUTC} (ISO: ${now.toISOString()})
+- User Device Timezone: ${userTimeZone} (${currentDateLocal})
+- Current Year: ${now.getFullYear()}
+- WORLD TIME & CURRENT DATE RULES: When asked for the current time, date, day, or news in ANY city or country, calculate from this UTC reference or use your built-in Google Search tool to answer accurately in real-time.`;
 
-    // Limit context payload to the most recent 6 messages for maximum throughput
+    const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}\n${liveClockInstruction}`;
+
+    // Sliding window of recent turns for fast processing
     const payloadHistory = currentChatHistory.slice(-6).map(m => ({ role: m.role, parts: m.parts }));
 
     const requestBody = {

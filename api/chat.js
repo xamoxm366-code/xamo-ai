@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // CORS Pre-flight Headers
+  // 1. CORS Pre-flight Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -19,13 +19,14 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not set in Vercel Environment Variables.' });
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables.' });
   }
 
   try {
     const { systemInstruction, contents } = req.body;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Gemini 2.5 Flash with Real-Time Google Search Grounding Enabled
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
@@ -33,10 +34,14 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         systemInstruction,
         contents,
+        tools: [
+          {
+            google_search: {} // Connects AI directly to Google Search for live web information
+          }
+        ],
         generationConfig: {
           temperature: 0.7,
           topP: 0.95,
-          topK: 40,
           maxOutputTokens: 2048
         }
       })
