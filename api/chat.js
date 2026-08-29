@@ -30,7 +30,16 @@ export default async function handler(req, res) {
     const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ systemInstruction, contents })
+      body: JSON.stringify({
+        systemInstruction,
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 2048
+        }
+      })
     });
 
     if (!response.ok) {

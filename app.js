@@ -542,7 +542,6 @@ if ('speechSynthesis' in window) {
 function cleanTextForSpeech(rawText) {
   if (!rawText) return "";
   let text = rawText;
-  text = text.replace(/\[Real-Time Web Search Context:[\s\S]*?\]/g, "");
   text = text.replace(/```[\s\S]*?```/g, " Code block omitted. ");
   text = text.replace(/`([^`]+)`/g, "$1");
   text = text.replace(/\$\$[\s\S]*?\$\$/g, "");
@@ -767,11 +766,11 @@ if (saveSettings && settingsModal) {
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an elite AI assistant created by Zaeem. Provide clean, well-structured answers using Markdown tables, bullet points, and code blocks.\nCRITICAL FORMATTING RULES:\n- NEVER use LaTeX ($ or $$) for plain currency (e.g., write '$120k - $160k'), simple percentages ('10%'), temperatures ('180°C'), or numbers.\n- Use LaTeX strictly for complex mathematical/scientific formulas.\n- Render tables with standard markdown."
+    prompt: "You are XAMO, an elite AI assistant created by Zaeem. Provide direct, highly accurate, and rapid responses. Use Markdown tables, bullet points, and code blocks where appropriate."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Write production-grade, optimized code with clean formatting."
+    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code with concise explanations."
   }
 ];
 
@@ -892,7 +891,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- File & Document Processor ---
+// --- Optimized File & Document Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -955,7 +954,7 @@ if (imageInput) {
       const reader = new FileReader();
       reader.onload = async function(uploadEvent) {
         try {
-          showXamoToast("Extracting PDF text...");
+          showXamoToast("Reading PDF contents...");
           const typedarray = new Uint8Array(uploadEvent.target.result);
           
           if (typeof pdfjsLib !== 'undefined') {
@@ -1005,9 +1004,8 @@ if (imageInput) {
           }
           if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
           updateSendButtonState();
-          showXamoToast("PDF processed in milliseconds!");
+          showXamoToast("PDF processed!");
         } catch (pdfErr) {
-          console.error("PDF error:", pdfErr);
           showXamoToast("Failed to parse PDF text.");
         }
       };
@@ -1015,7 +1013,7 @@ if (imageInput) {
 
     } else if (fileType.startsWith('video/')) {
       if (file.size > 8 * 1024 * 1024) {
-        showXamoToast("Video must be under 8MB for AI analysis.");
+        showXamoToast("Video must be under 8MB for analysis.");
         imageInput.value = "";
         return;
       }
@@ -1573,7 +1571,7 @@ function renderChatBox() {
       
       div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95%] sm:max-w-[85%] min-w-[50px]">${contentHtml}</div></div>`;
     } else {
-      const textVal = msg.parts[0].text.replace(/\[Real-Time Web Search Context:[\s\S]*?\]/g, "");
+      const textVal = msg.parts[0].text;
       const isLastBotMsg = index === currentChatHistory.length - 1;
       
       let regenBtnHtml = isLastBotMsg ? `<div class="mt-2 transition-opacity"><button onclick="regenerateLastResponse()" class="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1"><i class="fa-solid fa-rotate-right"></i> Regenerate</button></div>` : '';
@@ -1765,163 +1763,12 @@ if (exportBtn) {
   });
 }
 
-async function fetchFreeWebContext(query) {
-  try {
-    const cleanQuery = encodeURIComponent(query.slice(0, 100));
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-    const response = await fetch(`https://api.duckduckgo.com/?q=${cleanQuery}&format=json&no_html=1&skip_disambig=1`, {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    let snippets = [];
-    if (data.AbstractText) snippets.push(data.AbstractText);
-    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-      data.RelatedTopics.slice(0, 3).forEach(t => {
-        if (t.Text) snippets.push(t.Text);
-      });
-    }
-    if (snippets.length > 0) {
-      return `\n\n[Real-Time Web Search Context: ${snippets.join(' | ')}]`;
-    }
-    return null;
-  } catch (e) {
-    return null; 
-  }
-}
-
-async function triggerApiCall() {
-  const botDiv = document.createElement('div');
-  botDiv.className = 'flex flex-col items-start my-4 w-full';
-  const responseContent = document.createElement('div');
-  responseContent.className = 'gemini-response-container w-full leading-relaxed break-words animate-pulse';
-  responseContent.textContent = "Thinking...";
-  botDiv.appendChild(responseContent);
-  
-  if (chatBox) {
-    chatBox.appendChild(botDiv);
-    botDiv.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  try {
-    const currentDateLocal = new Date().toLocaleString('en-US', { 
-      hour12: appSettings.timeFormat !== '24',
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' 
-    });
-    const currentDateUTC = new Date().toLocaleString('en-US', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
-    const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
-    const userAddressingInstruction = userNickname 
-      ? `\nUSER IDENTITY: The user's name/nickname is "${userNickname}". Address the user warmly by their name when appropriate.` 
-      : "";
-
-    const langInstruction = appSettings.language && appSettings.language !== 'auto'
-      ? `\nLANGUAGE INSTRUCTION: You must formulate your response strictly and entirely in ${appSettings.language}.`
-      : "";
-
-    const dynamicSystemInstruction = `${basePrompt}${userAddressingInstruction}${langInstruction}\n\nSYSTEM CLOCK:\nUser Local Time: ${currentDateLocal}\nUTC Time: ${currentDateUTC} UTC\n\nCRITICAL RULE: If the prompt includes [Real-Time Web Search Context: ...], use the info silently. DO NOT echo or acknowledge that string in your output.`;
-
-    const requestBody = {
-      systemInstruction: { parts: [{ text: dynamicSystemInstruction }] },
-      contents: currentChatHistory.map(m => ({ role: m.role, parts: m.parts }))
-    };
-
-    let response;
-    try {
-      response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-    } catch (netErr) {
-      throw new Error("Unable to reach backend function (/api/chat).");
-    }
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || errData.error || `HTTP ${response.status}: API Connection failed`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let fullText = "";
-    let sseBuffer = "";
-    responseContent.classList.remove('animate-pulse');
-    responseContent.innerHTML = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      sseBuffer += decoder.decode(value, { stream: true });
-      const lines = sseBuffer.split("\n");
-      sseBuffer = lines.pop();
-
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const dataStr = line.replace("data: ", "").trim();
-          if (dataStr === "[DONE]") continue;
-          try {
-            const json = JSON.parse(dataStr);
-            const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (textChunk) {
-              fullText += textChunk;
-              const cleanStreamText = fullText.replace(/\[Real-Time Web Search Context:[\s\S]*?\]/g, "");
-              responseContent.innerHTML = parseMarkdownSafely(cleanStreamText);
-            }
-          } catch (e) {}
-        }
-      }
-    }
-
-    renderMath(responseContent);
-    enhanceMarkdownOutput(botDiv);
-    if (window.hljs) hljs.highlightAll();
-
-    currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
-    
-    try {
-      await saveCurrentSession();
-    } catch (saveErr) {
-      console.warn("Session save warning:", saveErr);
-    }
-    
-    renderChatBox();
-    
-    if (chatBox && chatBox.children.length > 0) {
-      const lastBotBubble = chatBox.children[chatBox.children.length - 1];
-      lastBotBubble.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    
-  } catch (err) {
-    responseContent.classList.remove('animate-pulse');
-    responseContent.innerHTML = `<span class="text-red-400">System Error: ${err.message}</span>`;
-  }
-}
-
+// Instant Dispatch (Zero Pre-Fetch Lag)
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     const rawTypedText = input ? input.value.trim() : "";
     if (!rawTypedText && !attachedFile) return;
-
-    const lowerPrompt = rawTypedText.toLowerCase();
-    if (
-      (lowerPrompt.includes('voice') || lowerPrompt.includes('speech') || lowerPrompt.includes('speak') || lowerPrompt.includes('accent'))
-    ) {
-      if (lowerPrompt.includes('female') || lowerPrompt.includes('woman') || lowerPrompt.includes('girl') || lowerPrompt.includes('lady')) {
-        ttsSettings.gender = 'female';
-        localStorage.setItem('xamo_tts_gender', 'female');
-        showXamoToast("XAMO voice set to Female");
-      } else if (lowerPrompt.includes('male') || lowerPrompt.includes('man') || lowerPrompt.includes('boy') || lowerPrompt.includes('guy')) {
-        ttsSettings.gender = 'male';
-        localStorage.setItem('xamo_tts_gender', 'male');
-        showXamoToast("XAMO voice set to Male");
-      }
-    }
 
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
@@ -1933,15 +1780,10 @@ if (form) {
 
     if (attachedFile) {
       if (attachedFile.category === 'text') {
-        promptPayloadText = `I have attached a document named "${attachedFile.name}". Here are its contents:\n\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\n${rawTypedText}`;
+        promptPayloadText = `[File Attachment: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\n${rawTypedText}`;
       } else {
         userParts.push({ inline_data: { mime_type: attachedFile.mimeType, data: attachedFile.base64 } });
       }
-    }
-
-    if (rawTypedText && !attachedFile) {
-      const webContext = await fetchFreeWebContext(rawTypedText);
-      if (webContext) promptPayloadText += webContext;
     }
 
     if (promptPayloadText) userParts.push({ text: promptPayloadText });
@@ -1968,6 +1810,102 @@ if (form) {
     renderChatBox();
     await triggerApiCall();
   });
+}
+
+// Optimized Fast Stream Handler
+async function triggerApiCall() {
+  const isLocalEnvironment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+
+  const botDiv = document.createElement('div');
+  botDiv.className = 'flex flex-col items-start my-4 w-full';
+  const responseContent = document.createElement('div');
+  responseContent.className = 'gemini-response-container w-full leading-relaxed break-words animate-pulse';
+  responseContent.textContent = "● ● ●";
+  botDiv.appendChild(responseContent);
+  
+  if (chatBox) {
+    chatBox.appendChild(botDiv);
+    botDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  try {
+    const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
+    const userAddressing = userNickname ? `\nUser Name: ${userNickname}.` : "";
+    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond in ${appSettings.language}.` : "";
+
+    const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}`;
+
+    // Limit context payload to the most recent 6 messages for maximum throughput
+    const payloadHistory = currentChatHistory.slice(-6).map(m => ({ role: m.role, parts: m.parts }));
+
+    const requestBody = {
+      systemInstruction: { parts: [{ text: dynamicSystemInstruction }] },
+      contents: payloadHistory
+    };
+
+    const targetUrl = isLocalEnvironment ? 'https://xamo-ai.vercel.app/api/chat' : '/api/chat';
+
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || errData.error || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let fullText = "";
+    let sseBuffer = "";
+    responseContent.classList.remove('animate-pulse');
+    responseContent.innerHTML = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuffer += decoder.decode(value, { stream: true });
+      const lines = sseBuffer.split("\n");
+      sseBuffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const dataStr = line.replace("data: ", "").trim();
+          if (dataStr === "[DONE]") continue;
+          try {
+            const json = JSON.parse(dataStr);
+            const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textChunk) {
+              fullText += textChunk;
+              responseContent.innerHTML = parseMarkdownSafely(fullText);
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    renderMath(responseContent);
+    enhanceMarkdownOutput(botDiv);
+    if (window.hljs) hljs.highlightAll();
+
+    currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
+    
+    try {
+      await saveCurrentSession();
+    } catch (saveErr) {}
+    
+    renderChatBox();
+    
+    if (chatBox && chatBox.children.length > 0) {
+      chatBox.children[chatBox.children.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+  } catch (err) {
+    responseContent.classList.remove('animate-pulse');
+    responseContent.innerHTML = `<span class="text-red-400">System Error: ${err.message}</span>`;
+  }
 }
 
 // App Bootstrap
