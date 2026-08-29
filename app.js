@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CLIENT ARCHITECTURE WITH MULTI-ACCOUNT & PINNED VAULT
+// XAMO AI - FULL CORE ENGINE (MULTI-ACCOUNT & PINNED VAULT INTEGRATED)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1282,9 +1282,10 @@ if (authSubmitBtn) {
 
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) {
-          if (error.message.toLowerCase().includes('email not confirmed')) {
+          const errMsg = error.message.toLowerCase();
+          if (errMsg.includes('email not confirmed')) {
             throw new Error("Email not verified yet. Please check your inbox or sign up first.");
-          } else if (error.message.toLowerCase().includes('invalid login credentials')) {
+          } else if (errMsg.includes('invalid login credentials')) {
             throw new Error("Account not found or password incorrect. Please sign up first.");
           }
           throw error;
@@ -1679,7 +1680,7 @@ window.regenerateLastResponse = function() {
   }
 };
 
-// Soft Delete: Preserves records in Admin dashboard while resetting client UI
+// Soft Delete
 async function deleteSession(id) {
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   sessions = sessions.filter(s => s.id !== id);
@@ -1829,15 +1830,20 @@ async function triggerApiCall() {
       contents: currentChatHistory.map(m => ({ role: m.role, parts: m.parts }))
     };
 
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+    let response;
+    try {
+      response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+    } catch (netErr) {
+      throw new Error("Unable to reach backend function (/api/chat).");
+    }
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || errData.error || "API Connection failed");
+      throw new Error(errData.error?.message || errData.error || `HTTP ${response.status}: API Connection failed`);
     }
 
     const reader = response.body.getReader();
