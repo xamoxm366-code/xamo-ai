@@ -438,7 +438,6 @@
         }
 
         let body = msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : "");
-        body = body.replace(/\[Real-Time Web Search Context:[\s\S]*?\]/g, "");
 
         if (isUser) {
           row.innerHTML = `

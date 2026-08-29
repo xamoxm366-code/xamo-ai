@@ -25,16 +25,16 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents } = req.body;
 
-    // Gemini 3.5 Flash Endpoint
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Gemini 3.5 Flash-Lite Endpoint
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const sendRequest = async (useSearchTool = true) => {
       const payload = {
         systemInstruction,
         contents,
         generationConfig: {
-          temperature: 0.7,
-          topP: 0.95,
+          temperature: 0.5,
+          topP: 0.9,
           maxOutputTokens: 2048
         }
       };
@@ -50,10 +50,10 @@ export default async function handler(req, res) {
       });
     };
 
-    // 1. Try with Google Search Grounding first
+    // 1. Send with Google Search grounding enabled
     let response = await sendRequest(true);
 
-    // 2. Fallback to standard fast generation if quota / rate-limit hit
+    // 2. Automatic fallback if search quota (429) or rate limit is hit
     if (response.status === 429 || !response.ok) {
       response = await sendRequest(false);
     }

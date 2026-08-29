@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL CORE ENGINE (LIVE INTERNET & WORLD TIME GROUNDING)
+// XAMO AI - FULL CORE ENGINE (MULTI-ACCOUNT, PINNED VAULT & WORLD TIME)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1829,7 +1829,6 @@ async function triggerApiCall() {
   }
 
   try {
-    // Exact dynamic live timestamps and timezone reference
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     const now = new Date();
     const currentDateLocal = now.toLocaleString('en-US', { 
@@ -1852,7 +1851,6 @@ REAL-TIME CLOCK & WORLD TIME CAPABILITY:
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}\n${liveClockInstruction}`;
 
-    // Sliding window of recent turns for fast processing
     const payloadHistory = currentChatHistory.slice(-6).map(m => ({ role: m.role, parts: m.parts }));
 
     const requestBody = {
