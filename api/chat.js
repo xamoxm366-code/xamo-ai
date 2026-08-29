@@ -24,9 +24,10 @@ export default async function handler(req, res) {
 
   try {
     const { systemInstruction, contents } = req.body;
+
+    // Gemini 3.5 Flash Endpoint
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    // Helper to send Gemini request
     const sendRequest = async (useSearchTool = true) => {
       const payload = {
         systemInstruction,
@@ -52,14 +53,14 @@ export default async function handler(req, res) {
     // 1. Try with Google Search Grounding first
     let response = await sendRequest(true);
 
-    // 2. If 429 quota is hit on search, fallback immediately to ultra-fast standard generation
+    // 2. Fallback to standard fast generation if quota / rate-limit hit
     if (response.status === 429 || !response.ok) {
       response = await sendRequest(false);
     }
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `API Error: ${errText}` });
+      return res.status(response.status).json({ error: `Gemini API Error: ${errText}` });
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
