@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // 1. CORS Pre-flight Headers
+  // CORS Pre-flight Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -19,37 +19,47 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Vercel Environment Variables.' });
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in Vercel.' });
   }
 
   try {
     const { systemInstruction, contents } = req.body;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    // Gemini 3.5 Flash with Real-Time Google Search Grounding Enabled
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-    const response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // Helper to send Gemini request
+    const sendRequest = async (useSearchTool = true) => {
+      const payload = {
         systemInstruction,
         contents,
-        tools: [
-          {
-            google_search: {} // Connects AI directly to Google Search for live web information
-          }
-        ],
         generationConfig: {
           temperature: 0.7,
           topP: 0.95,
           maxOutputTokens: 2048
         }
-      })
-    });
+      };
+
+      if (useSearchTool) {
+        payload.tools = [{ google_search: {} }];
+      }
+
+      return await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    };
+
+    // 1. Try with Google Search Grounding first
+    let response = await sendRequest(true);
+
+    // 2. If 429 quota is hit on search, fallback immediately to ultra-fast standard generation
+    if (response.status === 429 || !response.ok) {
+      response = await sendRequest(false);
+    }
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `Gemini API Error: ${errText}` });
+      return res.status(response.status).json({ error: `API Error: ${errText}` });
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
