@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+  // CORS Pre-flight Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents, hasAttachment } = req.body;
 
-    // Direct Gemini 3.5 Flash-Lite Endpoint
+    // Gemini 3.5 Flash-Lite Endpoint
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const sendRequest = async (useSearchTool = false) => {
@@ -32,11 +33,8 @@ export default async function handler(req, res) {
         systemInstruction,
         contents,
         generationConfig: {
-          thinkingConfig: {
-            thinkingBudget: 0 // Completely disables reasoning latency for sub-second generation
-          },
-          temperature: 0.3,
-          topP: 0.85,
+          temperature: 0.4,
+          topP: 0.9,
           maxOutputTokens: 2048
         }
       };
@@ -53,7 +51,7 @@ export default async function handler(req, res) {
       });
     };
 
-    // If a document or photo is attached, skip web search completely for instant ~1-2s analysis
+    // Attempt request with Google search if no attachment, fallback to non-grounded if 429
     let response = await sendRequest(!hasAttachment);
 
     if (response.status === 429 || !response.ok) {

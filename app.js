@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - ULTRA-LOW LATENCY CORE ENGINE (GEMINI 3.5 FLASH-LITE)
+// XAMO AI - FULL LOW LATENCY CORE ENGINE (MULTI-ACCOUNT & PINNED VAULT FIXED)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -17,7 +17,7 @@ try {
 
 let currentUser = null;
 let userNickname = "";
-let activeStreamAbortController = null; // Prevents duplicate responses on message edits
+let activeStreamAbortController = null;
 
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
@@ -364,7 +364,7 @@ if (signoutCurrentAccountBtn) {
   });
 }
 
-// --- Pinned Notes System ---
+// --- Pinned Notes System (Fixed Delete & Update) ---
 if (pinnedNotesTriggerBtn && pinnedNotesModal) {
   pinnedNotesTriggerBtn.addEventListener('click', () => {
     renderPinnedNotes();
@@ -379,20 +379,21 @@ async function getPinnedNotes() {
   if (currentUser && supabaseClient) {
     try {
       const { data } = await supabaseClient.from('pinned_notes').select('*').order('created_at', { ascending: false });
-      if (data) return data;
+      if (data && data.length > 0) return data;
     } catch (e) {}
   }
   return JSON.parse(localStorage.getItem('xamo_pinned_notes') || '[]');
 }
 
 async function addPinnedNote(text) {
+  const newId = 'note_' + Date.now();
   if (currentUser && supabaseClient) {
     try {
-      await supabaseClient.from('pinned_notes').insert([{ user_id: currentUser.id, note_text: text }]);
+      await supabaseClient.from('pinned_notes').insert([{ id: newId, user_id: currentUser.id, note_text: text }]);
     } catch (e) {}
   }
   let notes = JSON.parse(localStorage.getItem('xamo_pinned_notes') || '[]');
-  notes.unshift({ id: 'note_' + Date.now(), note_text: text, created_at: new Date().toISOString() });
+  notes.unshift({ id: newId, note_text: text, created_at: new Date().toISOString() });
   localStorage.setItem('xamo_pinned_notes', JSON.stringify(notes));
   showXamoToast("Note pinned to vault!");
   updatePinnedBadge();
@@ -410,9 +411,11 @@ window.deletePinnedNote = async function(id) {
     } catch (e) {}
   }
   let notes = JSON.parse(localStorage.getItem('xamo_pinned_notes') || '[]');
-  notes = notes.filter(n => n.id != id);
+  notes = notes.filter(n => String(n.id) !== String(id));
   localStorage.setItem('xamo_pinned_notes', JSON.stringify(notes));
+  showXamoToast("Pinned note removed");
   renderPinnedNotes();
+  updatePinnedBadge();
 };
 
 async function renderPinnedNotes() {
@@ -429,8 +432,8 @@ async function renderPinnedNotes() {
     <div class="p-3.5 rounded-xl border flex items-start justify-between gap-3 shadow-inner" style="background-color: var(--bg-app); border-color: var(--border-main);">
       <div class="text-xs leading-relaxed whitespace-pre-wrap flex-1 break-words font-sans" style="color: var(--text-main);">${DOMPurify.sanitize(marked.parse(n.note_text))}</div>
       <div class="flex items-center gap-1.5 flex-shrink-0">
-        <button onclick="navigator.clipboard.writeText(\`${n.note_text.replace(/`/g, '\\`')}\`); showXamoToast('Copied note!');" class="text-slate-400 hover:text-blue-400 p-1 transition-colors"><i class="fa-solid fa-copy"></i></button>
-        <button onclick="deletePinnedNote('${n.id}')" class="text-slate-400 hover:text-red-400 p-1 transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+        <button onclick="navigator.clipboard.writeText(\`${encodeURIComponent(n.note_text)}\`); showXamoToast('Copied note!');" class="text-slate-400 hover:text-blue-400 p-1.5 transition-colors"><i class="fa-solid fa-copy"></i></button>
+        <button onclick="event.stopPropagation(); deletePinnedNote('${n.id}')" class="text-slate-400 hover:text-red-400 p-1.5 transition-colors"><i class="fa-solid fa-trash-can"></i></button>
       </div>
     </div>
   `).join('');
@@ -766,11 +769,11 @@ if (saveSettings && settingsModal) {
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an authentic, adaptive AI assistant with live world clock awareness created by Zaeem. Answer with extreme speed, direct accuracy, and concise formatting. Use Markdown tables, bullet points, and code blocks."
+    prompt: "You are XAMO, an authentic, low-latency AI assistant created by Zaeem. Answer with rapid precision, direct clarity, and concise formatting using Markdown tables, bullet points, and code blocks."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code immediately with clean syntax."
+    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code with clean formatting."
   }
 ];
 
@@ -891,7 +894,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- Ultra-Fast Document & Media Compressor ---
+// --- Document & Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -908,7 +911,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 600; // Ultralight max dimension for instantaneous transfer
+        const maxDim = 600;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -962,7 +965,7 @@ if (imageInput) {
             const pdf = await loadingTask.promise;
             let fullPdfText = "";
             
-            const maxPages = Math.min(pdf.numPages, 35);
+            const maxPages = Math.min(pdf.numPages, 30);
             for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
               const page = await pdf.getPage(pageNum);
               const textContent = await page.getTextContent();
@@ -973,7 +976,7 @@ if (imageInput) {
             if (fullPdfText.trim().length > 20) {
               attachedFile = {
                 category: 'text',
-                content: `[Document Content: ${fileName}]\n${fullPdfText.trim()}`,
+                content: `[Document: ${fileName}]\n${fullPdfText.trim()}`,
                 name: fileName
               };
             } else {
@@ -1004,7 +1007,7 @@ if (imageInput) {
           }
           if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
           updateSendButtonState();
-          showXamoToast("PDF processed!");
+          showXamoToast("PDF ready!");
         } catch (pdfErr) {
           showXamoToast("Failed to parse PDF text.");
         }
@@ -1465,9 +1468,7 @@ async function saveCurrentSession() {
         is_deleted_by_user: false,
         updated_at: new Date().toISOString()
       });
-    } catch (err) {
-      console.warn("Supabase sync issue:", err);
-    }
+    } catch (err) {}
   }
 
   if (currentUser) {
@@ -1496,7 +1497,6 @@ function loadSession(id) {
 }
 
 window.editMessage = function(index) {
-  // 1. Immediately cancel any running stream to eliminate duplicate generations
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
     activeStreamAbortController = null;
@@ -1837,7 +1837,7 @@ if (form) {
   });
 }
 
-// High-Throughput Sub-Second Streaming Handler
+// High-Throughput Streaming Handler
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -1877,10 +1877,7 @@ async function triggerApiCall() {
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    // Has any attachment in current chat to bypass external web search for speed
     const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
-
-    // Limit payload history to the most recent 4 turns to avoid re-tokenizing large PDFs
     const payloadHistory = currentChatHistory.slice(-4).map(m => ({ role: m.role, parts: m.parts }));
 
     const requestBody = {
@@ -1937,14 +1934,12 @@ async function triggerApiCall() {
     enhanceMarkdownOutput(botDiv);
     if (window.hljs) hljs.highlightAll();
 
-    // Push bot message and save without executing double-render
     currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
     
     try {
       await saveCurrentSession();
     } catch (saveErr) {}
 
-    // Attach interaction actions to completed message cleanly
     const footerDiv = document.createElement('div');
     footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
     
@@ -1975,7 +1970,7 @@ async function triggerApiCall() {
     botDiv.appendChild(footerDiv);
     
   } catch (err) {
-    if (err.name === 'AbortError') return; // Clean exit if message was edited
+    if (err.name === 'AbortError') return;
     responseContent.classList.remove('animate-pulse');
     responseContent.innerHTML = `<span class="text-red-400">System Error: ${err.message}</span>`;
   } finally {
