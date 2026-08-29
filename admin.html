@@ -71,20 +71,23 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <button onclick="downloadAllChatArchive()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20">
+          <i class="fa-solid fa-file-arrow-down text-xs"></i> Export History (.JSON)
+        </button>
         <button onclick="fetchAllChats()" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5">
           <i class="fa-solid fa-arrows-rotate text-xs"></i> Refresh
         </button>
         <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors">
           Sign Out
         </button>
-        <a href="/" class="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-xl transition-colors">
+        <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-1.5 rounded-xl transition-colors">
           Open XAMO App
         </a>
       </div>
     </header>
 
     <!-- Stats Bar -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-[#24262b] bg-[#111215]">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 border-b border-[#24262b] bg-[#111215]">
       <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
         <div>
           <div class="text-[11px] text-slate-400 font-medium">Total Conversations</div>
@@ -111,7 +114,15 @@
 
       <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
         <div>
-          <div class="text-[11px] text-slate-400 font-medium">Uploaded Photos/Files</div>
+          <div class="text-[11px] text-slate-400 font-medium">Deleted by Users</div>
+          <div id="stat-deleted" class="text-lg font-bold text-red-400 mt-0.5">0</div>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center text-sm"><i class="fa-solid fa-trash-can"></i></div>
+      </div>
+
+      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-slate-400 font-medium">Uploaded Files</div>
           <div id="stat-media" class="text-lg font-bold text-amber-400 mt-0.5">0</div>
         </div>
         <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm"><i class="fa-solid fa-photo-film"></i></div>
@@ -129,10 +140,11 @@
             <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, nickname, topic..." class="w-full bg-[#1c1d22] border border-[#2c2e35] rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
           </div>
           
-          <div class="flex gap-1.5">
-            <button class="filter-tab active flex-1 py-1 text-[11px] font-medium rounded-lg bg-blue-600 text-white" onclick="changeFilter('all', this)">All</button>
-            <button class="filter-tab flex-1 py-1 text-[11px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('users', this)">Users</button>
-            <button class="filter-tab flex-1 py-1 text-[11px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('guests', this)">Guests</button>
+          <div class="flex gap-1">
+            <button class="filter-tab active flex-1 py-1 text-[10px] font-medium rounded-lg bg-blue-600 text-white" onclick="changeFilter('all', this)">All</button>
+            <button class="filter-tab flex-1 py-1 text-[10px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('users', this)">Users</button>
+            <button class="filter-tab flex-1 py-1 text-[10px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('guests', this)">Guests</button>
+            <button class="filter-tab flex-1 py-1 text-[10px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('deleted', this)">Deleted</button>
           </div>
         </div>
 
@@ -146,9 +158,12 @@
             <div id="thread-user-badge" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-800 text-slate-300">Select a conversation</div>
             <span id="thread-title" class="text-xs font-semibold text-slate-200 truncate"></span>
           </div>
-          <div id="thread-actions" class="hidden">
+          <div id="thread-actions" class="hidden flex items-center gap-2">
+            <button onclick="downloadSingleChatArchive()" class="text-xs text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5">
+              <i class="fa-solid fa-download"></i> Download Chat
+            </button>
             <button onclick="deleteSelectedChat()" class="text-xs text-red-400 hover:bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors">
-              <i class="fa-solid fa-trash-can mr-1"></i> Delete Chat
+              <i class="fa-solid fa-trash-can mr-1"></i> Purge from Cloud
             </button>
           </div>
         </div>
@@ -198,11 +213,6 @@
 
       if (!password) {
         updateStatus("Please enter your password.", "error");
-        return;
-      }
-
-      if (SUPABASE_ANON_KEY.includes("PASTE_YOUR")) {
-        updateStatus("Missing ANON Key. Paste your Supabase Anon Key into line 118 of admin.html.", "error");
         return;
       }
 
@@ -291,6 +301,7 @@
 
       const userCount = chatRecords.filter(c => !isGuestChat(c)).length;
       const guestCount = chatRecords.filter(c => isGuestChat(c)).length;
+      const deletedCount = chatRecords.filter(c => c.is_deleted_by_user === true).length;
 
       let fileCount = 0;
       chatRecords.forEach(c => {
@@ -304,6 +315,7 @@
 
       document.getElementById("stat-users").textContent = userCount;
       document.getElementById("stat-guests").textContent = guestCount;
+      document.getElementById("stat-deleted").textContent = deletedCount;
       document.getElementById("stat-media").textContent = fileCount;
     }
 
@@ -327,6 +339,7 @@
         const isGuest = isGuestChat(chat);
         if (activeFilter === "users" && isGuest) return false;
         if (activeFilter === "guests" && !isGuest) return false;
+        if (activeFilter === "deleted" && !chat.is_deleted_by_user) return false;
 
         const email = (chat.user_email || "").toLowerCase();
         const nick = (chat.nickname || "").toLowerCase();
@@ -352,13 +365,18 @@
           containsMedia = history.some(msg => !!msg.file);
         }
 
-        const date = new Date(chat.updated_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        const date = new Date(chat.updated_at || Date.now()).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
         const badgeColor = isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
         const badgeText = isGuest ? `Guest: ${chat.nickname || "Guest"}` : (chat.user_email || "User");
+        
+        const deletedBadge = chat.is_deleted_by_user ? '<span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] px-1.5 py-0.2 rounded ml-1 font-semibold">User Deleted</span>' : '';
 
         item.innerHTML = `
           <div class="flex items-center justify-between mb-1">
-            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${badgeColor}">${badgeText}</span>
+            <div class="flex items-center gap-1">
+              <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${badgeColor}">${badgeText}</span>
+              ${deletedBadge}
+            </div>
             <span class="text-[10px] text-slate-500">${date}</span>
           </div>
           <div class="text-xs font-medium text-slate-200 truncate">${chat.title || "Untitled Conversation"}</div>
@@ -381,9 +399,9 @@
 
       const isGuest = isGuestChat(chat);
       badge.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-semibold ${isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`;
-      badge.textContent = isGuest ? `Guest Nickname: ${chat.nickname || "Unknown"}` : chat.user_email;
+      badge.textContent = isGuest ? `Guest: ${chat.nickname || "Unknown"}` : chat.user_email;
 
-      title.textContent = chat.title || "Untitled Chat";
+      title.textContent = (chat.is_deleted_by_user ? "[DELETED BY USER] " : "") + (chat.title || "Untitled Chat");
       actions.classList.remove("hidden");
       box.innerHTML = "";
 
@@ -405,8 +423,8 @@
           if (msg.file.category === "image" && src) {
             mediaBlock = `
               <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
-                <img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto" />
-                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${msg.file.name || "Image"}</div>
+                <a href="${src}" target="_blank"><img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto hover:opacity-90 transition-opacity" /></a>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${msg.file.name || "Image"} (Click to View)</div>
               </div>
             `;
           } else {
@@ -443,8 +461,33 @@
       box.scrollTop = 0;
     }
 
+    function downloadAllChatArchive() {
+      if (!chatRecords.length) {
+        alert("No conversations found to export.");
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(chatRecords, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `xamo_full_admin_archive_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function downloadSingleChatArchive() {
+      if (!activeChatRecord) return;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeChatRecord, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `xamo_chat_${activeChatRecord.id}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
     async function deleteSelectedChat() {
-      if (!activeChatRecord || !confirm("Delete this conversation permanently from Supabase?")) return;
+      if (!activeChatRecord || !confirm("Permanently purge this record from Supabase Cloud? This will remove it from the admin console too.")) return;
 
       try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?id=eq.${activeChatRecord.id}`, {
@@ -460,7 +503,7 @@
           activeChatRecord = null;
           calculateStats();
           renderChatList();
-          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center">Chat deleted successfully.</div>';
+          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center">Chat purged from database.</div>';
         } else {
           const err = await response.json();
           alert(`Failed to delete: ${err.message || "Error"}`);
