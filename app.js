@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (OPTIMIZED SPEED, LARGER FILES, FIXED AUTH & SHARE)
+// XAMO AI - CORE CLIENT ENGINE (EXTENDED TOAST DURATION & UNVERIFIED LOGIN CHECK)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -640,20 +640,21 @@ function updateSendButtonState() {
   }
 }
 
+// Extended Toast duration to 5 seconds so users can read notifications properly
 function showXamoToast(message) {
   const existing = document.getElementById('xamo-toast');
   if (existing) existing.remove();
 
   const toast = document.createElement('div');
   toast.id = 'xamo-toast';
-  toast.className = "fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[#1e1f20] border border-slate-700 text-slate-200 text-xs px-4 py-2 rounded-xl shadow-2xl z-[100] flex items-center gap-2 transition-all duration-300";
+  toast.className = "fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[#1e1f20] border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-xl shadow-2xl z-[100] flex items-center gap-2 transition-all duration-300";
   toast.innerHTML = `<i class="fa-solid fa-check text-blue-400"></i> <span>${message}</span>`;
   document.body.appendChild(toast);
 
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
-  }, 2200);
+  }, 5000); // Extended to 5,000ms (5 seconds)
 }
 
 // --- Attachment Viewer Logic ---
@@ -1252,23 +1253,13 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Checking...";
         authSubmitBtn.disabled = true;
 
-        const { data: userRecords } = await supabaseClient
-          .from('chats')
-          .select('user_email')
-          .eq('user_email', email)
-          .limit(1);
-
-        if (!userRecords || userRecords.length === 0) {
-          throw new Error("This email is not registered yet. Please sign up first.");
-        }
-
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTarget
         });
 
         if (error) {
-          throw new Error(error.message);
+          throw new Error("This email is not registered yet or has not been verified. Please sign up first.");
         }
 
         showXamoToast("Reset link sent! Check your Inbox & Spam folders.");
@@ -1284,16 +1275,6 @@ if (authSubmitBtn) {
 
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
-
-        const { data: existingRecords } = await supabaseClient
-          .from('chats')
-          .select('user_email')
-          .eq('user_email', email)
-          .limit(1);
-
-        if (existingRecords && existingRecords.length > 0) {
-          throw new Error("This email is already registered and verified. Please sign in instead.");
-        }
 
         const { data, error } = await supabaseClient.auth.signUp({ 
           email, 
@@ -1325,10 +1306,10 @@ if (authSubmitBtn) {
         
         if (error) {
           const errMsg = error.message.toLowerCase();
-          if (errMsg.includes('email not confirmed')) {
-            throw new Error("Email not verified yet. Please check your inbox or sign up first.");
-          } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid password')) {
-            throw new Error("Incorrect password. Please verify your password and try again.");
+          if (errMsg.includes('email not confirmed') || errMsg.includes('not confirmed')) {
+            throw new Error("Please verify your account before logging in. Check your email inbox.");
+          } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid password') || errMsg.includes('credentials')) {
+            throw new Error("Incorrect password or unverified account. Please check your credentials or sign up first.");
           } else {
             throw new Error(error.message);
           }
