@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (EXTENDED TOAST DURATION & UNVERIFIED LOGIN CHECK)
+// XAMO AI - CORE CLIENT ENGINE (NATIVE SHARE PORTAL, SECURE FORGOT-PW & KASHMIRI TTS FIX)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -640,7 +640,7 @@ function updateSendButtonState() {
   }
 }
 
-// Extended Toast duration to 5 seconds so users can read notifications properly
+// Extended Toast duration to 5 seconds
 function showXamoToast(message) {
   const existing = document.getElementById('xamo-toast');
   if (existing) existing.remove();
@@ -654,7 +654,7 @@ function showXamoToast(message) {
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
-  }, 5000); // Extended to 5,000ms (5 seconds)
+  }, 5000);
 }
 
 // --- Attachment Viewer Logic ---
@@ -895,7 +895,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- Document & Media Processor (Larger Files Support up to 1200px) ---
+// --- Document & Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1253,13 +1253,24 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Checking...";
         authSubmitBtn.disabled = true;
 
+        // Check if user exists and is verified in chats registry or Supabase auth
+        const { data: userRecords } = await supabaseClient
+          .from('chats')
+          .select('user_email')
+          .eq('user_email', email)
+          .limit(1);
+
+        if (!userRecords || userRecords.length === 0) {
+          throw new Error("This email is not registered yet or has not been verified.");
+        }
+
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTarget
         });
 
         if (error) {
-          throw new Error("This email is not registered yet or has not been verified. Please sign up first.");
+          throw new Error("This email is not registered yet or has not been verified.");
         }
 
         showXamoToast("Reset link sent! Check your Inbox & Spam folders.");
@@ -1275,6 +1286,16 @@ if (authSubmitBtn) {
 
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
+
+        const { data: existingRecords } = await supabaseClient
+          .from('chats')
+          .select('user_email')
+          .eq('user_email', email)
+          .limit(1);
+
+        if (existingRecords && existingRecords.length > 0) {
+          throw new Error("This email is already registered and verified. Please sign in instead.");
+        }
 
         const { data, error } = await supabaseClient.auth.signUp({ 
           email, 
@@ -1309,7 +1330,7 @@ if (authSubmitBtn) {
           if (errMsg.includes('email not confirmed') || errMsg.includes('not confirmed')) {
             throw new Error("Please verify your account before logging in. Check your email inbox.");
           } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid password') || errMsg.includes('credentials')) {
-            throw new Error("Incorrect password or unverified account. Please check your credentials or sign up first.");
+            throw new Error("Please verify your account before logging in or check your password.");
           } else {
             throw new Error(error.message);
           }
@@ -1659,28 +1680,45 @@ function renderChatBox() {
         });
       };
 
+      // Native Device Sharing Portal with automatic clipboard fallback
       const shareBtn = document.createElement('button');
       shareBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       shareBtn.title = "Share";
       shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
-      shareBtn.onclick = () => {
+      shareBtn.onclick = async () => {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: 'XAMO AI Response',
+              text: textVal
+            });
+            return;
+          } catch (err) {
+            // User cancelled or share failed, fallback to clipboard
+          }
+        }
         navigator.clipboard.writeText(textVal).then(() => {
           showXamoToast("Copied response to clipboard for sharing!");
         });
       };
 
-      const speakBtn = document.createElement('button');
-      speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
-      speakBtn.title = "Read Aloud";
-      speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
+      // Check if Kashmiri language is selected to hide/remove the speaking button
+      const isKashmiri = appSettings.language && appSettings.language.toLowerCase().includes('kashmiri');
 
       footerDiv.appendChild(pinBtn);
       footerDiv.appendChild(likeBtn);
       footerDiv.appendChild(dislikeBtn);
       footerDiv.appendChild(copyBtn);
       footerDiv.appendChild(shareBtn);
-      footerDiv.appendChild(speakBtn);
+
+      if (!isKashmiri) {
+        const speakBtn = document.createElement('button');
+        speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+        speakBtn.title = "Read Aloud";
+        speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+        speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
+        footerDiv.appendChild(speakBtn);
+      }
 
       if (isLastBotMsg) {
         const regenBtn = document.createElement('button');
@@ -2005,17 +2043,22 @@ async function triggerApiCall() {
     shareBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
     shareBtn.title = "Share";
     shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
-    shareBtn.onclick = () => {
+    shareBtn.onclick = async () => {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'XAMO AI Response',
+            text: fullText
+          });
+          return;
+        } catch (err) {}
+      }
       navigator.clipboard.writeText(fullText).then(() => {
         showXamoToast("Copied response to clipboard for sharing!");
       });
     };
 
-    const speakBtn = document.createElement('button');
-    speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
-    speakBtn.title = "Read Aloud";
-    speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-    speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+    const isKashmiri = appSettings.language && appSettings.language.toLowerCase().includes('kashmiri');
 
     const regenBtn = document.createElement('button');
     regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
@@ -2027,7 +2070,16 @@ async function triggerApiCall() {
     footerDiv.appendChild(dislikeBtn);
     footerDiv.appendChild(copyBtn);
     footerDiv.appendChild(shareBtn);
-    footerDiv.appendChild(speakBtn);
+
+    if (!isKashmiri) {
+      const speakBtn = document.createElement('button');
+      speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+      speakBtn.title = "Read Aloud";
+      speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+      footerDiv.appendChild(speakBtn);
+    }
+
     footerDiv.appendChild(regenBtn);
 
     botDiv.appendChild(footerDiv);
