@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (GEMINI 3.5 FLASH-LITE)
+// XAMO AI - CORE CLIENT ENGINE (OPTIMIZED SPEED, LARGER FILES, FIXED AUTH & SHARE)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -701,7 +701,7 @@ window.viewAttachedFile = function(index) {
     if (window.hljs) hljs.highlightElement(code);
   }
 
-  fileViewerModal.classList.remove('hidden');
+  fileViewerModal.classList.add('hidden');
 };
 
 // --- Slash Commands Menu ---
@@ -765,11 +765,11 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Authentic Personas Setup ---
+// --- Conversational Personas Setup ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an intelligent, helpful AI assistant created by Zaeem. Respond naturally in fluent, clean prose with thorough explanations. NEVER format standard conversational replies or short answers as rigid tables or metadata status boxes unless the user explicitly requests tabular data. Use bullet points and markdown bolding for scannability."
+    prompt: "You are XAMO, an intelligent, helpful AI assistant created by Zaeem. Answer naturally in fluent, clean prose with thorough explanations. NEVER format standard conversational replies or short answers inside rigid tables or metadata status boxes unless the user explicitly requests structured tabular data. Use bullet points and markdown formatting naturally."
   },
   { 
     name: 'Coder', 
@@ -894,7 +894,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- Document & Media Processor ---
+// --- Document & Media Processor (Larger Files Support up to 1200px) ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -911,7 +911,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 800;
+        const maxDim = 1200;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -926,7 +926,7 @@ if (imageInput) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         
         attachedFile = {
           category: 'image',
@@ -965,7 +965,7 @@ if (imageInput) {
             const pdf = await loadingTask.promise;
             let fullPdfText = "";
             
-            const maxPages = Math.min(pdf.numPages, 40);
+            const maxPages = Math.min(pdf.numPages, 60);
             for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
               const page = await pdf.getPage(pageNum);
               const textContent = await page.getTextContent();
@@ -982,7 +982,7 @@ if (imageInput) {
             } else {
               let binary = '';
               const bytes = new Uint8Array(typedarray);
-              const len = Math.min(bytes.byteLength, 3 * 1024 * 1024);
+              const len = Math.min(bytes.byteLength, 6 * 1024 * 1024);
               for (let i = 0; i < len; i++) {
                 binary += String.fromCharCode(bytes[i]);
               }
@@ -1015,8 +1015,8 @@ if (imageInput) {
       reader.readAsArrayBuffer(file);
 
     } else if (fileType.startsWith('video/')) {
-      if (file.size > 8 * 1024 * 1024) {
-        showXamoToast("Video must be under 8MB for analysis.");
+      if (file.size > 15 * 1024 * 1024) {
+        showXamoToast("Video must be under 15MB for analysis.");
         imageInput.value = "";
         return;
       }
@@ -1120,7 +1120,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- Auth State Handshake & Accurate Verification ---
+// --- Auth State Handshake ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1252,12 +1252,15 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Checking...";
         authSubmitBtn.disabled = true;
 
-        // Check if user exists in database
         const { data: userRecords } = await supabaseClient
           .from('chats')
           .select('user_email')
           .eq('user_email', email)
           .limit(1);
+
+        if (!userRecords || userRecords.length === 0) {
+          throw new Error("This email is not registered yet. Please sign up first.");
+        }
 
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
@@ -1265,11 +1268,7 @@ if (authSubmitBtn) {
         });
 
         if (error) {
-          const msg = error.message.toLowerCase();
-          if (msg.includes('user not found') || msg.includes('invalid') || (userRecords && userRecords.length === 0)) {
-            throw new Error("This email is not registered yet. Please sign up first.");
-          }
-          throw error;
+          throw new Error(error.message);
         }
 
         showXamoToast("Reset link sent! Check your Inbox & Spam folders.");
@@ -1285,6 +1284,16 @@ if (authSubmitBtn) {
 
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
+
+        const { data: existingRecords } = await supabaseClient
+          .from('chats')
+          .select('user_email')
+          .eq('user_email', email)
+          .limit(1);
+
+        if (existingRecords && existingRecords.length > 0) {
+          throw new Error("This email is already registered and verified. Please sign in instead.");
+        }
 
         const { data, error } = await supabaseClient.auth.signUp({ 
           email, 
@@ -1304,7 +1313,7 @@ if (authSubmitBtn) {
           throw new Error("This email is already registered and verified. Please sign in instead.");
         }
 
-        showXamoToast("Account created! Check your email to verify.");
+        showXamoToast("Check your Gmail inbox to verify your email.");
         if (authModal) authModal.classList.add('hidden');
 
       } else {
@@ -1623,7 +1632,7 @@ function renderChatBox() {
         <div class="gemini-response-container w-full leading-relaxed break-words">${parseMarkdownSafely(textVal)}</div>
       `;
 
-      // Full Instant Action Controls Row
+      // Instant Synchronous Action Controls Row
       const footerDiv = document.createElement('div');
       footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
       
@@ -1674,15 +1683,9 @@ function renderChatBox() {
       shareBtn.title = "Share";
       shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
       shareBtn.onclick = () => {
-        if (navigator.share) {
-          navigator.share({
-            title: 'XAMO AI Response',
-            text: textVal
-          }).catch(() => {});
-        } else {
-          navigator.clipboard.writeText(textVal);
-          showXamoToast("Copied to clipboard for sharing!");
-        }
+        navigator.clipboard.writeText(textVal).then(() => {
+          showXamoToast("Copied response to clipboard for sharing!");
+        });
       };
 
       const speakBtn = document.createElement('button');
@@ -2022,15 +2025,9 @@ async function triggerApiCall() {
     shareBtn.title = "Share";
     shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
     shareBtn.onclick = () => {
-      if (navigator.share) {
-        navigator.share({
-          title: 'XAMO AI Response',
-          text: textVal
-        }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(textVal);
-        showXamoToast("Copied to clipboard for sharing!");
-      }
+      navigator.clipboard.writeText(fullText).then(() => {
+        showXamoToast("Copied response to clipboard for sharing!");
+      });
     };
 
     const speakBtn = document.createElement('button');
