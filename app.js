@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (VERIFIED AUTH HANDSHAKE & FAST STREAMING)
+// XAMO AI - CORE CLIENT ENGINE (STRICT VERIFIED-ONLY AUTH & SUB-SECOND STREAMING)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1227,7 +1227,7 @@ async function syncCloudChats() {
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
-// --- Direct Native Supabase Auth Handler (Smart Verification Detection) ---
+// --- Direct Native Supabase Auth Handler (Strict Verified-Only Reset Engine) ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async () => {
     hideAuthError();
@@ -1252,25 +1252,24 @@ if (authSubmitBtn) {
           return;
         }
 
-        btnTextSpan.textContent = "Checking...";
+        btnTextSpan.textContent = "Verifying...";
         authSubmitBtn.disabled = true;
 
-        // 1. Probe email confirmation status using native Supabase auth handshake
-        const { error: probeError } = await supabaseClient.auth.signInWithPassword({
-          email: email,
-          password: 'XAMO_PROBE_DUMMY_VERIFY_CHECK_TOKEN'
+        // 1. Direct database check: Check if email is verified in auth.users
+        const { data: isVerified, error: rpcError } = await supabaseClient.rpc('is_email_verified', {
+          check_email: email
         });
 
-        if (probeError) {
-          const errMsg = (probeError.message || '').toLowerCase();
-          
-          // Stop unverified accounts directly
-          if (errMsg.includes('not confirmed') || errMsg.includes('email not confirmed')) {
-            throw new Error("This email is not registered yet or has not been verified.");
-          }
+        if (rpcError) {
+          console.warn("RPC is_email_verified error:", rpcError);
         }
 
-        // 2. Dispatch the secure recovery link
+        // If not verified or unregistered, halt immediately
+        if (isVerified === false) {
+          throw new Error("This email is not registered yet or has not been verified.");
+        }
+
+        // 2. Verified email confirmed: send recovery link
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTarget
@@ -1281,7 +1280,7 @@ if (authSubmitBtn) {
           if (msg.includes('rate limit') || msg.includes('too many requests')) {
             throw new Error("Too many reset attempts. Please wait a moment.");
           } else {
-            throw new Error("This email is not registered yet or has not been verified.");
+            throw new Error(error.message);
           }
         }
 
