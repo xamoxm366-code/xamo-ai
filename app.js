@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (HIGH-DEFINITION MEDIA & SUB-SECOND STREAMING)
+// XAMO AI - CORE CLIENT ENGINE (AUTHENTICATION FIX & ULTRA-FAST STREAMING)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1227,6 +1227,7 @@ async function syncCloudChats() {
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
+// --- Direct Native Supabase Auth Handler (Fixed Reset & Sign-in) ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async () => {
     hideAuthError();
@@ -1251,18 +1252,8 @@ if (authSubmitBtn) {
           return;
         }
 
-        btnTextSpan.textContent = "Checking...";
+        btnTextSpan.textContent = "Sending Link...";
         authSubmitBtn.disabled = true;
-
-        const { data: userRecords } = await supabaseClient
-          .from('chats')
-          .select('user_email')
-          .eq('user_email', email)
-          .limit(1);
-
-        if (!userRecords || userRecords.length === 0) {
-          throw new Error("This email is not registered yet or has not been verified.");
-        }
 
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
@@ -1270,10 +1261,15 @@ if (authSubmitBtn) {
         });
 
         if (error) {
-          throw new Error("This email is not registered yet or has not been verified.");
+          const msg = error.message.toLowerCase();
+          if (msg.includes('rate limit') || msg.includes('too many requests')) {
+            throw new Error("Too many reset attempts. Please wait a moment.");
+          } else {
+            throw new Error(error.message);
+          }
         }
 
-        showXamoToast("Reset link sent! Check your Inbox & Spam folders.");
+        showXamoToast("Reset link sent! Check your Gmail inbox & Spam folder.");
         if (authModal) authModal.classList.add('hidden');
         setAuthMode('signin');
 
@@ -1287,16 +1283,6 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
 
-        const { data: existingRecords } = await supabaseClient
-          .from('chats')
-          .select('user_email')
-          .eq('user_email', email)
-          .limit(1);
-
-        if (existingRecords && existingRecords.length > 0) {
-          throw new Error("This email is already registered and verified. Please sign in instead.");
-        }
-
         const { data, error } = await supabaseClient.auth.signUp({ 
           email, 
           password,
@@ -1306,16 +1292,16 @@ if (authSubmitBtn) {
         if (error) {
           const msg = error.message.toLowerCase();
           if (msg.includes('already registered') || msg.includes('user already exists')) {
-            throw new Error("This email is already registered and verified. Please sign in instead.");
+            throw new Error("This email is already registered. Please sign in instead.");
           }
           throw error;
         }
 
         if (data.user && data.user.identities && data.user.identities.length === 0) {
-          throw new Error("This email is already registered and verified. Please sign in instead.");
+          throw new Error("This email is already registered. Please sign in instead.");
         }
 
-        showXamoToast("Check your Gmail inbox to verify your email.");
+        showXamoToast("Verification link sent! Check your Gmail inbox.");
         if (authModal) authModal.classList.add('hidden');
 
       } else {
@@ -1330,7 +1316,7 @@ if (authSubmitBtn) {
           if (errMsg.includes('email not confirmed') || errMsg.includes('not confirmed')) {
             throw new Error("Please verify your account before logging in. Check your email inbox.");
           } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid password') || errMsg.includes('credentials')) {
-            throw new Error("Please verify your account before logging in or check your password.");
+            throw new Error("Invalid email or password. Please check your credentials.");
           } else {
             throw new Error(error.message);
           }
@@ -1625,7 +1611,7 @@ function renderChatBox() {
 
       const editBtnHtml = `<button onclick="editMessage(${index})" class="text-xs text-slate-400 hover:text-blue-400 mr-2 mb-1 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen text-[10px]"></i> Edit</button>`;
       
-      div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95\%] sm:max-w-[85\%] min-w-[50px]">${contentHtml}</div></div>`;
+      div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95%] sm:max-w-[85%] min-w-[50px]">${contentHtml}</div></div>`;
     } else {
       const textVal = msg.parts[0].text;
       const isLastBotMsg = index === currentChatHistory.length - 1;
@@ -1929,7 +1915,6 @@ async function triggerApiCall() {
     const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
     const payloadHistory = currentChatHistory.slice(-4).map(m => ({ role: m.role, parts: m.parts }));
 
-    // Extract the latest user query text for instant server-side intent routing
     const lastUserMessage = currentChatHistory.slice().reverse().find(m => m.role === 'user');
     const rawUserText = lastUserMessage?.rawUserText || "";
 
