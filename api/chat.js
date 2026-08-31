@@ -24,10 +24,9 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents, hasAttachment } = req.body;
 
-    // Use gemini-2.5-flash for real-time search grounding and SSE streaming
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Updated model endpoint to gemini-3.6-flash
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    // Format systemInstruction properly for the REST API
     let formattedSystemInstruction = systemInstruction;
     if (typeof systemInstruction === 'string') {
       formattedSystemInstruction = {
@@ -45,7 +44,6 @@ export default async function handler(req, res) {
       }
     };
 
-    // Enable Google Search Grounding when no file attachments are present
     if (!hasAttachment) {
       payload.tools = [{ google_search: {} }];
     }
@@ -56,7 +54,6 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload)
     });
 
-    // If search grounding fails or rate limits, retry once without tools
     if (!response.ok && !hasAttachment) {
       delete payload.tools;
       response = await fetch(geminiUrl, {
