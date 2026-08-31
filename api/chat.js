@@ -39,17 +39,13 @@ export default async function handler(req, res) {
       generationConfig: {
         temperature: 0.7,
         topP: 0.95,
-        maxOutputTokens: 2500,
-        // Eliminates reasoning delay: Instant zero-latency streaming
-        thinkingConfig: {
-          thinkingBudget: 0
-        }
+        maxOutputTokens: 2500
       }
     };
 
-    // Only attach Google Search if there are no heavy files attached
+    // Attach Google Search Grounding when no file attachments are present
     if (!hasAttachment) {
-      payload.tools = [{ google_search: {} }];
+      payload.tools = [{ googleSearch: {} }];
     }
 
     let response = await fetch(geminiUrl, {
@@ -58,6 +54,7 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload)
     });
 
+    // Fallback retry without tools if search grounding fails
     if (!response.ok && !hasAttachment) {
       delete payload.tools;
       response = await fetch(geminiUrl, {
