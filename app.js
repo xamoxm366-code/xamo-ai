@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (STRICT VERIFIED-ONLY AUTH & SUB-SECOND STREAMING)
+// XAMO AI - CORE CLIENT ENGINE (TIMEOUT GUARD & INSTANT AUTH RECOVERY)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -20,6 +20,13 @@ let userNickname = "";
 let activeStreamAbortController = null;
 
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
+
+// Helper to prevent any network request from hanging the UI
+const withTimeout = (promise, ms = 6000) => 
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
+  ]);
 
 // --- Persistent Nickname Engine ---
 const nicknameModal = document.getElementById('nickname-modal');
@@ -1227,7 +1234,7 @@ async function syncCloudChats() {
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
-// --- Direct Native Supabase Auth Handler (Strict Verified-Only Reset Engine) ---
+// --- Direct Native Supabase Auth Handler (Robust Reset Engine with Timeout Guard) ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async () => {
     hideAuthError();
@@ -1255,32 +1262,39 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Verifying...";
         authSubmitBtn.disabled = true;
 
-        // 1. Direct database check: Check if email is verified in auth.users
-        const { data: isVerified, error: rpcError } = await supabaseClient.rpc('is_email_verified', {
-          check_email: email
-        });
-
-        if (rpcError) {
-          console.warn("RPC is_email_verified error:", rpcError);
+        // 1. Direct database check with 4s timeout (falls back gracefully if DB RPC is slow)
+        let isVerified = true;
+        try {
+          const { data, error: rpcError } = await withTimeout(
+            supabaseClient.rpc('is_email_verified', { check_email: email }),
+            4000
+          );
+          if (!rpcError && typeof data === 'boolean') {
+            isVerified = data;
+          }
+        } catch (rpcTimeoutOrErr) {
+          console.warn("RPC check skipped:", rpcTimeoutOrErr);
         }
 
-        // If not verified or unregistered, halt immediately
         if (isVerified === false) {
           throw new Error("This email is not registered yet or has not been verified.");
         }
 
-        // 2. Verified email confirmed: send recovery link
+        // 2. Dispatch reset email with 6s timeout guard
+        btnTextSpan.textContent = "Sending Link...";
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-          redirectTo: redirectTarget
-        });
+        
+        const { error: resetErr } = await withTimeout(
+          supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: redirectTarget }),
+          6000
+        );
 
-        if (error) {
-          const msg = error.message.toLowerCase();
+        if (resetErr) {
+          const msg = (resetErr.message || '').toLowerCase();
           if (msg.includes('rate limit') || msg.includes('too many requests')) {
-            throw new Error("Too many reset attempts. Please wait a moment.");
+            throw new Error("Too many reset attempts. Please wait 60 seconds.");
           } else {
-            throw new Error(error.message);
+            throw new Error(resetErr.message || "Failed to send reset link.");
           }
         }
 
@@ -1298,11 +1312,14 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Creating Account...";
         authSubmitBtn.disabled = true;
 
-        const { data, error } = await supabaseClient.auth.signUp({ 
-          email, 
-          password,
-          options: { emailRedirectTo: "https://xamo-ai.vercel.app/verified.html" }
-        });
+        const { data, error } = await withTimeout(
+          supabaseClient.auth.signUp({ 
+            email, 
+            password,
+            options: { emailRedirectTo: "https://xamo-ai.vercel.app/verified.html" }
+          }),
+          8000
+        );
 
         if (error) {
           const msg = error.message.toLowerCase();
@@ -1324,7 +1341,10 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Signing In...";
         authSubmitBtn.disabled = true;
 
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        const { data, error } = await withTimeout(
+          supabaseClient.auth.signInWithPassword({ email, password }),
+          8000
+        );
         
         if (error) {
           const errMsg = error.message.toLowerCase();
