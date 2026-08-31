@@ -275,13 +275,15 @@
       }
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc&t=${Date.now()}`, {
+        // Query Supabase REST API cleanly without invalid query parameters
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
           method: "GET",
           cache: "no-store",
           headers: {
             "apikey": SUPABASE_ANON_KEY,
             "Authorization": `Bearer ${adminToken}`,
-            "Cache-Control": "no-cache"
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache"
           }
         });
 
@@ -300,7 +302,6 @@
         calculateStats();
         renderChatList();
 
-        // If a chat is actively open, refresh its content in place
         if (activeChatRecord) {
           const freshCurrent = chatRecords.find(c => c.id === activeChatRecord.id);
           if (freshCurrent) {
