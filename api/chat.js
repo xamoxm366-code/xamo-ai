@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge', // Zero-latency instant token streaming
+  runtime: 'edge', // Instant edge worker execution with zero cold-start delay
 };
 
 export default async function handler(req) {
@@ -30,38 +30,37 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents, hasAttachment } = await req.json();
+    const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
 
-    // Priority order: Gemini 3.5 Flash-Lite first, with stable 3.x fallbacks
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
-      'gemini-3.1-flash-lite'
+      'gemini-2.0-flash'
     ];
 
-    // Extract raw text or use object format
     let rawInstructionText = typeof systemInstruction === 'string'
       ? systemInstruction
-      : (systemInstruction?.parts?.[0]?.text || 'You are XAMO AI.');
+      : (systemInstruction?.parts?.[0]?.text || 'You are XAMO AI created by Zaeem.');
 
-    // Enforce live Google search behavior
-    const enhancedInstruction = `${rawInstructionText}
-[Search Grounding Directive: You have full access to real-time Google Search. When the user asks about current news, recent events, weather, live info, or anything after 2024, execute Google Search queries immediately and provide the latest information.]`;
+    // Fast-regex for real-time keywords only
+    const searchIntentRegex = /\b(news|latest|today|current|weather|score|price|stock|update|who is|recent|release date|live|2025|2026)\b/i;
+    const shouldSearch = !hasAttachment && (searchIntentRegex.test(userPromptText || '') || userPromptText?.length > 120);
 
     const payload = {
       systemInstruction: {
-        parts: [{ text: enhancedInstruction }]
+        parts: [{ text: rawInstructionText }]
       },
-      contents,
+      // Keep payload light: Only process the last 4 messages for rapid context evaluation
+      contents: contents.slice(-4),
       generationConfig: {
-        temperature: 0.7,
-        topP: 0.95,
-        maxOutputTokens: 2500
+        temperature: 0.5, // Lower temperature delivers faster first-token generation
+        topP: 0.9,
+        maxOutputTokens: 2048
       }
     };
 
-    // Attach Google Search Grounding when no heavy file attachments are present
-    if (!hasAttachment) {
+    // Only attach search overhead if actually needed
+    if (shouldSearch) {
       payload.tools = [{ googleSearch: {} }];
     }
 
@@ -78,35 +77,33 @@ export default async function handler(req) {
           body: JSON.stringify(payload)
         });
 
-        // If search tool fails on a model, retry once without tools
-        if (!response.ok && !hasAttachment && response.status !== 429) {
-          const fallbackPayload = { ...payload };
-          delete fallbackPayload.tools;
+        if (response.ok) break;
+        
+        // If search fails or rate limits, retry model instantly without tools
+        if (payload.tools) {
+          delete payload.tools;
           response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fallbackPayload)
+            body: JSON.stringify(payload)
           });
+          if (response.ok) break;
         }
 
-        if (response.ok) {
-          break; // Connected successfully to the active model
-        } else {
-          lastError = await response.text();
-        }
+        lastError = await response.text();
       } catch (err) {
         lastError = err.message;
       }
     }
 
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `API Error: ${lastError}` }), {
+      return new Response(JSON.stringify({ error: `Service unavailable: ${lastError}` }), {
         status: response ? response.status : 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
-    // Direct stream pipe to client
+    // Direct pipe straight to browser stream
     return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',

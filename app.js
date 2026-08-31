@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (HIGH-DEFINITION MEDIA & ULTRA-FAST STREAMING)
+// XAMO AI - CORE CLIENT ENGINE (HIGH-DEFINITION MEDIA & SUB-SECOND STREAMING)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -894,7 +894,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- High-Definition Media Processor ---
+// --- High-Speed High-Definition Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -911,8 +911,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        // Upgraded to 2048px for crisp high-definition visual reasoning
-        const maxDim = 2048;
+        const maxDim = 1600;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -929,7 +928,7 @@ if (imageInput) {
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
         
         attachedFile = {
           category: 'image',
@@ -1626,7 +1625,7 @@ function renderChatBox() {
 
       const editBtnHtml = `<button onclick="editMessage(${index})" class="text-xs text-slate-400 hover:text-blue-400 mr-2 mb-1 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen text-[10px]"></i> Edit</button>`;
       
-      div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95%] sm:max-w-[85%] min-w-[50px]">${contentHtml}</div></div>`;
+      div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95\%] sm:max-w-[85\%] min-w-[50px]">${contentHtml}</div></div>`;
     } else {
       const textVal = msg.parts[0].text;
       const isLastBotMsg = index === currentChatHistory.length - 1;
@@ -1887,7 +1886,7 @@ if (form) {
   });
 }
 
-// Ultra-Fast Zero-Latency Streaming Engine
+// Sub-Second Ultra-Fast Streaming Execution
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -1930,10 +1929,15 @@ async function triggerApiCall() {
     const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
     const payloadHistory = currentChatHistory.slice(-4).map(m => ({ role: m.role, parts: m.parts }));
 
+    // Extract the latest user query text for instant server-side intent routing
+    const lastUserMessage = currentChatHistory.slice().reverse().find(m => m.role === 'user');
+    const rawUserText = lastUserMessage?.rawUserText || "";
+
     const requestBody = {
       systemInstruction: { parts: [{ text: dynamicSystemInstruction }] },
       contents: payloadHistory,
-      hasAttachment: hasAnyAttachment
+      hasAttachment: hasAnyAttachment,
+      userPromptText: rawUserText
     };
 
     const targetUrl = isLocalEnvironment ? 'https://xamo-ai.vercel.app/api/chat' : '/api/chat';
