@@ -71,8 +71,8 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <button onclick="fetchAllChats()" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
-          <i class="fa-solid fa-arrows-rotate text-xs"></i> Refresh
+        <button id="refresh-btn" onclick="fetchAllChats(true)" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
+          <i id="refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i> <span>Refresh</span>
         </button>
         <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
           Sign Out
@@ -265,18 +265,33 @@
       location.reload();
     }
 
-    async function fetchAllChats() {
+    async function fetchAllChats(manual = false) {
+      const refreshBtn = document.getElementById("refresh-btn");
+      const refreshIcon = document.getElementById("refresh-icon");
+
+      if (manual && refreshIcon) {
+        refreshIcon.classList.add("fa-spin");
+        if (refreshBtn) refreshBtn.disabled = true;
+      }
+
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc&t=${Date.now()}`, {
           method: "GET",
+          cache: "no-store",
           headers: {
             "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${adminToken}`
+            "Authorization": `Bearer ${adminToken}`,
+            "Cache-Control": "no-cache"
           }
         });
 
         if (!response.ok) {
-          const err = await response.json();
+          if (response.status === 401) {
+            alert("Admin session expired. Please sign in again.");
+            logoutAdmin();
+            return;
+          }
+          const err = await response.json().catch(() => ({}));
           alert(`Failed to load chats: ${err.message || "Unauthorized"}`);
           return;
         }
@@ -285,8 +300,23 @@
         calculateStats();
         renderChatList();
 
+        // If a chat is actively open, refresh its content in place
+        if (activeChatRecord) {
+          const freshCurrent = chatRecords.find(c => c.id === activeChatRecord.id);
+          if (freshCurrent) {
+            selectChat(freshCurrent);
+          }
+        }
+
       } catch (err) {
         alert(`Error fetching chat records: ${err.message}`);
+      } finally {
+        if (manual && refreshIcon) {
+          setTimeout(() => {
+            refreshIcon.classList.remove("fa-spin");
+            if (refreshBtn) refreshBtn.disabled = false;
+          }, 350);
+        }
       }
     }
 
