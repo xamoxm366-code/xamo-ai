@@ -24,34 +24,46 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents, hasAttachment } = req.body;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Use gemini-2.5-flash for real-time search grounding and SSE streaming
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    const sendRequest = async (useSearchTool = false) => {
-      const payload = {
-        systemInstruction,
-        contents,
-        generationConfig: {
-          temperature: 0.6,
-          topP: 0.95,
-          maxOutputTokens: 2500
-        }
+    // Format systemInstruction properly for the REST API
+    let formattedSystemInstruction = systemInstruction;
+    if (typeof systemInstruction === 'string') {
+      formattedSystemInstruction = {
+        parts: [{ text: systemInstruction }]
       };
+    }
 
-      if (useSearchTool && !hasAttachment) {
-        payload.tools = [{ google_search: {} }];
+    const payload = {
+      systemInstruction: formattedSystemInstruction,
+      contents,
+      generationConfig: {
+        temperature: 0.6,
+        topP: 0.95,
+        maxOutputTokens: 3000
       }
+    };
 
-      return await fetch(geminiUrl, {
+    // Enable Google Search Grounding when no file attachments are present
+    if (!hasAttachment) {
+      payload.tools = [{ google_search: {} }];
+    }
+
+    let response = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    // If search grounding fails or rate limits, retry once without tools
+    if (!response.ok && !hasAttachment) {
+      delete payload.tools;
+      response = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-    };
-
-    let response = await sendRequest(!hasAttachment);
-
-    if (response.status === 429 || !response.ok) {
-      response = await sendRequest(false);
     }
 
     if (!response.ok) {
