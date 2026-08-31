@@ -24,7 +24,6 @@ export default async function handler(req, res) {
   try {
     const { systemInstruction, contents, hasAttachment } = req.body;
 
-    // Updated model endpoint to gemini-3.6-flash
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     let formattedSystemInstruction = systemInstruction;
@@ -38,12 +37,17 @@ export default async function handler(req, res) {
       systemInstruction: formattedSystemInstruction,
       contents,
       generationConfig: {
-        temperature: 0.6,
+        temperature: 0.7,
         topP: 0.95,
-        maxOutputTokens: 3000
+        maxOutputTokens: 2500,
+        // Eliminates reasoning delay: Instant zero-latency streaming
+        thinkingConfig: {
+          thinkingBudget: 0
+        }
       }
     };
 
+    // Only attach Google Search if there are no heavy files attached
     if (!hasAttachment) {
       payload.tools = [{ google_search: {} }];
     }

@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (NATIVE SHARE PORTAL, SECURE FORGOT-PW & KASHMIRI TTS FIX)
+// XAMO AI - CORE CLIENT ENGINE (HIGH-DEFINITION MEDIA & ULTRA-FAST STREAMING)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -640,7 +640,6 @@ function updateSendButtonState() {
   }
 }
 
-// Extended Toast duration to 5 seconds
 function showXamoToast(message) {
   const existing = document.getElementById('xamo-toast');
   if (existing) existing.remove();
@@ -770,7 +769,7 @@ if (saveSettings && settingsModal) {
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an intelligent, helpful AI assistant created by Zaeem. Answer naturally in fluent, clean prose with thorough explanations. NEVER format standard conversational replies or short answers inside rigid tables or metadata status boxes unless the user explicitly requests structured tabular data. Use bullet points and markdown formatting naturally."
+    prompt: "You are XAMO, an authentic, fast, and helpful AI assistant created by Zaeem. Answer naturally in fluent, clean prose with thorough details. Keep explanations direct, engaging, and scannable without robotic metadata tables."
   },
   { 
     name: 'Coder', 
@@ -895,7 +894,7 @@ if (savePersonaBtn && personaModal) {
 
 if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
 
-// --- Document & Media Processor ---
+// --- High-Definition Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -912,7 +911,8 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1200;
+        // Upgraded to 2048px for crisp high-definition visual reasoning
+        const maxDim = 2048;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -925,9 +925,11 @@ if (imageInput) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.90);
         
         attachedFile = {
           category: 'image',
@@ -1016,8 +1018,8 @@ if (imageInput) {
       reader.readAsArrayBuffer(file);
 
     } else if (fileType.startsWith('video/')) {
-      if (file.size > 15 * 1024 * 1024) {
-        showXamoToast("Video must be under 15MB for analysis.");
+      if (file.size > 25 * 1024 * 1024) {
+        showXamoToast("Video must be under 25MB for processing.");
         imageInput.value = "";
         return;
       }
@@ -1253,7 +1255,6 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Checking...";
         authSubmitBtn.disabled = true;
 
-        // Check if user exists and is verified in chats registry or Supabase auth
         const { data: userRecords } = await supabaseClient
           .from('chats')
           .select('user_email')
@@ -1680,7 +1681,6 @@ function renderChatBox() {
         });
       };
 
-      // Native Device Sharing Portal with automatic clipboard fallback
       const shareBtn = document.createElement('button');
       shareBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       shareBtn.title = "Share";
@@ -1693,16 +1693,13 @@ function renderChatBox() {
               text: textVal
             });
             return;
-          } catch (err) {
-            // User cancelled or share failed, fallback to clipboard
-          }
+          } catch (err) {}
         }
         navigator.clipboard.writeText(textVal).then(() => {
           showXamoToast("Copied response to clipboard for sharing!");
         });
       };
 
-      // Check if Kashmiri language is selected to hide/remove the speaking button
       const isKashmiri = appSettings.language && appSettings.language.toLowerCase().includes('kashmiri');
 
       footerDiv.appendChild(pinBtn);
@@ -1751,7 +1748,6 @@ window.regenerateLastResponse = function() {
   }
 };
 
-// Soft Delete
 async function deleteSession(id) {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -1891,7 +1887,7 @@ if (form) {
   });
 }
 
-// Fast Streaming Execution
+// Ultra-Fast Zero-Latency Streaming Engine
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -1994,7 +1990,6 @@ async function triggerApiCall() {
       await saveCurrentSession();
     } catch (saveErr) {}
 
-    // Complete Instant Interaction Controls Row
     const footerDiv = document.createElement('div');
     footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
     
