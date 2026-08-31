@@ -1,9 +1,8 @@
 export const config = {
-  runtime: 'edge', // Eliminates Vercel buffer delay & cold starts for instant streaming
+  runtime: 'edge', // Zero-latency instant token streaming
 };
 
 export default async function handler(req) {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
@@ -33,17 +32,26 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment } = await req.json();
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Priority order: Gemini 3.5 Flash-Lite first, with stable 3.x fallbacks
+    const MODELS = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite'
+    ];
 
-    let formattedSystemInstruction = systemInstruction;
-    if (typeof systemInstruction === 'string') {
-      formattedSystemInstruction = {
-        parts: [{ text: systemInstruction }]
-      };
-    }
+    // Extract raw text or use object format
+    let rawInstructionText = typeof systemInstruction === 'string'
+      ? systemInstruction
+      : (systemInstruction?.parts?.[0]?.text || 'You are XAMO AI.');
+
+    // Enforce live Google search behavior
+    const enhancedInstruction = `${rawInstructionText}
+[Search Grounding Directive: You have full access to real-time Google Search. When the user asks about current news, recent events, weather, live info, or anything after 2024, execute Google Search queries immediately and provide the latest information.]`;
 
     const payload = {
-      systemInstruction: formattedSystemInstruction,
+      systemInstruction: {
+        parts: [{ text: enhancedInstruction }]
+      },
       contents,
       generationConfig: {
         temperature: 0.7,
@@ -52,36 +60,53 @@ export default async function handler(req) {
       }
     };
 
-    // Attach Google Search Grounding for live internet data
+    // Attach Google Search Grounding when no heavy file attachments are present
     if (!hasAttachment) {
       payload.tools = [{ googleSearch: {} }];
     }
 
-    let response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let response = null;
+    let lastError = '';
 
-    // Fallback if search tool triggers a rate limit or failure
-    if (!response.ok && !hasAttachment) {
-      delete payload.tools;
-      response = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    for (const model of MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        // If search tool fails on a model, retry once without tools
+        if (!response.ok && !hasAttachment && response.status !== 429) {
+          const fallbackPayload = { ...payload };
+          delete fallbackPayload.tools;
+          response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
+
+        if (response.ok) {
+          break; // Connected successfully to the active model
+        } else {
+          lastError = await response.text();
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
     }
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return new Response(JSON.stringify({ error: `Gemini API Error: ${errText}` }), {
-        status: response.status,
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: `API Error: ${lastError}` }), {
+        status: response ? response.status : 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
-    // Direct Zero-Latency Stream Pipe to Browser
+    // Direct stream pipe to client
     return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',
