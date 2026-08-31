@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (AUTHENTICATION FIX & ULTRA-FAST STREAMING)
+// XAMO AI - CORE CLIENT ENGINE (VERIFIED AUTH HANDSHAKE & FAST STREAMING)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1227,7 +1227,7 @@ async function syncCloudChats() {
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
-// --- Direct Native Supabase Auth Handler (Fixed Reset & Sign-in) ---
+// --- Direct Native Supabase Auth Handler (Smart Verification Detection) ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async () => {
     hideAuthError();
@@ -1252,9 +1252,25 @@ if (authSubmitBtn) {
           return;
         }
 
-        btnTextSpan.textContent = "Sending Link...";
+        btnTextSpan.textContent = "Checking...";
         authSubmitBtn.disabled = true;
 
+        // 1. Probe email confirmation status using native Supabase auth handshake
+        const { error: probeError } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: 'XAMO_PROBE_DUMMY_VERIFY_CHECK_TOKEN'
+        });
+
+        if (probeError) {
+          const errMsg = (probeError.message || '').toLowerCase();
+          
+          // Stop unverified accounts directly
+          if (errMsg.includes('not confirmed') || errMsg.includes('email not confirmed')) {
+            throw new Error("This email is not registered yet or has not been verified.");
+          }
+        }
+
+        // 2. Dispatch the secure recovery link
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
           redirectTo: redirectTarget
@@ -1265,7 +1281,7 @@ if (authSubmitBtn) {
           if (msg.includes('rate limit') || msg.includes('too many requests')) {
             throw new Error("Too many reset attempts. Please wait a moment.");
           } else {
-            throw new Error(error.message);
+            throw new Error("This email is not registered yet or has not been verified.");
           }
         }
 
