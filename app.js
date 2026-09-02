@@ -135,88 +135,89 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection ---
+// --- Injected Theme Engine (Gemini Dark & Realistic Atmospheric Sky) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'gemini-pro-theme-styles';
   style.textContent = `
+    /* ==========================================================================
+       1. BASE GEMINI PRO DARK THEME (DEFAULT)
+       ========================================================================== */
     .gemini-user-bubble {
-      background-color: #282a2c !important;
-      color: #f1f3f4 !important;
-      border-radius: 22px !important;
-      padding: 12px 18px !important;
-      font-size: 15px !important;
-      line-height: 1.5 !important;
-      letter-spacing: -0.01em !important;
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
-      border: 1px solid rgba(255, 255, 255, 0.06) !important;
-      max-width: 86% !important;
-      user-select: text !important;
-      -webkit-user-select: text !important;
+      background-color: #282a2c;
+      color: #f1f3f4;
+      border-radius: 22px;
+      padding: 12px 18px;
+      font-size: 15px;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      max-width: 86%;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     .gemini-response-container {
-      font-size: 15.5px !important;
-      line-height: 1.68 !important;
-      color: #e3e3e3 !important;
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
-      letter-spacing: -0.012em !important;
-      user-select: text !important;
-      -webkit-user-select: text !important;
+      font-size: 15.5px;
+      line-height: 1.68;
+      color: #e3e3e3;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      letter-spacing: -0.012em;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
-    .gemini-response-container p { margin-bottom: 1.1rem !important; }
-    .gemini-response-container strong { color: #ffffff !important; font-weight: 600 !important; }
+    .gemini-response-container p { margin-bottom: 1.1rem; }
+    .gemini-response-container strong { color: #ffffff; font-weight: 600; }
     .gemini-response-container h1, 
     .gemini-response-container h2, 
     .gemini-response-container h3 {
-      color: #f8f9fa !important;
-      font-weight: 600 !important;
-      margin-top: 1.4rem !important;
-      margin-bottom: 0.6rem !important;
-      font-size: 17px !important;
+      color: #f8f9fa;
+      font-weight: 600;
+      margin-top: 1.4rem;
+      margin-bottom: 0.6rem;
+      font-size: 17px;
     }
 
-    /* Floating Pill Search Bar Dock */
     #chat-form {
-      background-color: #1e1f20 !important;
-      border: 1px solid #33353a !important;
-      border-radius: 30px !important;
-      padding: 5px 12px !important;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
-      display: flex !important;
-      align-items: center !important;
-      gap: 6px !important;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-      max-width: 100% !important;
+      background-color: #1e1f20;
+      border: 1px solid #33353a;
+      border-radius: 30px;
+      padding: 5px 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      max-width: 100%;
     }
 
     #chat-form:focus-within {
-      border-color: #4a4d55 !important;
+      border-color: #4a4d55;
     }
 
     #user-input {
-      font-size: 14.5px !important;
-      color: #f1f3f4 !important;
-      line-height: 1.4 !important;
-      background: transparent !important;
-      border: none !important;
-      outline: none !important;
-      padding: 6px 2px !important;
-      min-width: 0 !important;
-      flex: 1 1 0% !important;
-      overflow-x: hidden !important;
-      text-overflow: ellipsis !important;
+      font-size: 14.5px;
+      color: #f1f3f4;
+      line-height: 1.4;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 6px 2px;
+      min-width: 0;
+      flex: 1 1 0%;
+      overflow-x: hidden;
+      text-overflow: ellipsis;
     }
 
     #user-input::placeholder {
-      color: #8e918f !important;
-      font-size: 14px !important;
-      text-overflow: ellipsis !important;
+      color: #8e918f;
+      font-size: 14px;
+      text-overflow: ellipsis;
     }
 
-    /* Vanishing Scroll Arrow (Clean Floating Position Above Dock) */
     #scroll-down-dock-btn {
       position: fixed;
       bottom: 86px;
@@ -245,7 +246,6 @@ function injectGeminiThemeStyles() {
       transform: translateX(-50%) translateY(0);
     }
 
-    /* Custom In-App Sleek Settings Pickers */
     .xamo-custom-select-trigger {
       width: 100%;
       background-color: #141518;
@@ -302,6 +302,159 @@ function injectGeminiThemeStyles() {
       background: rgba(59, 130, 246, 0.18);
       color: #60a5fa;
       font-weight: 600;
+    }
+
+    /* ==========================================================================
+       2. REALISTIC ATMOSPHERIC SKY THEME
+       ========================================================================== */
+    html.theme-sky, 
+    html.theme-sky body {
+      background: 
+        radial-gradient(ellipse 90% 60% at 50% -15%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 70%),
+        linear-gradient(180deg, #1c6ab5 0%, #3488e0 22%, #5ea4f7 50%, #90c2f8 78%, #c5e0fc 100%) !important;
+      background-attachment: fixed !important;
+      color: #0d1e38 !important;
+    }
+
+    /* Natural Cloud Canopy Backdrop */
+    html.theme-sky body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 70% 35% at 20% 30%, rgba(255, 255, 255, 0.3) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 40% at 85% 40%, rgba(255, 255, 255, 0.25) 0%, transparent 70%),
+        radial-gradient(ellipse 95% 45% at 50% 92%, rgba(255, 255, 255, 0.5) 0%, transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header Nav */
+    html.theme-sky header {
+      background: rgba(255, 255, 255, 0.3) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.45) !important;
+    }
+
+    html.theme-sky header span,
+    html.theme-sky header button {
+      color: #0b2545 !important;
+    }
+
+    /* Welcome Banner */
+    html.theme-sky #welcome-screen h1 {
+      color: #061c38 !important;
+      font-weight: 500 !important;
+      text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6) !important;
+    }
+
+    html.theme-sky #welcome-screen .w-14 {
+      background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+      box-shadow: 0 10px 25px rgba(2, 132, 199, 0.45) !important;
+    }
+
+    /* Frosted Cloud User Bubbles */
+    html.theme-sky .gemini-user-bubble {
+      background: rgba(255, 255, 255, 0.88) !important;
+      backdrop-filter: blur(14px) !important;
+      -webkit-backdrop-filter: blur(14px) !important;
+      color: #091a30 !important;
+      border: 1px solid rgba(255, 255, 255, 0.95) !important;
+      box-shadow: 0 6px 20px rgba(13, 53, 94, 0.1) !important;
+    }
+
+    /* Deep High-Contrast Response Typography */
+    html.theme-sky .gemini-response-container {
+      color: #0a1f3c !important;
+    }
+
+    html.theme-sky .gemini-response-container strong,
+    html.theme-sky .gemini-response-container h1,
+    html.theme-sky .gemini-response-container h2,
+    html.theme-sky .gemini-response-container h3 {
+      color: #021226 !important;
+    }
+
+    html.theme-sky .gemini-response-container code {
+      background: rgba(255, 255, 255, 0.8) !important;
+      color: #0265a3 !important;
+      border: 1px solid rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* Cloud-Pill Input Dock */
+    html.theme-sky #chat-form {
+      background: rgba(255, 255, 255, 0.86) !important;
+      backdrop-filter: blur(24px) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.95) !important;
+      box-shadow: 0 10px 30px rgba(11, 48, 87, 0.16) !important;
+    }
+
+    html.theme-sky #user-input {
+      color: #091a30 !important;
+    }
+
+    html.theme-sky #user-input::placeholder {
+      color: #415978 !important;
+    }
+
+    html.theme-sky #attach-btn,
+    html.theme-sky #voice-btn {
+      color: #0369a1 !important;
+    }
+
+    html.theme-sky #attach-btn:hover,
+    html.theme-sky #voice-btn:hover {
+      background: rgba(2, 132, 199, 0.1) !important;
+    }
+
+    html.theme-sky #submit-btn {
+      background: #0284c7 !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+    }
+
+    /* Response Action Row */
+    html.theme-sky .gemini-response-container + div button,
+    html.theme-sky .gemini-response-container ~ div {
+      color: #1a3d66 !important;
+    }
+
+    html.theme-sky .gemini-response-container + div button:hover {
+      color: #0284c7 !important;
+    }
+
+    /* Floating Scroll-Down Arrow */
+    html.theme-sky #scroll-down-dock-btn {
+      background: rgba(255, 255, 255, 0.92) !important;
+      border-color: rgba(255, 255, 255, 0.98) !important;
+      color: #0284c7 !important;
+      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25) !important;
+    }
+
+    /* Sidebar Atmospheric Mist */
+    html.theme-sky #sidebar {
+      background: rgba(234, 245, 255, 0.96) !important;
+      backdrop-filter: blur(24px) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
+      border-right: 1px solid rgba(186, 224, 253, 0.8) !important;
+      color: #0a1f3c !important;
+    }
+
+    html.theme-sky #sidebar span,
+    html.theme-sky #sidebar button,
+    html.theme-sky #sidebar input {
+      color: #0a1f3c !important;
+    }
+
+    html.theme-sky #sidebar input {
+      background: rgba(255, 255, 255, 0.85) !important;
+      border-color: rgba(186, 224, 253, 0.9) !important;
+    }
+
+    html.theme-sky #sidebar input::placeholder {
+      color: #5c799a !important;
     }
   `;
   document.head.appendChild(style);
