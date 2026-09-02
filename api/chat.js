@@ -30,13 +30,13 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
+    const { systemInstruction, contents, hasAttachment } = await req.json();
 
-    // Validated 3.5 and 3.6 endpoints
+    // Priority model chain with verified endpoint fallbacks
     const MODELS = [
-      'gemini-3.5-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-3.6-flash'
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro'
     ];
 
     let rawInstructionText = typeof systemInstruction === 'string'
@@ -53,8 +53,7 @@ export default async function handler(req) {
 - Change Language: [[ACTION:SET_LANG:languageName]]
 - Switch Account: [[ACTION:SWITCH_ACCOUNT:userEmail]]
 - Remove Account: [[ACTION:REMOVE_ACCOUNT:userEmail]]
-- Clear / New Chat: [[ACTION:NEW_CHAT:true]]
-Example: If the user says "remove the account xamore234@gmail.com", respond "I am removing the account xamore234@gmail.com for you right now." and append [[ACTION:REMOVE_ACCOUNT:xamore234@gmail.com]].]`;
+- Clear / New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
     const payload = {
       systemInstruction: {
@@ -87,7 +86,7 @@ Example: If the user says "remove the account xamore234@gmail.com", respond "I a
 
         if (response.ok) break;
 
-        // If search grounding triggers quota or tool limits, instantly fallback without tools
+        // Fallback retry without search tools if grounding quota or tool limit triggers
         if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;

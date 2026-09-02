@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - AUTONOMOUS AGENTIC ENGINE & REALISTIC SKY DOCK
+// XAMO AI - CORE CLIENT ENGINE (COMPLETE SKY THEME, CUSTOM PICKERS & COMPACT DOCK)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -135,12 +135,13 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection (Realistic Sky & Custom Sleek Pickers) ---
+// --- CSS Engine Injection (Clean Sky Theme, Bottom Glass & In-App Selectors) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'gemini-pro-theme-styles';
   style.textContent = `
+    /* User and Model Chat Formatting */
     .gemini-user-bubble {
       background-color: #282a2c;
       color: #f1f3f4;
@@ -149,7 +150,6 @@ function injectGeminiThemeStyles() {
       font-size: 15px;
       line-height: 1.5;
       letter-spacing: -0.01em;
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
       border: 1px solid rgba(255, 255, 255, 0.06);
       max-width: 86%;
       user-select: text;
@@ -160,7 +160,6 @@ function injectGeminiThemeStyles() {
       font-size: 15.5px;
       line-height: 1.68;
       color: #e3e3e3;
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
       letter-spacing: -0.012em;
       user-select: text;
       -webkit-user-select: text;
@@ -178,43 +177,43 @@ function injectGeminiThemeStyles() {
       font-size: 17px;
     }
 
+    /* Single-Line No-Wrap Search Bar Dock */
     #chat-form {
       background-color: #1e1f20;
       border: 1px solid #33353a;
-      border-radius: 30px;
-      padding: 5px 12px;
+      border-radius: 32px;
+      padding: 6px 14px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
       max-width: 100%;
-    }
-
-    #chat-form:focus-within {
-      border-color: #4a4d55;
     }
 
     #user-input {
       font-size: 14.5px;
       color: #f1f3f4;
-      line-height: 1.4;
+      line-height: 1.35;
       background: transparent;
       border: none;
       outline: none;
       padding: 6px 2px;
       min-width: 0;
       flex: 1 1 0%;
-      overflow-x: hidden;
-      text-overflow: ellipsis;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     #user-input::placeholder {
       color: #8e918f;
       font-size: 14px;
-      text-overflow: ellipsis;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
+    /* Auto-Hiding Scroll-Down Chevron */
     #scroll-down-dock-btn {
       position: fixed;
       bottom: 86px;
@@ -257,11 +256,6 @@ function injectGeminiThemeStyles() {
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .xamo-custom-select-trigger:hover {
-      border-color: #3f434c;
     }
 
     .xamo-select-menu {
@@ -276,7 +270,7 @@ function injectGeminiThemeStyles() {
       border-radius: 16px;
       padding: 6px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-      z-index: 80;
+      z-index: 90;
     }
 
     .xamo-select-option {
@@ -288,7 +282,6 @@ function injectGeminiThemeStyles() {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      transition: background 0.15s, color 0.15s;
     }
 
     .xamo-select-option:hover {
@@ -303,7 +296,7 @@ function injectGeminiThemeStyles() {
     }
 
     /* ==========================================================================
-       REALISTIC ATMOSPHERIC SKY THEME
+       REALISTIC SKY THEME FIXES (ELIMINATES ALL DARK PATCHES & UNREADABLE TEXT)
        ========================================================================== */
     html.theme-sky, 
     html.theme-sky body {
@@ -314,59 +307,60 @@ function injectGeminiThemeStyles() {
       color: #0d1e38 !important;
     }
 
-    html.theme-sky body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: 
-        radial-gradient(ellipse 70% 35% at 20% 30%, rgba(255, 255, 255, 0.3) 0%, transparent 70%),
-        radial-gradient(ellipse 80% 40% at 85% 40%, rgba(255, 255, 255, 0.25) 0%, transparent 70%),
-        radial-gradient(ellipse 95% 45% at 50% 92%, rgba(255, 255, 255, 0.5) 0%, transparent 80%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
+    /* Header Nav in Sky */
     html.theme-sky header {
-      background: rgba(255, 255, 255, 0.3) !important;
+      background: rgba(255, 255, 255, 0.35) !important;
       backdrop-filter: blur(20px) !important;
       border-bottom: 1px solid rgba(255, 255, 255, 0.45) !important;
     }
 
     html.theme-sky header span,
-    html.theme-sky header button {
+    html.theme-sky header button,
+    html.theme-sky header i {
       color: #0b2545 !important;
     }
 
-    html.theme-sky #welcome-screen h1 {
-      color: #061c38 !important;
-      font-weight: 500 !important;
-      text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6) !important;
-    }
-
-    html.theme-sky .gemini-user-bubble {
-      background: rgba(255, 255, 255, 0.88) !important;
-      backdrop-filter: blur(14px) !important;
-      color: #091a30 !important;
+    /* Top Right Theme Selector in Sky */
+    html.theme-sky #theme-btn {
+      background: rgba(255, 255, 255, 0.75) !important;
       border: 1px solid rgba(255, 255, 255, 0.95) !important;
-      box-shadow: 0 6px 20px rgba(13, 53, 94, 0.1) !important;
+      color: #0b2545 !important;
+      box-shadow: 0 2px 8px rgba(11, 48, 87, 0.08) !important;
     }
 
-    html.theme-sky .gemini-response-container {
-      color: #0a1f3c !important;
+    html.theme-sky #theme-dropdown {
+      background: #ffffff !important;
+      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      box-shadow: 0 10px 30px rgba(11, 48, 87, 0.15) !important;
     }
 
-    html.theme-sky .gemini-response-container strong,
-    html.theme-sky .gemini-response-container h1,
-    html.theme-sky .gemini-response-container h2,
-    html.theme-sky .gemini-response-container h3 {
-      color: #021226 !important;
+    html.theme-sky .theme-option {
+      color: #0b2545 !important;
     }
 
+    html.theme-sky .theme-option:hover {
+      background: rgba(2, 132, 199, 0.1) !important;
+      color: #0284c7 !important;
+    }
+
+    /* Transparent Bottom Dock in Sky (Removes Black Bar) */
+    html.theme-sky footer,
+    html.theme-sky main > div:last-child,
+    html.theme-sky div[class*="bottom-0"] {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+
+    html.theme-sky p[class*="text-slate"] {
+      color: #1e3a5f !important;
+    }
+
+    /* Cloud Input Dock in Sky */
     html.theme-sky #chat-form {
-      background: rgba(255, 255, 255, 0.88) !important;
-      backdrop-filter: blur(24px) !important;
+      background: rgba(255, 255, 255, 0.92) !important;
+      backdrop-filter: blur(20px) !important;
       border: 1px solid rgba(255, 255, 255, 0.95) !important;
-      box-shadow: 0 10px 30px rgba(11, 48, 87, 0.16) !important;
+      box-shadow: 0 10px 30px rgba(11, 48, 87, 0.12) !important;
     }
 
     html.theme-sky #user-input {
@@ -374,12 +368,12 @@ function injectGeminiThemeStyles() {
     }
 
     html.theme-sky #user-input::placeholder {
-      color: #415978 !important;
+      color: #4b6584 !important;
     }
 
     html.theme-sky #attach-btn,
     html.theme-sky #voice-btn {
-      color: #0369a1 !important;
+      color: #0284c7 !important;
     }
 
     html.theme-sky #submit-btn {
@@ -387,24 +381,91 @@ function injectGeminiThemeStyles() {
       color: #ffffff !important;
     }
 
-    html.theme-sky #scroll-down-dock-btn {
-      background: rgba(255, 255, 255, 0.92) !important;
-      border-color: rgba(255, 255, 255, 0.98) !important;
-      color: #0284c7 !important;
-      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25) !important;
+    /* Unified Cohesive Sky Sidebar */
+    html.theme-sky #sidebar {
+      background: #f0f7ff !important;
+      border-right: 1px solid rgba(186, 224, 253, 0.9) !important;
+      color: #0b2545 !important;
     }
 
-    html.theme-sky #sidebar {
-      background: rgba(234, 245, 255, 0.96) !important;
-      backdrop-filter: blur(24px) !important;
-      border-right: 1px solid rgba(186, 224, 253, 0.8) !important;
-      color: #0a1f3c !important;
+    html.theme-sky #sidebar header,
+    html.theme-sky #sidebar .border-b,
+    html.theme-sky #sidebar .border-t {
+      border-color: rgba(186, 224, 253, 0.7) !important;
+    }
+
+    html.theme-sky #sidebar span,
+    html.theme-sky #sidebar button,
+    html.theme-sky #sidebar i {
+      color: #0b2545 !important;
+    }
+
+    html.theme-sky #search-chats,
+    html.theme-sky #persona-btn {
+      background: #ffffff !important;
+      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      color: #0b2545 !important;
+    }
+
+    html.theme-sky #search-chats::placeholder {
+      color: #64748b !important;
+    }
+
+    html.theme-sky #chat-list div span {
+      color: #1e293b !important;
+      font-weight: 500 !important;
+    }
+
+    html.theme-sky #chat-list div:hover {
+      background: rgba(2, 132, 199, 0.12) !important;
+    }
+
+    html.theme-sky #chat-list div[class*="bg-blue"] {
+      background: rgba(2, 132, 199, 0.18) !important;
+      border-color: rgba(2, 132, 199, 0.35) !important;
+    }
+
+    html.theme-sky #chat-list div[class*="bg-blue"] span {
+      color: #0284c7 !important;
+      font-weight: 600 !important;
+    }
+
+    /* Account Drawer at Bottom of Sidebar */
+    html.theme-sky #user-logged-in-view,
+    html.theme-sky #guest-signin-view,
+    html.theme-sky #sidebar > div:last-child {
+      background: #e2f0fd !important;
+      border-color: rgba(186, 224, 253, 0.9) !important;
+    }
+
+    html.theme-sky #account-switcher-btn {
+      background: #ffffff !important;
+      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+    }
+
+    html.theme-sky #user-email-display {
+      color: #0b2545 !important;
+      font-weight: 600 !important;
+    }
+
+    html.theme-sky #pinned-notes-trigger-btn,
+    html.theme-sky #clear-btn,
+    html.theme-sky #export-btn {
+      background: #ffffff !important;
+      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      color: #0b2545 !important;
     }
   `;
   document.head.appendChild(style);
 }
 
-// --- Custom Settings Select Pickers ---
+// --- Dynamic Responsive Placeholder ---
+function updateSearchPlaceholder() {
+  if (!input) return;
+  input.placeholder = "Ask XAMO...";
+}
+
+// --- Custom In-App Dropdowns (Blocks Native Mobile Popover) ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -434,6 +495,8 @@ function initCustomSelectors() {
 
   function buildPicker(selectEl, options, currentVal, onChange) {
     if (!selectEl || !selectEl.parentElement) return;
+    
+    // Completely hide native select so mobile OS dialog never opens
     selectEl.style.setProperty('display', 'none', 'important');
 
     const existingWrapper = selectEl.parentElement.querySelector('.xamo-custom-select-wrapper');
@@ -522,7 +585,7 @@ function executeAutonomousAction(actionType, param) {
     const validThemes = ['sky', 'dark', 'mirror', 'default'];
     const chosen = validThemes.includes(cleanParam.toLowerCase()) ? cleanParam.toLowerCase() : 'default';
     applyTheme(chosen);
-    showXamoToast(`Theme changed to ${chosen.toUpperCase()}`);
+    showXamoToast(`Theme set to ${chosen.toUpperCase()}`);
   } else if (actionType === 'SET_CLOCK') {
     const chosen = cleanParam.includes('24') ? '24' : '12';
     appSettings.timeFormat = chosen;
@@ -559,7 +622,6 @@ function executeAutonomousAction(actionType, param) {
   }
 }
 
-// Client-Side Immediate Intent Interceptor for Instant Feedback
 function checkImmediateUserIntent(text) {
   const lower = text.toLowerCase();
 
@@ -1704,7 +1766,6 @@ function renderMath(element) {
 }
 
 function parseMarkdownSafely(text) {
-  // Strip out any internal action tags from the user's visible markdown output
   const cleanDisplay = (text || '').replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
   const rawHtml = marked.parse(cleanDisplay);
   return window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml;
@@ -2208,7 +2269,7 @@ if (exportBtn) {
   });
 }
 
-// Instant Dispatch with Immediate Session Persistence and Natural Language Action Detection
+// Instant Dispatch with Intent Checking
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2222,7 +2283,6 @@ if (form) {
     const welcomeScreen = document.getElementById('welcome-screen');
     if (welcomeScreen) welcomeScreen.remove();
 
-    // Check natural language intent immediately for immediate UI response
     checkImmediateUserIntent(rawTypedText);
 
     const userParts = [];
@@ -2359,7 +2419,7 @@ async function triggerApiCall() {
       }
     }
 
-    // Parse autonomous action tags from AI response
+    // Execute any autonomous action tag embedded in response
     const actionMatch = fullText.match(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/);
     if (actionMatch) {
       executeAutonomousAction(actionMatch[1], actionMatch[2]);
@@ -2446,6 +2506,7 @@ async function triggerApiCall() {
     regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
     regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
     regenBtn.onclick = () => regenerateLastResponse();
+    footerDiv.appendChild(regenBtn);
 
     footerDiv.appendChild(pinBtn);
     footerDiv.appendChild(likeBtn);
@@ -2458,11 +2519,9 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
-
-    footerDiv.appendChild(regenBtn);
 
     botDiv.appendChild(footerDiv);
     
@@ -2478,6 +2537,7 @@ async function triggerApiCall() {
 // --- Lifecycle Initialization ---
 injectGeminiThemeStyles();
 injectScrollDownButton();
+updateSearchPlaceholder();
 initVoices();
 initAuth();
 handleUrlAuthFlags();
