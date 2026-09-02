@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - PROFESSIONAL GEMINI ENGINE (PERSISTENT MEDIA & PRO TYPOGRAPHY)
+// XAMO AI - CORE ENGINE (GEMINI PRO DOCK, LONG-PRESS COPY & SLEEK SELECTORS)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -27,13 +27,13 @@ const withTimeout = (promise, ms = 7000) =>
     new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
   ]);
 
-// --- Injected Gemini Pro UI Design Engine ---
+// --- Injected Gemini Pro UI & Custom Selector Styles ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'gemini-pro-theme-styles';
   style.textContent = `
-    /* Gemini Pro Mobile & Desktop Typography */
+    /* Typography & Bubbles */
     .gemini-user-bubble {
       background-color: #282a2c !important;
       color: #f1f3f4 !important;
@@ -45,6 +45,8 @@ function injectGeminiThemeStyles() {
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
       border: 1px solid rgba(255, 255, 255, 0.06) !important;
       max-width: 86% !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
     }
 
     .gemini-response-container {
@@ -53,21 +55,15 @@ function injectGeminiThemeStyles() {
       color: #e3e3e3 !important;
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
       letter-spacing: -0.012em !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
     }
 
-    .gemini-response-container p {
-      margin-bottom: 1.1rem !important;
-    }
-
-    .gemini-response-container strong {
-      color: #ffffff !important;
-      font-weight: 600 !important;
-    }
-
+    .gemini-response-container p { margin-bottom: 1.1rem !important; }
+    .gemini-response-container strong { color: #ffffff !important; font-weight: 600 !important; }
     .gemini-response-container h1, 
     .gemini-response-container h2, 
-    .gemini-response-container h3,
-    .gemini-response-container h4 {
+    .gemini-response-container h3 {
       color: #f8f9fa !important;
       font-weight: 600 !important;
       margin-top: 1.4rem !important;
@@ -75,17 +71,7 @@ function injectGeminiThemeStyles() {
       font-size: 17px !important;
     }
 
-    .gemini-response-container ol, 
-    .gemini-response-container ul {
-      margin-left: 1.25rem !important;
-      margin-bottom: 1.1rem !important;
-    }
-
-    .gemini-response-container li {
-      margin-bottom: 0.4rem !important;
-    }
-
-    /* Gemini Floating Dock Pill Search Bar */
+    /* Floating Pill Search Bar Dock */
     #chat-form {
       background-color: #1e1f20 !important;
       border: 1px solid #33353a !important;
@@ -117,25 +103,274 @@ function injectGeminiThemeStyles() {
       font-size: 15px !important;
     }
 
-    #attach-btn {
-      color: #c4c7c5 !important;
-      width: 36px !important;
-      height: 36px !important;
-      border-radius: 50% !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      transition: background 0.15s ease !important;
+    /* Floating Scroll-Down Chevron */
+    #scroll-down-dock-btn {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #1e1f20;
+      border: 1px solid #3c4043;
+      color: #e3e3e3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease, background 0.15s ease;
     }
 
-    #attach-btn:hover {
-      background: rgba(255, 255, 255, 0.08) !important;
-      color: #ffffff !important;
+    #scroll-down-dock-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #scroll-down-dock-btn:hover {
+      background: #2d2f31;
+    }
+
+    /* Custom Sleek Settings Pickers */
+    .xamo-custom-select-trigger {
+      width: 100%;
+      background-color: #141518;
+      border: 1px solid #282a2e;
+      border-radius: 14px;
+      padding: 10px 14px;
+      color: #f1f3f4;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .xamo-custom-select-trigger:hover {
+      border-color: #3b3e45;
+    }
+
+    .xamo-select-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 100%;
+      max-height: 240px;
+      overflow-y: auto;
+      background: #18191d;
+      border: 1px solid #2e3036;
+      border-radius: 16px;
+      padding: 6px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      z-index: 60;
+    }
+
+    .xamo-select-option {
+      padding: 9px 12px;
+      font-size: 12.5px;
+      color: #c4c7c5;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .xamo-select-option:hover {
+      background: #25272c;
+      color: #ffffff;
+    }
+
+    .xamo-select-option.selected {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      font-weight: 600;
     }
   `;
   document.head.appendChild(style);
 }
 injectGeminiThemeStyles();
+
+// --- Downward Scroll-To-Bottom Dock Injection ---
+function injectScrollDownButton() {
+  if (document.getElementById('scroll-down-dock-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'scroll-down-dock-btn';
+  btn.type = 'button';
+  btn.title = "Scroll to bottom";
+  btn.innerHTML = '<i class="fa-solid fa-arrow-down text-xs"></i>';
+  btn.onclick = () => {
+    if (chatBox) {
+      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+    }
+  };
+  document.body.appendChild(btn);
+
+  if (chatBox) {
+    chatBox.addEventListener('scroll', () => {
+      const scrollOffset = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
+      if (scrollOffset > 140) {
+        btn.classList.add('visible');
+      } else {
+        btn.classList.remove('visible');
+      }
+    }, { passive: true });
+  }
+}
+injectScrollDownButton();
+
+// --- Long-Press Clipboard Engine ---
+function attachLongPressCopy(element, rawText) {
+  let pressTimer = null;
+  let startX = 0, startY = 0;
+
+  const start = (e) => {
+    if (e.touches && e.touches.length > 1) return;
+    if (e.touches) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+    pressTimer = setTimeout(() => {
+      navigator.clipboard.writeText(rawText).then(() => {
+        if (navigator.vibrate) navigator.vibrate(45);
+        showXamoToast("Copied to clipboard!");
+      });
+    }, 450);
+  };
+
+  const cancel = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const move = (e) => {
+    if (e.touches) {
+      const diffX = Math.abs(e.touches[0].clientX - startX);
+      const diffY = Math.abs(e.touches[0].clientY - startY);
+      if (diffX > 8 || diffY > 8) cancel();
+    }
+  };
+
+  element.addEventListener('touchstart', start, { passive: true });
+  element.addEventListener('touchend', cancel);
+  element.addEventListener('touchcancel', cancel);
+  element.addEventListener('touchmove', move, { passive: true });
+}
+
+// --- Custom Sleek Select Components ---
+function initCustomSelectors() {
+  const timeSelect = document.getElementById('settings-time-format-select');
+  const langSelect = document.getElementById('settings-language-select');
+
+  const TIME_OPTIONS = [
+    { value: '12', label: '12-Hour Format (e.g. 03:30 PM)' },
+    { value: '24', label: '24-Hour Format (e.g. 15:30)' }
+  ];
+
+  const LANG_OPTIONS = [
+    { value: 'auto', label: "Auto-Detect / User's Query Language (Default)" },
+    { value: 'English', label: 'English' },
+    { value: 'Spanish', label: 'Spanish (Español)' },
+    { value: 'French', label: 'French (Français)' },
+    { value: 'German', label: 'German (Deutsch)' },
+    { value: 'Italian', label: 'Italian (Italiano)' },
+    { value: 'Portuguese', label: 'Portuguese (Português)' },
+    { value: 'Russian', label: 'Russian (Русский)' },
+    { value: 'Chinese', label: 'Chinese (Simplified)' },
+    { value: 'Hindi', label: 'Hindi (हिन्दी)' },
+    { value: 'Urdu', label: 'Urdu (اردو)' },
+    { value: 'Kashmiri', label: 'Kashmiri (کٲشُر)' },
+    { value: 'Arabic', label: 'Arabic (العربية)' },
+    { value: 'Japanese', label: 'Japanese (日本語)' },
+    { value: 'Korean', label: 'Korean (한국어)' }
+  ];
+
+  function buildPicker(selectEl, options, currentVal, onChange) {
+    if (!selectEl) return;
+    selectEl.style.display = 'none';
+
+    const existingWrapper = selectEl.parentElement.querySelector('.xamo-custom-select-wrapper');
+    if (existingWrapper) existingWrapper.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'xamo-custom-select-wrapper relative w-full mt-1.5';
+
+    const currentItem = options.find(o => o.value === currentVal) || options[0];
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'xamo-custom-select-trigger';
+    trigger.innerHTML = `
+      <span class="truncate selected-text">${currentItem.label}</span>
+      <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-2 flex-shrink-0 transition-transform"></i>
+    `;
+
+    const menu = document.createElement('div');
+    menu.className = 'xamo-select-menu hidden';
+
+    options.forEach(opt => {
+      const item = document.createElement('div');
+      const isSelected = opt.value === currentVal;
+      item.className = `xamo-select-option ${isSelected ? 'selected' : ''}`;
+      item.innerHTML = `
+        <span class="truncate">${opt.label}</span>
+        ${isSelected ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+      `;
+
+      item.onclick = (e) => {
+        e.stopPropagation();
+        menu.classList.add('hidden');
+        trigger.querySelector('.selected-text').textContent = opt.label;
+        trigger.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
+        selectEl.value = opt.value;
+        onChange(opt.value);
+        wrapper.querySelectorAll('.xamo-select-option').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+      };
+
+      menu.appendChild(item);
+    });
+
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      const isClosed = menu.classList.contains('hidden');
+      document.querySelectorAll('.xamo-select-menu').forEach(m => m.classList.add('hidden'));
+      document.querySelectorAll('.xamo-custom-select-trigger .fa-chevron-down').forEach(i => i.style.transform = 'rotate(0deg)');
+
+      if (isClosed) {
+        menu.classList.remove('hidden');
+        trigger.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
+      }
+    };
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+    selectEl.parentElement.appendChild(wrapper);
+  }
+
+  buildPicker(timeSelect, TIME_OPTIONS, appSettings.timeFormat || '12', (val) => {
+    appSettings.timeFormat = val;
+  });
+
+  buildPicker(langSelect, LANG_OPTIONS, appSettings.language || 'auto', (val) => {
+    appSettings.language = val;
+  });
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.xamo-select-menu').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.xamo-custom-select-trigger .fa-chevron-down').forEach(i => i.style.transform = 'rotate(0deg)');
+  });
+}
 
 // --- Nickname Engine ---
 const nicknameModal = document.getElementById('nickname-modal');
@@ -269,8 +504,6 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeSettings = document.getElementById('close-settings');
 const saveSettings = document.getElementById('save-settings');
-const settingsLangSelect = document.getElementById('settings-language-select');
-const settingsTimeSelect = document.getElementById('settings-time-format-select');
 
 const personaBtn = document.getElementById('persona-btn');
 const personaDropdown = document.getElementById('persona-dropdown');
@@ -764,7 +997,7 @@ function showXamoToast(message) {
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
-  }, 4000);
+  }, 3500);
 }
 
 // --- Attachment Modal Viewer ---
@@ -859,10 +1092,10 @@ if (input && slashMenu) {
 // --- Settings Modal Logic ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
-  if (settingsLangSelect) settingsLangSelect.value = appSettings.language || "auto";
-  if (settingsTimeSelect) settingsTimeSelect.value = appSettings.timeFormat || "12";
   settingsModal.classList.remove('hidden');
+  initCustomSelectors();
 });
+
 if (closeSettings && settingsModal) closeSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
 if (saveSettings && settingsModal) {
@@ -872,10 +1105,7 @@ if (saveSettings && settingsModal) {
       if (newNick) saveCurrentNickname(newNick);
     }
 
-    appSettings.language = settingsLangSelect ? settingsLangSelect.value : "auto";
-    appSettings.timeFormat = settingsTimeSelect ? settingsTimeSelect.value : "12";
     localStorage.setItem('xamo_app_settings', JSON.stringify(appSettings));
-
     settingsModal.classList.add('hidden');
     showXamoToast("Preferences saved successfully!");
   });
@@ -1016,7 +1246,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- Optimized Light-Payload Media Processor (Guarantees Persistence) ---
+// --- Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1033,7 +1263,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1000; // Perfect balance of high clarity and lightweight database size (~60KB)
+        const maxDim = 1000;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -1232,7 +1462,6 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- Auth State Handshake (Prevents Session Wipes) ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1581,7 +1810,6 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Bulletproof Session Storage (Lightweight & Permanent) ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -1594,7 +1822,6 @@ async function saveCurrentSession() {
     }
   }
 
-  // Strip massive inline_data so the database JSON payload stays feather-light (<100KB)
   const cleanHistory = currentChatHistory.map(msg => {
     const newParts = msg.parts.map(part => {
       if (part.inline_data) {
@@ -1609,7 +1836,7 @@ async function saveCurrentSession() {
         name: msg.file.name,
         category: msg.file.category,
         mimeType: msg.file.mimeType,
-        uri: msg.file.uri || "", // Clean, light preview URI
+        uri: msg.file.uri || "",
         content: msg.file.content || ""
       };
     }
@@ -1724,7 +1951,6 @@ window.editMessage = function(index) {
   renderChatBox();
 };
 
-// --- In-Line Media Previews & Gemini Pro Layout ---
 function renderChatBox() {
   if (!chatBox) return;
   chatBox.innerHTML = "";
@@ -1781,6 +2007,13 @@ function renderChatBox() {
       const editBtnHtml = `<button onclick="editMessage(${index})" class="text-xs text-slate-400 hover:text-blue-400 mr-2 mb-1 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen text-[10px]"></i> Edit</button>`;
       
       div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble">${contentHtml}</div></div>`;
+
+      // Attach Long-Press to User Bubble
+      const userBubble = div.querySelector('.gemini-user-bubble');
+      if (userBubble && msg.rawUserText) {
+        attachLongPressCopy(userBubble, msg.rawUserText);
+      }
+
     } else {
       const textVal = (msg.parts && msg.parts[0]) ? msg.parts[0].text : "";
       const isLastBotMsg = index === currentChatHistory.length - 1;
@@ -1788,6 +2021,12 @@ function renderChatBox() {
       div.innerHTML = `
         <div class="gemini-response-container w-full leading-relaxed break-words">${parseMarkdownSafely(textVal)}</div>
       `;
+
+      // Attach Long-Press to Model Response
+      const botResponse = div.querySelector('.gemini-response-container');
+      if (botResponse && textVal) {
+        attachLongPressCopy(botResponse, textVal);
+      }
 
       const footerDiv = document.createElement('div');
       footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
@@ -2038,8 +2277,6 @@ if (form) {
     });
     
     renderChatBox();
-    
-    // Save state immediately so the upload is never lost even if the user leaves before the answer completes
     await saveCurrentSession();
     await triggerApiCall();
   });
