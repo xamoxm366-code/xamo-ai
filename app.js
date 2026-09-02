@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE ENGINE (GEMINI PRO DOCK, LONG-PRESS COPY & SLEEK SELECTORS)
+// XAMO AI - CORE CLIENT ENGINE (STABLE LIFECYCLE, GEMINI DOCK & CUSTOM PICKERS)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -27,13 +27,119 @@ const withTimeout = (promise, ms = 7000) =>
     new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
   ]);
 
-// --- Injected Gemini Pro UI & Custom Selector Styles ---
+// --- DOM References (Declared Top-Level to Avoid Initialization Errors) ---
+const form = document.getElementById('chat-form');
+const input = document.getElementById('user-input');
+const submitBtn = document.getElementById('submit-btn');
+const chatBox = document.getElementById('chat-box');
+const clearBtn = document.getElementById('clear-btn');
+const newChatBtn = document.getElementById('new-chat-btn');
+const chatList = document.getElementById('chat-list');
+const searchChatsInput = document.getElementById('search-chats');
+const exportBtn = document.getElementById('export-btn');
+
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const closeSidebarBtn = document.getElementById('close-sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const closeSettings = document.getElementById('close-settings');
+const saveSettings = document.getElementById('save-settings');
+const settingsLangSelect = document.getElementById('settings-language-select');
+const settingsTimeSelect = document.getElementById('settings-time-format-select');
+
+const personaBtn = document.getElementById('persona-btn');
+const personaDropdown = document.getElementById('persona-dropdown');
+const personaLabel = document.getElementById('persona-label');
+const personaListOptions = document.getElementById('persona-list-options');
+const addPersonaTrigger = document.getElementById('add-persona-trigger');
+const personaModal = document.getElementById('persona-modal');
+const closePersonaModal = document.getElementById('close-persona-modal');
+const savePersonaBtn = document.getElementById('save-persona-btn');
+
+const newPersonaName = document.getElementById('persona-name-input');
+const newPersonaPrompt = document.getElementById('persona-prompt-input');
+
+const imageInput = document.getElementById('image-input');
+const attachBtn = document.getElementById('attach-btn');
+const imagePreviewContainer = document.getElementById('image-preview-container');
+const imagePreview = document.getElementById('image-preview');
+const removeImageBtn = document.getElementById('remove-image');
+const fileNamePreview = document.getElementById('file-name-preview');
+const fileIcon = document.getElementById('file-icon');
+
+const fileViewerModal = document.getElementById('file-viewer-modal');
+const closeFileViewer = document.getElementById('close-file-viewer');
+const viewerFileIcon = document.getElementById('viewer-file-icon');
+const viewerFileTitle = document.getElementById('viewer-file-title');
+const viewerContentContainer = document.getElementById('viewer-content-container');
+const viewerCopyBtn = document.getElementById('viewer-copy-btn');
+
+const verifiedModal = document.getElementById('verified-modal');
+const closeVerifiedBtn = document.getElementById('close-verified-btn');
+
+const userLoggedInView = document.getElementById('user-logged-in-view');
+const guestSigninView = document.getElementById('guest-signin-view');
+const guestSigninBtn = document.getElementById('guest-signin-btn');
+const userEmailDisplay = document.getElementById('user-email-display');
+const accountSwitcherBtn = document.getElementById('account-switcher-btn');
+const accountSwitcherMenu = document.getElementById('account-switcher-menu');
+const savedAccountsList = document.getElementById('saved-accounts-list');
+const addAnotherAccountBtn = document.getElementById('add-another-account-btn');
+const signoutCurrentAccountBtn = document.getElementById('signout-current-account-btn');
+
+const pinnedNotesModal = document.getElementById('pinned-notes-modal');
+const pinnedNotesTriggerBtn = document.getElementById('pinned-notes-trigger-btn');
+const closePinnedModal = document.getElementById('close-pinned-modal');
+const pinnedNotesContainer = document.getElementById('pinned-notes-container');
+const pinnedCountBadge = document.getElementById('pinned-count-badge');
+
+const authModal = document.getElementById('auth-modal');
+const closeAuthModal = document.getElementById('close-auth-modal');
+const authSubmitBtn = document.getElementById('auth-submit-btn');
+const authEmailInput = document.getElementById('auth-email');
+const authPasswordInput = document.getElementById('auth-password');
+const authPasswordGroup = document.getElementById('auth-password-group');
+const authModalTitle = document.getElementById('auth-modal-title');
+const authModalDesc = document.getElementById('auth-modal-desc');
+const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+const authPasswordEyeBtn = document.getElementById('auth-password-eye-btn');
+const authPasswordEyeIcon = document.getElementById('auth-password-eye-icon');
+const authErrorBanner = document.getElementById('auth-error-banner');
+const authErrorText = document.getElementById('auth-error-text');
+
+const nicknameModal = document.getElementById('nickname-modal');
+const nicknameInput = document.getElementById('nickname-input');
+const saveNicknameBtn = document.getElementById('save-nickname-btn');
+const settingsNicknameInput = document.getElementById('settings-nickname-input');
+const welcomeHeading = document.getElementById('welcome-heading');
+const adminPanelLink = document.getElementById('admin-panel-link');
+
+const themeBtn = document.getElementById('theme-btn');
+const themeDropdown = document.getElementById('theme-dropdown');
+const themeLabel = document.getElementById('theme-label');
+const themeOptions = document.querySelectorAll('.theme-option');
+
+const slashMenu = document.getElementById('slash-menu');
+const slashOptions = document.querySelectorAll('#slash-list li');
+const voiceBtn = document.getElementById('voice-btn');
+
+let authMode = "signin";
+let attachedFile = null;
+let resetEmailCooldown = false;
+let currentChatHistory = []; 
+let sessions = [];
+let activeSessionId = null;
+
+// --- CSS Engine Injection (Gemini Typography, Floating Pill & Dropdowns) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'gemini-pro-theme-styles';
   style.textContent = `
-    /* Typography & Bubbles */
     .gemini-user-bubble {
       background-color: #282a2c !important;
       color: #f1f3f4 !important;
@@ -71,7 +177,6 @@ function injectGeminiThemeStyles() {
       font-size: 17px !important;
     }
 
-    /* Floating Pill Search Bar Dock */
     #chat-form {
       background-color: #1e1f20 !important;
       border: 1px solid #33353a !important;
@@ -103,7 +208,6 @@ function injectGeminiThemeStyles() {
       font-size: 15px !important;
     }
 
-    /* Floating Scroll-Down Chevron */
     #scroll-down-dock-btn {
       position: fixed;
       bottom: 84px;
@@ -136,7 +240,6 @@ function injectGeminiThemeStyles() {
       background: #2d2f31;
     }
 
-    /* Custom Sleek Settings Pickers */
     .xamo-custom-select-trigger {
       width: 100%;
       background-color: #141518;
@@ -162,7 +265,7 @@ function injectGeminiThemeStyles() {
       top: calc(100% + 6px);
       left: 0;
       width: 100%;
-      max-height: 240px;
+      max-height: 230px;
       overflow-y: auto;
       background: #18191d;
       border: 1px solid #2e3036;
@@ -197,9 +300,8 @@ function injectGeminiThemeStyles() {
   `;
   document.head.appendChild(style);
 }
-injectGeminiThemeStyles();
 
-// --- Downward Scroll-To-Bottom Dock Injection ---
+// --- Floating Scroll-To-Bottom Dock ---
 function injectScrollDownButton() {
   if (document.getElementById('scroll-down-dock-btn')) return;
   const btn = document.createElement('button');
@@ -217,7 +319,7 @@ function injectScrollDownButton() {
   if (chatBox) {
     chatBox.addEventListener('scroll', () => {
       const scrollOffset = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
-      if (scrollOffset > 140) {
+      if (scrollOffset > 120) {
         btn.classList.add('visible');
       } else {
         btn.classList.remove('visible');
@@ -225,10 +327,10 @@ function injectScrollDownButton() {
     }, { passive: true });
   }
 }
-injectScrollDownButton();
 
 // --- Long-Press Clipboard Engine ---
 function attachLongPressCopy(element, rawText) {
+  if (!element || !rawText) return;
   let pressTimer = null;
   let startX = 0, startY = 0;
 
@@ -240,7 +342,7 @@ function attachLongPressCopy(element, rawText) {
     }
     pressTimer = setTimeout(() => {
       navigator.clipboard.writeText(rawText).then(() => {
-        if (navigator.vibrate) navigator.vibrate(45);
+        if (navigator.vibrate) navigator.vibrate(40);
         showXamoToast("Copied to clipboard!");
       });
     }, 450);
@@ -257,7 +359,7 @@ function attachLongPressCopy(element, rawText) {
     if (e.touches) {
       const diffX = Math.abs(e.touches[0].clientX - startX);
       const diffY = Math.abs(e.touches[0].clientY - startY);
-      if (diffX > 8 || diffY > 8) cancel();
+      if (diffX > 10 || diffY > 10) cancel();
     }
   };
 
@@ -265,9 +367,12 @@ function attachLongPressCopy(element, rawText) {
   element.addEventListener('touchend', cancel);
   element.addEventListener('touchcancel', cancel);
   element.addEventListener('touchmove', move, { passive: true });
+  element.addEventListener('mousedown', start);
+  element.addEventListener('mouseup', cancel);
+  element.addEventListener('mouseleave', cancel);
 }
 
-// --- Custom Sleek Select Components ---
+// --- Custom Sleek Select Pickers ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -296,7 +401,7 @@ function initCustomSelectors() {
   ];
 
   function buildPicker(selectEl, options, currentVal, onChange) {
-    if (!selectEl) return;
+    if (!selectEl || !selectEl.parentElement) return;
     selectEl.style.display = 'none';
 
     const existingWrapper = selectEl.parentElement.querySelector('.xamo-custom-select-wrapper');
@@ -372,14 +477,7 @@ function initCustomSelectors() {
   });
 }
 
-// --- Nickname Engine ---
-const nicknameModal = document.getElementById('nickname-modal');
-const nicknameInput = document.getElementById('nickname-input');
-const saveNicknameBtn = document.getElementById('save-nickname-btn');
-const settingsNicknameInput = document.getElementById('settings-nickname-input');
-const welcomeHeading = document.getElementById('welcome-heading');
-const adminPanelLink = document.getElementById('admin-panel-link');
-
+// --- Persistent Nickname Storage ---
 function getNicknameStorageKey() {
   return currentUser ? `xamo_nickname_${currentUser.id}` : 'xamo_guest_nickname';
 }
@@ -430,12 +528,7 @@ if (saveNicknameBtn && nicknameInput) {
   });
 }
 
-// --- Theme Engine ---
-const themeBtn = document.getElementById('theme-btn');
-const themeDropdown = document.getElementById('theme-dropdown');
-const themeLabel = document.getElementById('theme-label');
-const themeOptions = document.querySelectorAll('.theme-option');
-
+// --- Theme Picker ---
 function applyTheme(themeName) {
   document.documentElement.classList.remove('theme-light', 'theme-dark', 'theme-sky', 'theme-mirror');
   localStorage.setItem('xamo_theme', themeName);
@@ -483,93 +576,6 @@ document.addEventListener('click', () => {
 });
 
 applyTheme(localStorage.getItem('xamo_theme') || 'default');
-
-// --- Element References ---
-const form = document.getElementById('chat-form');
-const input = document.getElementById('user-input');
-const submitBtn = document.getElementById('submit-btn');
-const chatBox = document.getElementById('chat-box');
-const clearBtn = document.getElementById('clear-btn');
-const newChatBtn = document.getElementById('new-chat-btn');
-const chatList = document.getElementById('chat-list');
-const searchChatsInput = document.getElementById('search-chats');
-const exportBtn = document.getElementById('export-btn');
-
-const sidebar = document.getElementById('sidebar');
-const sidebarToggle = document.getElementById('sidebar-toggle');
-const closeSidebarBtn = document.getElementById('close-sidebar');
-const sidebarOverlay = document.getElementById('sidebar-overlay');
-
-const settingsBtn = document.getElementById('settings-btn');
-const settingsModal = document.getElementById('settings-modal');
-const closeSettings = document.getElementById('close-settings');
-const saveSettings = document.getElementById('save-settings');
-
-const personaBtn = document.getElementById('persona-btn');
-const personaDropdown = document.getElementById('persona-dropdown');
-const personaLabel = document.getElementById('persona-label');
-const personaListOptions = document.getElementById('persona-list-options');
-const addPersonaTrigger = document.getElementById('add-persona-trigger');
-const personaModal = document.getElementById('persona-modal');
-const closePersonaModal = document.getElementById('close-persona-modal');
-const savePersonaBtn = document.getElementById('save-persona-btn');
-
-const newPersonaName = document.getElementById('persona-name-input');
-const newPersonaPrompt = document.getElementById('persona-prompt-input');
-
-const imageInput = document.getElementById('image-input');
-const attachBtn = document.getElementById('attach-btn');
-const imagePreviewContainer = document.getElementById('image-preview-container');
-const imagePreview = document.getElementById('image-preview');
-const removeImageBtn = document.getElementById('remove-image');
-const fileNamePreview = document.getElementById('file-name-preview');
-const fileIcon = document.getElementById('file-icon');
-
-const fileViewerModal = document.getElementById('file-viewer-modal');
-const closeFileViewer = document.getElementById('close-file-viewer');
-const viewerFileIcon = document.getElementById('viewer-file-icon');
-const viewerFileTitle = document.getElementById('viewer-file-title');
-const viewerContentContainer = document.getElementById('viewer-content-container');
-const viewerCopyBtn = document.getElementById('viewer-copy-btn');
-
-const verifiedModal = document.getElementById('verified-modal');
-const closeVerifiedBtn = document.getElementById('close-verified-btn');
-
-const userLoggedInView = document.getElementById('user-logged-in-view');
-const guestSigninView = document.getElementById('guest-signin-view');
-const guestSigninBtn = document.getElementById('guest-signin-btn');
-const userEmailDisplay = document.getElementById('user-email-display');
-const accountSwitcherBtn = document.getElementById('account-switcher-btn');
-const accountSwitcherMenu = document.getElementById('account-switcher-menu');
-const savedAccountsList = document.getElementById('saved-accounts-list');
-const addAnotherAccountBtn = document.getElementById('add-another-account-btn');
-const signoutCurrentAccountBtn = document.getElementById('signout-current-account-btn');
-
-const pinnedNotesModal = document.getElementById('pinned-notes-modal');
-const pinnedNotesTriggerBtn = document.getElementById('pinned-notes-trigger-btn');
-const closePinnedModal = document.getElementById('close-pinned-modal');
-const pinnedNotesContainer = document.getElementById('pinned-notes-container');
-const pinnedCountBadge = document.getElementById('pinned-count-badge');
-
-const authModal = document.getElementById('auth-modal');
-const closeAuthModal = document.getElementById('close-auth-modal');
-const authSubmitBtn = document.getElementById('auth-submit-btn');
-const authEmailInput = document.getElementById('auth-email');
-const authPasswordInput = document.getElementById('auth-password');
-const authPasswordGroup = document.getElementById('auth-password-group');
-const authModalTitle = document.getElementById('auth-modal-title');
-const authModalDesc = document.getElementById('auth-modal-desc');
-const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
-const forgotPasswordLink = document.getElementById('forgot-password-link');
-const authPasswordEyeBtn = document.getElementById('auth-password-eye-btn');
-const authPasswordEyeIcon = document.getElementById('auth-password-eye-icon');
-const authErrorBanner = document.getElementById('auth-error-banner');
-const authErrorText = document.getElementById('auth-error-text');
-
-let authMode = "signin";
-let attachedFile = null;
-let resetEmailCooldown = false;
-const voiceBtn = document.getElementById('voice-btn');
 
 function getChatStorageKey() {
   return currentUser ? `xamo_sessions_${currentUser.id}` : 'xamo_guest_sessions';
@@ -1054,9 +1060,6 @@ window.viewAttachedFile = function(index) {
 };
 
 // --- Slash Commands Menu ---
-const slashMenu = document.getElementById('slash-menu');
-const slashOptions = document.querySelectorAll('#slash-list li');
-
 if (input && slashMenu) {
   input.addEventListener('input', () => {
     if (input.value.trim() === '/') {
@@ -1089,7 +1092,7 @@ if (input && slashMenu) {
   });
 }
 
-// --- Settings Modal Logic ---
+// --- Settings Modal Handler ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
   settingsModal.classList.remove('hidden');
@@ -1458,10 +1461,7 @@ if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
 if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
 if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
 
-let currentChatHistory = []; 
-let sessions = [];
-let activeSessionId = null;
-
+// --- Auth State Handshake ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1810,6 +1810,7 @@ function renderSessions(filterText = "") {
   });
 }
 
+// --- Bulletproof Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2008,7 +2009,6 @@ function renderChatBox() {
       
       div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble">${contentHtml}</div></div>`;
 
-      // Attach Long-Press to User Bubble
       const userBubble = div.querySelector('.gemini-user-bubble');
       if (userBubble && msg.rawUserText) {
         attachLongPressCopy(userBubble, msg.rawUserText);
@@ -2022,7 +2022,6 @@ function renderChatBox() {
         <div class="gemini-response-container w-full leading-relaxed break-words">${parseMarkdownSafely(textVal)}</div>
       `;
 
-      // Attach Long-Press to Model Response
       const botResponse = div.querySelector('.gemini-response-container');
       if (botResponse && textVal) {
         attachLongPressCopy(botResponse, textVal);
@@ -2470,7 +2469,7 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
@@ -2487,7 +2486,9 @@ async function triggerApiCall() {
   }
 }
 
-// App Bootstrap
+// --- Lifecycle Bootstrap ---
+injectGeminiThemeStyles();
+injectScrollDownButton();
 initVoices();
 initAuth();
 handleUrlAuthFlags();
