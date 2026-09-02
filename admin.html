@@ -412,7 +412,6 @@
       });
     }
 
-    // --- Full Inspection of All File Formats ---
     function selectChat(chat) {
       activeChatRecord = chat;
       renderChatList();
@@ -457,8 +456,8 @@
           } else if (msg.file.category === "video" && src) {
             mediaBlock = `
               <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
-                <video controls src="${src}" class="rounded-lg max-h-64 w-full"></video>
-                <div class="text-[10px] font-mono text-slate-400 mt-1 truncate">${fileName}</div>
+                <img src="${src}" class="rounded-lg max-h-48 w-full object-cover" />
+                <div class="text-[10px] font-mono text-purple-400 mt-1 truncate"><i class="fa-solid fa-file-video mr-1"></i> ${fileName} (Captured Frame)</div>
               </div>
             `;
           } else if (msg.file.category === "pdf") {
@@ -469,8 +468,8 @@
                     <i class="fa-solid fa-file-pdf text-red-400 text-base"></i>
                     <span class="font-mono text-slate-200 truncate font-semibold">${fileName}</span>
                   </div>
-                  ${src ? `<a href="${src}" download="${fileName}" target="_blank" class="px-2.5 py-1 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-lg text-[11px] font-semibold transition-colors flex-shrink-0"><i class="fa-solid fa-download mr-1"></i> Download</a>` : ''}
                 </div>
+                ${msg.file.content ? `<div class="mt-2 text-[10px] text-slate-400 max-h-24 overflow-y-auto font-mono bg-slate-950 p-2 rounded">${DOMPurify.sanitize(msg.file.content.slice(0, 300))}...</div>` : ''}
               </div>
             `;
           } else if (msg.file.content) {
@@ -490,7 +489,6 @@
                   <i class="fa-solid fa-file text-blue-400"></i>
                   <span class="font-mono text-slate-300 truncate">${fileName}</span>
                 </div>
-                ${src ? `<a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:underline"><i class="fa-solid fa-download"></i></a>` : ''}
               </div>
             `;
           }
@@ -501,11 +499,11 @@
         if (isUser) {
           row.innerHTML = `
             ${mediaBlock}
-            ${body ? `<div class="bg-[#26282e] border border-[#34373f] text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-xs leading-relaxed whitespace-pre-wrap font-sans">${DOMPurify.sanitize(body)}</div>` : ''}
+            ${body ? `<div class="bg-[#282a2c] border border-slate-700/60 text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-[15px] leading-relaxed whitespace-pre-wrap font-sans">${DOMPurify.sanitize(body)}</div>` : ''}
           `;
         } else {
           row.innerHTML = `
-            <div class="bg-[#18191d] border border-[#27292f] text-slate-200 px-4 py-3 rounded-2xl max-w-[90%] text-xs leading-relaxed break-words">
+            <div class="gemini-response-container text-slate-200 px-2 py-2 max-w-[92%] leading-relaxed break-words">
               ${DOMPurify.sanitize(marked.parse(body))}
             </div>
           `;

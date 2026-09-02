@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (IN-LINE MEDIA PREVIEWS & STABLE CHAT SESSION)
+// XAMO AI - PROFESSIONAL GEMINI ENGINE (PERSISTENT MEDIA & PRO TYPOGRAPHY)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -21,13 +21,123 @@ let activeStreamAbortController = null;
 
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
-const withTimeout = (promise, ms = 6000) => 
+const withTimeout = (promise, ms = 7000) => 
   Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
   ]);
 
-// --- Persistent Nickname Engine ---
+// --- Injected Gemini Pro UI Design Engine ---
+function injectGeminiThemeStyles() {
+  if (document.getElementById('gemini-pro-theme-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'gemini-pro-theme-styles';
+  style.textContent = `
+    /* Gemini Pro Mobile & Desktop Typography */
+    .gemini-user-bubble {
+      background-color: #282a2c !important;
+      color: #f1f3f4 !important;
+      border-radius: 22px !important;
+      padding: 12px 18px !important;
+      font-size: 15px !important;
+      line-height: 1.5 !important;
+      letter-spacing: -0.01em !important;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      max-width: 86% !important;
+    }
+
+    .gemini-response-container {
+      font-size: 15.5px !important;
+      line-height: 1.68 !important;
+      color: #e3e3e3 !important;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+      letter-spacing: -0.012em !important;
+    }
+
+    .gemini-response-container p {
+      margin-bottom: 1.1rem !important;
+    }
+
+    .gemini-response-container strong {
+      color: #ffffff !important;
+      font-weight: 600 !important;
+    }
+
+    .gemini-response-container h1, 
+    .gemini-response-container h2, 
+    .gemini-response-container h3,
+    .gemini-response-container h4 {
+      color: #f8f9fa !important;
+      font-weight: 600 !important;
+      margin-top: 1.4rem !important;
+      margin-bottom: 0.6rem !important;
+      font-size: 17px !important;
+    }
+
+    .gemini-response-container ol, 
+    .gemini-response-container ul {
+      margin-left: 1.25rem !important;
+      margin-bottom: 1.1rem !important;
+    }
+
+    .gemini-response-container li {
+      margin-bottom: 0.4rem !important;
+    }
+
+    /* Gemini Floating Dock Pill Search Bar */
+    #chat-form {
+      background-color: #1e1f20 !important;
+      border: 1px solid #33353a !important;
+      border-radius: 30px !important;
+      padding: 6px 14px !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    }
+
+    #chat-form:focus-within {
+      border-color: #4a4d55 !important;
+    }
+
+    #user-input {
+      font-size: 15px !important;
+      color: #f1f3f4 !important;
+      line-height: 1.45 !important;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+      padding: 6px 4px !important;
+    }
+
+    #user-input::placeholder {
+      color: #8e918f !important;
+      font-size: 15px !important;
+    }
+
+    #attach-btn {
+      color: #c4c7c5 !important;
+      width: 36px !important;
+      height: 36px !important;
+      border-radius: 50% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: background 0.15s ease !important;
+    }
+
+    #attach-btn:hover {
+      background: rgba(255, 255, 255, 0.08) !important;
+      color: #ffffff !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+injectGeminiThemeStyles();
+
+// --- Nickname Engine ---
 const nicknameModal = document.getElementById('nickname-modal');
 const nicknameInput = document.getElementById('nickname-input');
 const saveNicknameBtn = document.getElementById('save-nickname-btn');
@@ -192,7 +302,6 @@ const viewerCopyBtn = document.getElementById('viewer-copy-btn');
 const verifiedModal = document.getElementById('verified-modal');
 const closeVerifiedBtn = document.getElementById('close-verified-btn');
 
-// Multi-Account Selectors
 const userLoggedInView = document.getElementById('user-logged-in-view');
 const guestSigninView = document.getElementById('guest-signin-view');
 const guestSigninBtn = document.getElementById('guest-signin-btn');
@@ -203,14 +312,12 @@ const savedAccountsList = document.getElementById('saved-accounts-list');
 const addAnotherAccountBtn = document.getElementById('add-another-account-btn');
 const signoutCurrentAccountBtn = document.getElementById('signout-current-account-btn');
 
-// Pinned Notes Selectors
 const pinnedNotesModal = document.getElementById('pinned-notes-modal');
 const pinnedNotesTriggerBtn = document.getElementById('pinned-notes-trigger-btn');
 const closePinnedModal = document.getElementById('close-pinned-modal');
 const pinnedNotesContainer = document.getElementById('pinned-notes-container');
 const pinnedCountBadge = document.getElementById('pinned-count-badge');
 
-// Auth References
 const authModal = document.getElementById('auth-modal');
 const closeAuthModal = document.getElementById('close-auth-modal');
 const authSubmitBtn = document.getElementById('auth-submit-btn');
@@ -455,7 +562,6 @@ async function updatePinnedBadge(count = null) {
   }
 }
 
-// --- Password Eye Toggle Button ---
 if (authPasswordEyeBtn && authPasswordInput && authPasswordEyeIcon) {
   authPasswordEyeBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -469,7 +575,6 @@ if (authPasswordEyeBtn && authPasswordInput && authPasswordEyeIcon) {
   });
 }
 
-// --- Mode Switcher ---
 function setAuthMode(mode) {
   authMode = mode;
   hideAuthError();
@@ -652,17 +757,17 @@ function showXamoToast(message) {
 
   const toast = document.createElement('div');
   toast.id = 'xamo-toast';
-  toast.className = "fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[#1e1f20] border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-xl shadow-2xl z-[100] flex items-center gap-2 transition-all duration-300";
+  toast.className = "fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-[#1e1f20] border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-xl shadow-2xl z-[100] flex items-center gap-2 transition-all duration-300";
   toast.innerHTML = `<i class="fa-solid fa-check text-blue-400"></i> <span>${message}</span>`;
   document.body.appendChild(toast);
 
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
-  }, 5000);
+  }, 4000);
 }
 
-// --- Attachment Viewer Logic (Fixed modal toggling) ---
+// --- Attachment Modal Viewer ---
 if (closeFileViewer && fileViewerModal) {
   closeFileViewer.addEventListener('click', () => fileViewerModal.classList.add('hidden'));
 }
@@ -681,17 +786,17 @@ window.viewAttachedFile = function(index) {
   if (file.category === 'image') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-image text-blue-400 text-sm";
     if (src && viewerContentContainer) {
-      viewerContentContainer.innerHTML = `<img src="${src}" class="max-w-full max-h-[70vh] rounded-xl object-contain shadow-lg border border-slate-700">`;
+      viewerContentContainer.innerHTML = `<img src="${src}" class="max-w-full max-h-[72vh] rounded-2xl object-contain shadow-2xl border border-slate-700">`;
     }
   } else if (file.category === 'video') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-video text-purple-400 text-sm";
     if (viewerContentContainer) {
-      viewerContentContainer.innerHTML = src ? `<video controls src="${src}" class="max-w-full max-h-[70vh] rounded-xl shadow-lg"></video>` : `<p class="text-xs text-slate-400 p-4 text-center">Video preview expired.</p>`;
+      viewerContentContainer.innerHTML = src ? `<video controls src="${src}" class="max-w-full max-h-[72vh] rounded-2xl shadow-2xl"></video>` : `<p class="text-xs text-slate-400 p-4 text-center">Video preview expired.</p>`;
     }
   } else if (file.category === 'pdf') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-pdf text-red-400 text-sm";
     if (viewerContentContainer) {
-      viewerContentContainer.innerHTML = src ? `<embed src="${src}" type="application/pdf" class="w-full h-[65vh] rounded-xl border border-slate-700">` : `<p class="text-xs text-slate-400 p-4 text-center">PDF text extracted directly.</p>`;
+      viewerContentContainer.innerHTML = src ? `<embed src="${src}" type="application/pdf" class="w-full h-[68vh] rounded-2xl border border-slate-700">` : `<p class="text-xs text-slate-300 p-4 text-left leading-relaxed whitespace-pre-wrap">${DOMPurify.sanitize(file.content || "PDF text loaded.")}</p>`;
     }
   } else {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-code text-blue-400 text-sm";
@@ -704,7 +809,7 @@ window.viewAttachedFile = function(index) {
     }
     
     const pre = document.createElement('pre');
-    pre.className = "w-full text-xs font-mono text-slate-200 overflow-x-auto p-4 rounded-xl bg-slate-950 border border-slate-800 leading-relaxed";
+    pre.className = "w-full text-xs font-mono text-slate-200 overflow-x-auto p-4 rounded-2xl bg-slate-950 border border-slate-800 leading-relaxed";
     const code = document.createElement('code');
     code.textContent = file.content || "Code content unavailable";
     pre.appendChild(code);
@@ -712,7 +817,6 @@ window.viewAttachedFile = function(index) {
     if (window.hljs) hljs.highlightElement(code);
   }
 
-  // Open viewer modal
   fileViewerModal.classList.remove('hidden');
 };
 
@@ -777,7 +881,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Conversational Personas Setup ---
+// --- Personas Setup ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -904,7 +1008,6 @@ if (savePersonaBtn && personaModal) {
   });
 }
 
-// Prevents submit propagation when opening file selector
 if (attachBtn && imageInput) {
   attachBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -913,7 +1016,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- High-Speed High-Definition Media Processor ---
+// --- Optimized Light-Payload Media Processor (Guarantees Persistence) ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -930,7 +1033,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1400;
+        const maxDim = 1000; // Perfect balance of high clarity and lightweight database size (~60KB)
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -947,7 +1050,7 @@ if (imageInput) {
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
         
         attachedFile = {
           category: 'image',
@@ -986,7 +1089,7 @@ if (imageInput) {
             const pdf = await loadingTask.promise;
             let fullPdfText = "";
             
-            const maxPages = Math.min(pdf.numPages, 60);
+            const maxPages = Math.min(pdf.numPages, 40);
             for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
               const page = await pdf.getPage(pageNum);
               const textContent = await page.getTextContent();
@@ -994,27 +1097,12 @@ if (imageInput) {
               fullPdfText += `\n[Page ${pageNum}] ` + pageText;
             }
 
-            if (fullPdfText.trim().length > 20) {
-              attachedFile = {
-                category: 'text',
-                content: `[Attached Document: ${fileName}]\n${fullPdfText.trim()}`,
-                name: fileName
-              };
-            } else {
-              let binary = '';
-              const bytes = new Uint8Array(typedarray);
-              const len = Math.min(bytes.byteLength, 4 * 1024 * 1024);
-              for (let i = 0; i < len; i++) {
-                binary += String.fromCharCode(bytes[i]);
-              }
-              attachedFile = {
-                category: 'pdf',
-                mimeType: 'application/pdf',
-                base64: btoa(binary),
-                uri: '',
-                name: fileName
-              };
-            }
+            attachedFile = {
+              category: 'pdf',
+              content: `[Attached Document: ${fileName}]\n${fullPdfText.trim()}`,
+              name: fileName,
+              uri: ""
+            };
           }
 
           if (imagePreview) imagePreview.classList.add('hidden');
@@ -1036,38 +1124,40 @@ if (imageInput) {
       reader.readAsArrayBuffer(file);
 
     } else if (fileType.startsWith('video/')) {
-      if (file.size > 15 * 1024 * 1024) {
-        showXamoToast("Video must be under 15MB for processing.");
-        imageInput.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function(uploadEvent) {
+      const videoElem = document.createElement('video');
+      videoElem.src = URL.createObjectURL(file);
+      videoElem.muted = true;
+      videoElem.currentTime = 1.0;
+
+      videoElem.onloadeddata = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 480;
+        canvas.height = 270;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+        const thumbUrl = canvas.toDataURL('image/jpeg', 0.7);
+
         attachedFile = {
           category: 'video',
           mimeType: fileType,
-          base64: uploadEvent.target.result.split(',')[1],
-          uri: uploadEvent.target.result,
+          base64: thumbUrl.split(',')[1],
+          uri: thumbUrl,
           name: fileName
         };
-        if (imagePreview) imagePreview.classList.add('hidden');
-        if (fileIcon) {
-          fileIcon.classList.remove('hidden');
-          fileIcon.innerHTML = '<i class="fa-solid fa-file-video text-purple-400"></i>';
+
+        if (imagePreview) {
+          imagePreview.src = thumbUrl;
+          imagePreview.classList.remove('hidden');
         }
-        if (fileNamePreview) {
-          fileNamePreview.textContent = fileName;
-          fileNamePreview.classList.remove('hidden');
-        }
+        if (fileIcon) fileIcon.classList.add('hidden');
+        if (fileNamePreview) fileNamePreview.classList.add('hidden');
         if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
         updateSendButtonState();
       };
-      reader.readAsDataURL(file);
-
     } else {
       const reader = new FileReader();
       reader.onload = function(uploadEvent) {
-        attachedFile = { category: 'text', content: uploadEvent.target.result, name: fileName };
+        attachedFile = { category: 'text', content: uploadEvent.target.result, name: fileName, uri: "" };
         if (imagePreview) imagePreview.classList.add('hidden');
         if (fileIcon) {
           fileIcon.classList.remove('hidden');
@@ -1142,7 +1232,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- Auth State Handshake (Prevents Active Chat Wipe) ---
+// --- Auth State Handshake (Prevents Session Wipes) ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1173,7 +1263,6 @@ async function initAuth() {
 }
 
 async function handleAuthStateChange(user, isAuthEvent = false) {
-  // Guard against resetting current conversation when session token automatically refreshes
   if (isAuthEvent && currentUser && user && currentUser.id === user.id) {
     currentUser = user;
     return;
@@ -1237,11 +1326,17 @@ async function syncCloudChats() {
       .order('updated_at', { ascending: false });
 
     if (!error && data) {
-      sessions = data.map(item => ({
-        id: String(item.id),
-        title: item.title,
-        history: item.history
-      }));
+      sessions = data.map(item => {
+        let parsedHistory = item.history;
+        if (typeof parsedHistory === 'string') {
+          try { parsedHistory = JSON.parse(parsedHistory); } catch(e) { parsedHistory = []; }
+        }
+        return {
+          id: String(item.id),
+          title: item.title,
+          history: Array.isArray(parsedHistory) ? parsedHistory : []
+        };
+      });
       const key = getChatStorageKey();
       if (key) {
         try { localStorage.setItem(key, JSON.stringify(sessions)); } catch(e) {}
@@ -1486,6 +1581,7 @@ function renderSessions(filterText = "") {
   });
 }
 
+// --- Bulletproof Session Storage (Lightweight & Permanent) ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -1498,10 +1594,11 @@ async function saveCurrentSession() {
     }
   }
 
+  // Strip massive inline_data so the database JSON payload stays feather-light (<100KB)
   const cleanHistory = currentChatHistory.map(msg => {
     const newParts = msg.parts.map(part => {
       if (part.inline_data) {
-        return { inline_data: { mime_type: part.inline_data.mime_type, data: part.inline_data.data } };
+        return { text: `[Attachment: ${msg.file?.name || 'File'}]` };
       }
       return part;
     });
@@ -1512,7 +1609,7 @@ async function saveCurrentSession() {
         name: msg.file.name,
         category: msg.file.category,
         mimeType: msg.file.mimeType,
-        uri: msg.file.uri || "",
+        uri: msg.file.uri || "", // Clean, light preview URI
         content: msg.file.content || ""
       };
     }
@@ -1550,7 +1647,9 @@ async function saveCurrentSession() {
         is_deleted_by_user: false,
         updated_at: new Date().toISOString()
       });
-    } catch (err) {}
+    } catch (err) {
+      console.warn("Supabase upsert failed:", err);
+    }
   }
 
   if (currentUser) {
@@ -1625,7 +1724,7 @@ window.editMessage = function(index) {
   renderChatBox();
 };
 
-// --- In-Line Media Previews in Chat Box ---
+// --- In-Line Media Previews & Gemini Pro Layout ---
 function renderChatBox() {
   if (!chatBox) return;
   chatBox.innerHTML = "";
@@ -1637,7 +1736,7 @@ function renderChatBox() {
   currentChatHistory.forEach((msg, index) => {
     const isUser = msg.role === 'user';
     const div = document.createElement('div');
-    div.className = isUser ? "flex flex-col items-end my-3 w-full group" : "flex flex-col items-start my-3 w-full group relative";
+    div.className = isUser ? "flex flex-col items-end my-4 w-full group" : "flex flex-col items-start my-4 w-full group relative";
     
     if (isUser) {
       let contentHtml = '';
@@ -1645,14 +1744,13 @@ function renderChatBox() {
       if (msg.file) {
         const fileSrc = msg.file.uri || (msg.file.base64 ? `data:${msg.file.mimeType};base64,${msg.file.base64}` : "");
 
-        // Render live image preview thumbnail in chat bubble
         if (msg.file.category === 'image' && fileSrc) {
           contentHtml += `
-            <div onclick="viewAttachedFile(${index})" class="cursor-pointer mb-2 rounded-xl overflow-hidden border border-slate-700/60 max-w-sm group/img bg-slate-900 shadow-md">
-              <img src="${fileSrc}" class="w-full max-h-60 object-cover group-hover/img:opacity-90 transition-opacity" alt="${msg.file.name}" />
-              <div class="px-2.5 py-1 text-[10px] text-slate-400 font-mono flex items-center justify-between bg-slate-950/70">
+            <div onclick="viewAttachedFile(${index})" class="cursor-pointer mb-2.5 rounded-2xl overflow-hidden border border-slate-700/70 max-w-xs group/img bg-slate-900 shadow-md">
+              <img src="${fileSrc}" class="w-full max-h-56 object-cover group-hover/img:opacity-90 transition-opacity" alt="${msg.file.name}" />
+              <div class="px-3 py-1.5 text-[11px] text-slate-300 font-mono flex items-center justify-between bg-slate-950/80">
                 <span class="truncate">${msg.file.name}</span>
-                <i class="fa-solid fa-expand text-[9px] text-slate-400"></i>
+                <i class="fa-solid fa-expand text-[10px] text-slate-400"></i>
               </div>
             </div>
           `;
@@ -1662,13 +1760,13 @@ function renderChatBox() {
           if (msg.file.category === 'pdf') iconHtml = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
 
           contentHtml += `
-            <div onclick="viewAttachedFile(${index})" class="flex items-center gap-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all mb-2 shadow-sm group/file">
+            <div onclick="viewAttachedFile(${index})" class="flex items-center gap-3 bg-slate-800 hover:bg-slate-700/90 border border-slate-700 px-3.5 py-2 rounded-xl cursor-pointer transition-all mb-2 shadow-sm group/file">
               <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-sm flex-shrink-0">
                 ${iconHtml}
               </div>
               <div class="flex-1 min-w-0 pr-2">
                 <div class="text-xs font-semibold text-slate-200 truncate font-mono">${msg.file.name}</div>
-                <div class="text-[10px] text-slate-400">Click to view file</div>
+                <div class="text-[10px] text-slate-400">Click to preview</div>
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square text-[11px] text-slate-500 group-hover/file:text-blue-400 transition-colors"></i>
             </div>
@@ -1677,12 +1775,12 @@ function renderChatBox() {
       }
 
       if (msg.rawUserText) {
-        contentHtml += `<div class="text-sm leading-relaxed whitespace-pre-wrap" style="word-break: break-word;">${msg.rawUserText}</div>`;
+        contentHtml += `<div class="whitespace-pre-wrap" style="word-break: break-word;">${msg.rawUserText}</div>`;
       }
 
       const editBtnHtml = `<button onclick="editMessage(${index})" class="text-xs text-slate-400 hover:text-blue-400 mr-2 mb-1 transition-colors flex items-center gap-1"><i class="fa-solid fa-pen text-[10px]"></i> Edit</button>`;
       
-      div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95%] sm:max-w-[85%] min-w-[50px]">${contentHtml}</div></div>`;
+      div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble">${contentHtml}</div></div>`;
     } else {
       const textVal = (msg.parts && msg.parts[0]) ? msg.parts[0].text : "";
       const isLastBotMsg = index === currentChatHistory.length - 1;
@@ -1692,7 +1790,7 @@ function renderChatBox() {
       `;
 
       const footerDiv = document.createElement('div');
-      footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
+      footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
       
       const pinBtn = document.createElement('button');
       pinBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
@@ -1893,7 +1991,7 @@ if (exportBtn) {
   });
 }
 
-// Form Dispatch with explicit event prevention
+// Instant Dispatch with Immediate Session Persistence
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -1911,7 +2009,7 @@ if (form) {
     let promptPayloadText = rawTypedText;
 
     if (attachedFile) {
-      if (attachedFile.category === 'text') {
+      if (attachedFile.category === 'text' || attachedFile.category === 'pdf') {
         promptPayloadText = `[Attached Document: ${attachedFile.name}]\n${attachedFile.content}\n\n${rawTypedText}`;
       } else {
         userParts.push({ inline_data: { mime_type: attachedFile.mimeType, data: attachedFile.base64 } });
@@ -1940,6 +2038,9 @@ if (form) {
     });
     
     renderChatBox();
+    
+    // Save state immediately so the upload is never lost even if the user leaves before the answer completes
+    await saveCurrentSession();
     await triggerApiCall();
   });
 }
@@ -2052,7 +2153,7 @@ async function triggerApiCall() {
     } catch (saveErr) {}
 
     const footerDiv = document.createElement('div');
-    footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
+    footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
     
     const pinBtn = document.createElement('button');
     pinBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
