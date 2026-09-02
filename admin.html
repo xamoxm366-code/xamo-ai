@@ -275,7 +275,6 @@
       }
 
       try {
-        // Query Supabase REST API cleanly without invalid query parameters
         const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
           method: "GET",
           cache: "no-store",
@@ -303,7 +302,7 @@
         renderChatList();
 
         if (activeChatRecord) {
-          const freshCurrent = chatRecords.find(c => c.id === activeChatRecord.id);
+          const freshCurrent = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
           if (freshCurrent) {
             selectChat(freshCurrent);
           }
@@ -380,7 +379,7 @@
       filtered.forEach(chat => {
         const isGuest = isGuestChat(chat);
         const item = document.createElement("div");
-        const isSelected = activeChatRecord && activeChatRecord.id === chat.id;
+        const isSelected = activeChatRecord && String(activeChatRecord.id) === String(chat.id);
 
         item.className = `p-3 rounded-xl cursor-pointer transition-all mb-1 ${isSelected ? "bg-[#22242a] border border-blue-500/40" : "hover:bg-[#1b1c21]"}`;
 
@@ -413,6 +412,7 @@
       });
     }
 
+    // --- Full Inspection of All File Formats ---
     function selectChat(chat) {
       activeChatRecord = chat;
       renderChatList();
@@ -445,18 +445,52 @@
         let mediaBlock = "";
         if (msg.file) {
           const src = msg.file.uri || (msg.file.base64 ? `data:${msg.file.mimeType};base64,${msg.file.base64}` : "");
+          const fileName = msg.file.name || "File";
+
           if (msg.file.category === "image" && src) {
             mediaBlock = `
               <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
                 <a href="${src}" target="_blank"><img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto hover:opacity-90 transition-opacity" /></a>
-                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${msg.file.name || "Image"} (Click to View)</div>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${fileName} (Click to Expand)</div>
+              </div>
+            `;
+          } else if (msg.file.category === "video" && src) {
+            mediaBlock = `
+              <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
+                <video controls src="${src}" class="rounded-lg max-h-64 w-full"></video>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 truncate">${fileName}</div>
+              </div>
+            `;
+          } else if (msg.file.category === "pdf") {
+            mediaBlock = `
+              <div class="mb-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-xs max-w-sm">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-2 truncate">
+                    <i class="fa-solid fa-file-pdf text-red-400 text-base"></i>
+                    <span class="font-mono text-slate-200 truncate font-semibold">${fileName}</span>
+                  </div>
+                  ${src ? `<a href="${src}" download="${fileName}" target="_blank" class="px-2.5 py-1 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-lg text-[11px] font-semibold transition-colors flex-shrink-0"><i class="fa-solid fa-download mr-1"></i> Download</a>` : ''}
+                </div>
+              </div>
+            `;
+          } else if (msg.file.content) {
+            mediaBlock = `
+              <div class="mb-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs max-w-lg w-full">
+                <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                  <span class="font-mono text-blue-400 font-semibold truncate"><i class="fa-solid fa-file-code mr-1"></i> ${fileName}</span>
+                  <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(msg.file.content)}')); alert('Code copied to clipboard!');" class="text-[10px] text-slate-400 hover:text-slate-200 bg-slate-800 px-2 py-0.5 rounded cursor-pointer">Copy</button>
+                </div>
+                <pre class="overflow-x-auto text-[11px] font-mono text-slate-300 max-h-48 leading-relaxed"><code>${DOMPurify.sanitize(msg.file.content)}</code></pre>
               </div>
             `;
           } else {
             mediaBlock = `
-              <div class="mb-2 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs flex items-center gap-2">
-                <i class="fa-solid fa-file text-blue-400"></i>
-                <span class="font-mono text-slate-300 truncate">${msg.file.name || "File"}</span>
+              <div class="mb-2 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs flex items-center justify-between gap-3 max-w-sm">
+                <div class="flex items-center gap-2 truncate">
+                  <i class="fa-solid fa-file text-blue-400"></i>
+                  <span class="font-mono text-slate-300 truncate">${fileName}</span>
+                </div>
+                ${src ? `<a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:underline"><i class="fa-solid fa-download"></i></a>` : ''}
               </div>
             `;
           }
@@ -467,9 +501,7 @@
         if (isUser) {
           row.innerHTML = `
             ${mediaBlock}
-            <div class="bg-[#26282e] border border-[#34373f] text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-xs leading-relaxed whitespace-pre-wrap font-sans">
-              ${DOMPurify.sanitize(body)}
-            </div>
+            ${body ? `<div class="bg-[#26282e] border border-[#34373f] text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-xs leading-relaxed whitespace-pre-wrap font-sans">${DOMPurify.sanitize(body)}</div>` : ''}
           `;
         } else {
           row.innerHTML = `
@@ -498,7 +530,7 @@
         });
 
         if (response.ok) {
-          chatRecords = chatRecords.filter(c => c.id !== activeChatRecord.id);
+          chatRecords = chatRecords.filter(c => String(c.id) !== String(activeChatRecord.id));
           activeChatRecord = null;
           calculateStats();
           renderChatList();

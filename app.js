@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (TIMEOUT GUARD & INSTANT AUTH RECOVERY)
+// XAMO AI - CORE CLIENT ENGINE (IN-LINE MEDIA PREVIEWS & STABLE CHAT SESSION)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -21,7 +21,6 @@ let activeStreamAbortController = null;
 
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
-// Helper to prevent any network request from hanging the UI
 const withTimeout = (promise, ms = 6000) => 
   Promise.race([
     promise,
@@ -663,7 +662,7 @@ function showXamoToast(message) {
   }, 5000);
 }
 
-// --- Attachment Viewer Logic ---
+// --- Attachment Viewer Logic (Fixed modal toggling) ---
 if (closeFileViewer && fileViewerModal) {
   closeFileViewer.addEventListener('click', () => fileViewerModal.classList.add('hidden'));
 }
@@ -677,18 +676,23 @@ window.viewAttachedFile = function(index) {
   if (viewerContentContainer) viewerContentContainer.innerHTML = "";
   if (viewerCopyBtn) viewerCopyBtn.classList.add('hidden');
 
+  const src = file.uri || (file.base64 ? `data:${file.mimeType};base64,${file.base64}` : "");
+
   if (file.category === 'image') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-image text-blue-400 text-sm";
-    const src = file.uri || (file.base64 ? `data:${file.mimeType};base64,${file.base64}` : "");
     if (src && viewerContentContainer) {
       viewerContentContainer.innerHTML = `<img src="${src}" class="max-w-full max-h-[70vh] rounded-xl object-contain shadow-lg border border-slate-700">`;
     }
   } else if (file.category === 'video') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-video text-purple-400 text-sm";
-    if (viewerContentContainer) viewerContentContainer.innerHTML = file.uri ? `<video controls src="${file.uri}" class="max-w-full max-h-[70vh] rounded-xl shadow-lg"></video>` : `<p class="text-xs text-slate-400 p-4 text-center">Video preview expired.</p>`;
+    if (viewerContentContainer) {
+      viewerContentContainer.innerHTML = src ? `<video controls src="${src}" class="max-w-full max-h-[70vh] rounded-xl shadow-lg"></video>` : `<p class="text-xs text-slate-400 p-4 text-center">Video preview expired.</p>`;
+    }
   } else if (file.category === 'pdf') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-pdf text-red-400 text-sm";
-    if (viewerContentContainer) viewerContentContainer.innerHTML = file.uri ? `<embed src="${file.uri}" type="application/pdf" class="w-full h-[65vh] rounded-xl border border-slate-700">` : `<p class="text-xs text-slate-400 p-4 text-center">PDF text extracted directly.</p>`;
+    if (viewerContentContainer) {
+      viewerContentContainer.innerHTML = src ? `<embed src="${src}" type="application/pdf" class="w-full h-[65vh] rounded-xl border border-slate-700">` : `<p class="text-xs text-slate-400 p-4 text-center">PDF text extracted directly.</p>`;
+    }
   } else {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-code text-blue-400 text-sm";
     if (viewerCopyBtn && file.content) {
@@ -708,7 +712,8 @@ window.viewAttachedFile = function(index) {
     if (window.hljs) hljs.highlightElement(code);
   }
 
-  fileViewerModal.classList.add('hidden');
+  // Open viewer modal
+  fileViewerModal.classList.remove('hidden');
 };
 
 // --- Slash Commands Menu ---
@@ -899,7 +904,14 @@ if (savePersonaBtn && personaModal) {
   });
 }
 
-if (attachBtn && imageInput) attachBtn.addEventListener('click', () => imageInput.click());
+// Prevents submit propagation when opening file selector
+if (attachBtn && imageInput) {
+  attachBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    imageInput.click();
+  });
+}
 
 // --- High-Speed High-Definition Media Processor ---
 if (imageInput) {
@@ -918,7 +930,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1600;
+        const maxDim = 1400;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -935,7 +947,7 @@ if (imageInput) {
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
         
         attachedFile = {
           category: 'image',
@@ -991,7 +1003,7 @@ if (imageInput) {
             } else {
               let binary = '';
               const bytes = new Uint8Array(typedarray);
-              const len = Math.min(bytes.byteLength, 6 * 1024 * 1024);
+              const len = Math.min(bytes.byteLength, 4 * 1024 * 1024);
               for (let i = 0; i < len; i++) {
                 binary += String.fromCharCode(bytes[i]);
               }
@@ -1024,8 +1036,8 @@ if (imageInput) {
       reader.readAsArrayBuffer(file);
 
     } else if (fileType.startsWith('video/')) {
-      if (file.size > 25 * 1024 * 1024) {
-        showXamoToast("Video must be under 25MB for processing.");
+      if (file.size > 15 * 1024 * 1024) {
+        showXamoToast("Video must be under 15MB for processing.");
         imageInput.value = "";
         return;
       }
@@ -1074,7 +1086,8 @@ if (imageInput) {
 }
 
 if (removeImageBtn) {
-  removeImageBtn.addEventListener('click', () => {
+  removeImageBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     attachedFile = null;
     if (imageInput) imageInput.value = "";
     if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
@@ -1129,7 +1142,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- Auth State Handshake ---
+// --- Auth State Handshake (Prevents Active Chat Wipe) ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1147,7 +1160,7 @@ async function initAuth() {
 
     supabaseClient.auth.onAuthStateChange((_event, session) => {
       if (session) storeCurrentAccount(session);
-      handleAuthStateChange(session?.user || null);
+      handleAuthStateChange(session?.user || null, true);
     });
   } catch (e) {
     console.warn("Auth initialization failed:", e);
@@ -1159,7 +1172,13 @@ async function initAuth() {
   updatePinnedBadge();
 }
 
-async function handleAuthStateChange(user) {
+async function handleAuthStateChange(user, isAuthEvent = false) {
+  // Guard against resetting current conversation when session token automatically refreshes
+  if (isAuthEvent && currentUser && user && currentUser.id === user.id) {
+    currentUser = user;
+    return;
+  }
+
   currentUser = user;
   
   if (activeStreamAbortController) {
@@ -1219,12 +1238,14 @@ async function syncCloudChats() {
 
     if (!error && data) {
       sessions = data.map(item => ({
-        id: item.id,
+        id: String(item.id),
         title: item.title,
         history: item.history
       }));
       const key = getChatStorageKey();
-      if (key) localStorage.setItem(key, JSON.stringify(sessions));
+      if (key) {
+        try { localStorage.setItem(key, JSON.stringify(sessions)); } catch(e) {}
+      }
       renderSessions(searchChatsInput ? searchChatsInput.value : "");
     }
   } catch (err) {
@@ -1234,7 +1255,6 @@ async function syncCloudChats() {
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
-// --- Direct Native Supabase Auth Handler (Robust Reset Engine with Timeout Guard) ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async () => {
     hideAuthError();
@@ -1262,7 +1282,6 @@ if (authSubmitBtn) {
         btnTextSpan.textContent = "Verifying...";
         authSubmitBtn.disabled = true;
 
-        // 1. Direct database check with 4s timeout (falls back gracefully if DB RPC is slow)
         let isVerified = true;
         try {
           const { data, error: rpcError } = await withTimeout(
@@ -1280,7 +1299,6 @@ if (authSubmitBtn) {
           throw new Error("This email is not registered yet or has not been verified.");
         }
 
-        // 2. Dispatch reset email with 6s timeout guard
         btnTextSpan.textContent = "Sending Link...";
         const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
         
@@ -1445,7 +1463,7 @@ function renderSessions(filterText = "") {
   }
   filtered.forEach(session => {
     const div = document.createElement('div');
-    const isActive = session.id === activeSessionId;
+    const isActive = String(session.id) === String(activeSessionId);
     div.className = "group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all duration-200 " + 
                     (isActive ? "bg-blue-600/10 text-blue-400 font-semibold border border-blue-500/20 shadow-sm" : "text-slate-400 hover:bg-slate-500/10 hover:text-slate-200");
     const titleSpan = document.createElement('span');
@@ -1494,7 +1512,8 @@ async function saveCurrentSession() {
         name: msg.file.name,
         category: msg.file.category,
         mimeType: msg.file.mimeType,
-        uri: msg.file.uri || ""
+        uri: msg.file.uri || "",
+        content: msg.file.content || ""
       };
     }
 
@@ -1510,10 +1529,12 @@ async function saveCurrentSession() {
     activeSessionId = Date.now().toString();
     sessions.unshift({ id: activeSessionId, title, history: cleanHistory });
   } else {
-    const session = sessions.find(s => s.id === activeSessionId);
+    const session = sessions.find(s => String(s.id) === String(activeSessionId));
     if (session) {
       session.history = cleanHistory;
       session.title = title;
+    } else {
+      sessions.unshift({ id: String(activeSessionId), title, history: cleanHistory });
     }
   }
 
@@ -1549,9 +1570,9 @@ function loadSession(id) {
     activeStreamAbortController = null;
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  const session = sessions.find(s => s.id === id);
+  const session = sessions.find(s => String(s.id) === String(id));
   if (!session) return;
-  activeSessionId = session.id;
+  activeSessionId = String(session.id);
   currentChatHistory = JSON.parse(JSON.stringify(session.history));
   renderChatBox();
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
@@ -1604,6 +1625,7 @@ window.editMessage = function(index) {
   renderChatBox();
 };
 
+// --- In-Line Media Previews in Chat Box ---
 function renderChatBox() {
   if (!chatBox) return;
   chatBox.innerHTML = "";
@@ -1621,23 +1643,37 @@ function renderChatBox() {
       let contentHtml = '';
 
       if (msg.file) {
-        let iconHtml = '<i class="fa-solid fa-file-code text-blue-400"></i>';
-        if (msg.file.category === 'image') iconHtml = '<i class="fa-solid fa-image text-blue-400"></i>';
-        if (msg.file.category === 'video') iconHtml = '<i class="fa-solid fa-file-video text-purple-400"></i>';
-        if (msg.file.category === 'pdf') iconHtml = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
+        const fileSrc = msg.file.uri || (msg.file.base64 ? `data:${msg.file.mimeType};base64,${msg.file.base64}` : "");
 
-        contentHtml += `
-          <div onclick="viewAttachedFile(${index})" class="flex items-center gap-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all mb-2 shadow-sm group/file">
-            <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-sm flex-shrink-0">
-              ${iconHtml}
+        // Render live image preview thumbnail in chat bubble
+        if (msg.file.category === 'image' && fileSrc) {
+          contentHtml += `
+            <div onclick="viewAttachedFile(${index})" class="cursor-pointer mb-2 rounded-xl overflow-hidden border border-slate-700/60 max-w-sm group/img bg-slate-900 shadow-md">
+              <img src="${fileSrc}" class="w-full max-h-60 object-cover group-hover/img:opacity-90 transition-opacity" alt="${msg.file.name}" />
+              <div class="px-2.5 py-1 text-[10px] text-slate-400 font-mono flex items-center justify-between bg-slate-950/70">
+                <span class="truncate">${msg.file.name}</span>
+                <i class="fa-solid fa-expand text-[9px] text-slate-400"></i>
+              </div>
             </div>
-            <div class="flex-1 min-w-0 pr-2">
-              <div class="text-xs font-semibold text-slate-200 truncate font-mono">${msg.file.name}</div>
-              <div class="text-[10px] text-slate-400">Click to preview file</div>
+          `;
+        } else {
+          let iconHtml = '<i class="fa-solid fa-file-code text-blue-400"></i>';
+          if (msg.file.category === 'video') iconHtml = '<i class="fa-solid fa-file-video text-purple-400"></i>';
+          if (msg.file.category === 'pdf') iconHtml = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
+
+          contentHtml += `
+            <div onclick="viewAttachedFile(${index})" class="flex items-center gap-3 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all mb-2 shadow-sm group/file">
+              <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-sm flex-shrink-0">
+                ${iconHtml}
+              </div>
+              <div class="flex-1 min-w-0 pr-2">
+                <div class="text-xs font-semibold text-slate-200 truncate font-mono">${msg.file.name}</div>
+                <div class="text-[10px] text-slate-400">Click to view file</div>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[11px] text-slate-500 group-hover/file:text-blue-400 transition-colors"></i>
             </div>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[11px] text-slate-500 group-hover/file:text-blue-400 transition-colors"></i>
-          </div>
-        `;
+          `;
+        }
       }
 
       if (msg.rawUserText) {
@@ -1648,14 +1684,13 @@ function renderChatBox() {
       
       div.innerHTML = `<div class="flex flex-col items-end w-full">${editBtnHtml}<div class="gemini-user-bubble px-4 lg:px-5 py-3 rounded-2xl max-w-[95%] sm:max-w-[85%] min-w-[50px]">${contentHtml}</div></div>`;
     } else {
-      const textVal = msg.parts[0].text;
+      const textVal = (msg.parts && msg.parts[0]) ? msg.parts[0].text : "";
       const isLastBotMsg = index === currentChatHistory.length - 1;
       
       div.innerHTML = `
         <div class="gemini-response-container w-full leading-relaxed break-words">${parseMarkdownSafely(textVal)}</div>
       `;
 
-      // Instant Synchronous Action Controls Row
       const footerDiv = document.createElement('div');
       footerDiv.className = "flex items-center gap-3.5 mt-3 text-slate-400 text-sm flex-wrap";
       
@@ -1774,7 +1809,7 @@ async function deleteSession(id) {
     activeStreamAbortController = null;
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  sessions = sessions.filter(s => s.id !== id);
+  sessions = sessions.filter(s => String(s.id) !== String(id));
   
   if (supabaseClient) {
     try {
@@ -1790,7 +1825,7 @@ async function deleteSession(id) {
     } catch (e) {}
   }
 
-  if (activeSessionId === id) {
+  if (String(activeSessionId) === String(id)) {
     startNewChat();
   } else {
     renderSessions(searchChatsInput ? searchChatsInput.value : "");
@@ -1858,10 +1893,12 @@ if (exportBtn) {
   });
 }
 
-// Instant Dispatch Handler
+// Form Dispatch with explicit event prevention
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
+    e.stopPropagation();
+
     const rawTypedText = input ? input.value.trim() : "";
     if (!rawTypedText && !attachedFile) return;
 
@@ -1907,7 +1944,7 @@ if (form) {
   });
 }
 
-// Sub-Second Ultra-Fast Streaming Execution
+// Sub-Second Streaming Execution
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
