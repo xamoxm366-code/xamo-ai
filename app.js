@@ -2534,10 +2534,75 @@ async function triggerApiCall() {
   }
 }
 
+// --- Search Bar Input & Slash Command Menu Engine ---
+function initSearchBarAndSlashMenu() {
+  if (!input) return;
+
+  // 1. Dynamic typing, send button visibility & slash menu toggle
+  input.addEventListener('input', () => {
+    const val = input.value;
+    
+    // Show slash menu only when input begins with or contains a bare '/'
+    if (slashMenu) {
+      if (val.trim() === '/') {
+        slashMenu.classList.remove('hidden');
+      } else {
+        slashMenu.classList.add('hidden');
+      }
+    }
+
+    // Auto-grow textarea height
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+
+    updateSendButtonState();
+  });
+
+  // 2. Click-to-insert handler for slash menu items
+  if (slashOptions && slashMenu) {
+    slashOptions.forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cmd = opt.getAttribute('data-cmd');
+        if (cmd) {
+          input.value = cmd + ' ';
+          input.focus();
+          input.style.height = 'auto';
+          input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+          slashMenu.classList.add('hidden');
+          updateSendButtonState();
+        }
+      });
+    });
+  }
+
+  // 3. Close slash menu on outside clicks
+  document.addEventListener('click', (e) => {
+    if (slashMenu && !slashMenu.contains(e.target) && e.target !== input) {
+      slashMenu.classList.add('hidden');
+    }
+  });
+
+  // 4. Keyboard dispatch (Enter to send, Shift+Enter for newline)
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+      if (!isMobile && form) {
+        e.preventDefault();
+        if (slashMenu) slashMenu.classList.add('hidden');
+        form.requestSubmit();
+      }
+    } else if (e.key === 'Escape' && slashMenu) {
+      slashMenu.classList.add('hidden');
+    }
+  });
+}
+
 // --- Lifecycle Initialization ---
 injectGeminiThemeStyles();
 injectScrollDownButton();
 updateSearchPlaceholder();
+initSearchBarAndSlashMenu();
 initVoices();
 initAuth();
 handleUrlAuthFlags();
