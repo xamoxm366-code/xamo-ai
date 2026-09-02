@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge', // Instant edge worker execution
+  runtime: 'edge',
 };
 
 export default async function handler(req) {
@@ -32,11 +32,12 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
 
-    // Strictly Gemini 3 and 3.5 series
+    // Validated 3.x and 3.5 series model identifiers
     const MODELS = [
-      'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
-      'gemini-3-flash'
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.5-pro'
     ];
 
     let rawInstructionText = typeof systemInstruction === 'string'
@@ -44,7 +45,7 @@ export default async function handler(req) {
       : (systemInstruction?.parts?.[0]?.text || 'You are XAMO AI created by Zaeem.');
 
     const enhancedInstruction = `${rawInstructionText}
-[Search Grounding Directive: Real-time Google Search is enabled. The current year is 2026. For any queries regarding current events, news, live updates, dates, or recent facts, you must execute Google Search to deliver accurate, up-to-date information.]`;
+[Search Grounding Directive: Google Search is active. The current year is 2026. For news, events, live facts, dates, or recent queries, run Google Search to provide accurate, up-to-date information.]`;
 
     const payload = {
       systemInstruction: {
@@ -58,7 +59,6 @@ export default async function handler(req) {
       }
     };
 
-    // Attach Google Search Grounding for real-time browsing
     if (!hasAttachment) {
       payload.tools = [{ googleSearch: {} }];
     }
@@ -78,8 +78,8 @@ export default async function handler(req) {
 
         if (response.ok) break;
 
-        // Fallback retry without search tools if the grounding quota fails
-        if (payload.tools && response.status !== 429) {
+        // If search grounding triggers an error or quota cap, retry without tools
+        if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;
           response = await fetch(url, {

@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - COMPLETE CORE ENGINE (GEMINI PRO DOCK, VIDEO STREAM & SMART CHEVRON)
+// XAMO AI - CORE ENGINE (CUSTOM SETTINGS PICKERS, RESPONSIVE DOCK & AUTO-HIDE ARROW)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -135,7 +135,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection (Gemini Typography, Floating Pill & Selectors) ---
+// --- CSS Engine Injection ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
@@ -178,16 +178,18 @@ function injectGeminiThemeStyles() {
       font-size: 17px !important;
     }
 
+    /* Floating Pill Search Bar Dock */
     #chat-form {
       background-color: #1e1f20 !important;
       border: 1px solid #33353a !important;
       border-radius: 30px !important;
-      padding: 6px 14px !important;
+      padding: 5px 12px !important;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
       display: flex !important;
       align-items: center !important;
-      gap: 8px !important;
+      gap: 6px !important;
       transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+      max-width: 100% !important;
     }
 
     #chat-form:focus-within {
@@ -195,41 +197,46 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input {
-      font-size: 15px !important;
+      font-size: 14.5px !important;
       color: #f1f3f4 !important;
-      line-height: 1.45 !important;
+      line-height: 1.4 !important;
       background: transparent !important;
       border: none !important;
       outline: none !important;
-      padding: 6px 4px !important;
+      padding: 6px 2px !important;
+      min-width: 0 !important;
+      flex: 1 1 0% !important;
+      overflow-x: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     #user-input::placeholder {
       color: #8e918f !important;
-      font-size: 15px !important;
+      font-size: 14px !important;
+      text-overflow: ellipsis !important;
     }
 
-    /* Floating Scroll-Down Chevron */
+    /* Vanishing Scroll Arrow (Clean Floating Position Above Dock) */
     #scroll-down-dock-btn {
       position: fixed;
-      bottom: 82px;
+      bottom: 86px;
       left: 50%;
-      transform: translateX(-50%) translateY(10px);
-      width: 36px;
-      height: 36px;
+      transform: translateX(-50%) translateY(8px);
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
-      background: #1e1f20;
+      background: #25272a;
       border: 1px solid #3c4043;
       color: #e3e3e3;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
       cursor: pointer;
-      z-index: 30;
+      z-index: 25;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     #scroll-down-dock-btn.visible {
@@ -237,8 +244,183 @@ function injectGeminiThemeStyles() {
       pointer-events: auto;
       transform: translateX(-50%) translateY(0);
     }
+
+    /* Custom In-App Sleek Settings Pickers */
+    .xamo-custom-select-trigger {
+      width: 100%;
+      background-color: #141518;
+      border: 1px solid #2a2d33;
+      border-radius: 14px;
+      padding: 11px 14px;
+      color: #f1f3f4;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .xamo-custom-select-trigger:hover {
+      border-color: #3f434c;
+    }
+
+    .xamo-select-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      width: 100%;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #18191d;
+      border: 1px solid #2e3036;
+      border-radius: 16px;
+      padding: 6px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      z-index: 80;
+    }
+
+    .xamo-select-option {
+      padding: 9px 12px;
+      font-size: 12.5px;
+      color: #c4c7c5;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .xamo-select-option:hover {
+      background: #25272c;
+      color: #ffffff;
+    }
+
+    .xamo-select-option.selected {
+      background: rgba(59, 130, 246, 0.18);
+      color: #60a5fa;
+      font-weight: 600;
+    }
   `;
   document.head.appendChild(style);
+}
+
+// --- Responsive Search Placeholder ---
+function updateSearchPlaceholder() {
+  if (!input) return;
+  if (window.innerWidth < 640) {
+    input.placeholder = "Ask XAMO... (/ for cmds)";
+  } else {
+    input.placeholder = "Ask XAMO... (Type / for commands)";
+  }
+}
+window.addEventListener('resize', updateSearchPlaceholder);
+
+// --- Custom In-App Dropdowns (Replaces Native Android Popover) ---
+function initCustomSelectors() {
+  const timeSelect = document.getElementById('settings-time-format-select');
+  const langSelect = document.getElementById('settings-language-select');
+
+  const TIME_OPTIONS = [
+    { value: '12', label: '12-Hour Format (e.g. 03:30 PM)' },
+    { value: '24', label: '24-Hour Format (e.g. 15:30)' }
+  ];
+
+  const LANG_OPTIONS = [
+    { value: 'auto', label: "Auto-Detect / Query Language (Default)" },
+    { value: 'English', label: 'English' },
+    { value: 'Spanish', label: 'Spanish (Español)' },
+    { value: 'French', label: 'French (Français)' },
+    { value: 'German', label: 'German (Deutsch)' },
+    { value: 'Italian', label: 'Italian (Italiano)' },
+    { value: 'Portuguese', label: 'Portuguese (Português)' },
+    { value: 'Russian', label: 'Russian (Русский)' },
+    { value: 'Chinese', label: 'Chinese (Simplified)' },
+    { value: 'Hindi', label: 'Hindi (हिन्दी)' },
+    { value: 'Urdu', label: 'Urdu (اردو)' },
+    { value: 'Kashmiri', label: 'Kashmiri (کٲشُر)' },
+    { value: 'Arabic', label: 'Arabic (العربية)' },
+    { value: 'Japanese', label: 'Japanese (日本語)' },
+    { value: 'Korean', label: 'Korean (한국어)' }
+  ];
+
+  function buildPicker(selectEl, options, currentVal, onChange) {
+    if (!selectEl || !selectEl.parentElement) return;
+    selectEl.style.setProperty('display', 'none', 'important');
+
+    const existingWrapper = selectEl.parentElement.querySelector('.xamo-custom-select-wrapper');
+    if (existingWrapper) existingWrapper.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'xamo-custom-select-wrapper relative w-full mt-1.5';
+
+    const currentItem = options.find(o => o.value === currentVal) || options[0];
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'xamo-custom-select-trigger';
+    trigger.innerHTML = `
+      <span class="truncate selected-text">${currentItem.label}</span>
+      <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-2 flex-shrink-0 transition-transform"></i>
+    `;
+
+    const menu = document.createElement('div');
+    menu.className = 'xamo-select-menu hidden';
+
+    options.forEach(opt => {
+      const item = document.createElement('div');
+      const isSelected = opt.value === currentVal;
+      item.className = `xamo-select-option ${isSelected ? 'selected' : ''}`;
+      item.innerHTML = `
+        <span class="truncate">${opt.label}</span>
+        ${isSelected ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
+      `;
+
+      item.onclick = (e) => {
+        e.stopPropagation();
+        menu.classList.add('hidden');
+        trigger.querySelector('.selected-text').textContent = opt.label;
+        trigger.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
+        selectEl.value = opt.value;
+        onChange(opt.value);
+        wrapper.querySelectorAll('.xamo-select-option').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+      };
+
+      menu.appendChild(item);
+    });
+
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      const isClosed = menu.classList.contains('hidden');
+      document.querySelectorAll('.xamo-select-menu').forEach(m => m.classList.add('hidden'));
+      document.querySelectorAll('.xamo-custom-select-trigger .fa-chevron-down').forEach(i => i.style.transform = 'rotate(0deg)');
+
+      if (isClosed) {
+        menu.classList.remove('hidden');
+        trigger.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
+      }
+    };
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+    selectEl.parentElement.appendChild(wrapper);
+  }
+
+  buildPicker(timeSelect, TIME_OPTIONS, appSettings.timeFormat || '12', (val) => {
+    appSettings.timeFormat = val;
+  });
+
+  buildPicker(langSelect, LANG_OPTIONS, appSettings.language || 'auto', (val) => {
+    appSettings.language = val;
+  });
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.xamo-select-menu').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.xamo-custom-select-trigger .fa-chevron-down').forEach(i => i.style.transform = 'rotate(0deg)');
+  });
 }
 
 // --- Smart Auto-Hiding Scroll Down Button ---
@@ -255,19 +437,19 @@ function updateScrollDownBtn() {
   const btn = document.getElementById('scroll-down-dock-btn');
   if (!btn || !chatBox) return;
 
-  // Hide if sidebar drawer is open
+  // Never show if sidebar drawer is open
   if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
     hideScrollDownBtn();
     return;
   }
 
-  // Hide if search bar input is focused (keyboard open)
+  // Never show if user is focused on the search bar (keyboard open)
   if (document.activeElement === input) {
     hideScrollDownBtn();
     return;
   }
 
-  // Hide if modal dialogs are open
+  // Never show if any modal dialog is open
   const openModal = document.querySelector('#settings-modal:not(.hidden), #nickname-modal:not(.hidden), #persona-modal:not(.hidden), #auth-modal:not(.hidden), #file-viewer-modal:not(.hidden)');
   if (openModal) {
     hideScrollDownBtn();
@@ -275,14 +457,14 @@ function updateScrollDownBtn() {
   }
 
   const scrollOffset = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
-  if (scrollOffset > 150) {
+  if (scrollOffset > 140) {
     btn.classList.add('visible');
     
-    // Auto-vanish after 2.5 seconds when staying in place
+    // Auto-vanish after 1.5s of stationary reading
     if (scrollVanishTimer) clearTimeout(scrollVanishTimer);
     scrollVanishTimer = setTimeout(() => {
       btn.classList.remove('visible');
-    }, 2500);
+    }, 1500);
   } else {
     hideScrollDownBtn();
   }
@@ -299,6 +481,7 @@ function injectScrollDownButton() {
     if (chatBox) {
       chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
     }
+    hideScrollDownBtn();
   };
   document.body.appendChild(btn);
 
@@ -353,7 +536,7 @@ function attachLongPressCopy(element, rawText) {
   element.addEventListener('touchmove', move, { passive: true });
 }
 
-// --- Persistent Nickname Storage ---
+// --- Nickname Engine ---
 function getNicknameStorageKey() {
   return currentUser ? `xamo_nickname_${currentUser.id}` : 'xamo_guest_nickname';
 }
@@ -971,10 +1154,9 @@ if (input && slashMenu) {
 // --- Settings Modal Handler ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
-  if (settingsLangSelect) settingsLangSelect.value = appSettings.language || "auto";
-  if (settingsTimeSelect) settingsTimeSelect.value = appSettings.timeFormat || "12";
   settingsModal.classList.remove('hidden');
   hideScrollDownBtn();
+  initCustomSelectors();
 });
 
 if (closeSettings && settingsModal) closeSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
@@ -985,9 +1167,6 @@ if (saveSettings && settingsModal) {
       const newNick = settingsNicknameInput.value.trim();
       if (newNick) saveCurrentNickname(newNick);
     }
-
-    if (settingsLangSelect) appSettings.language = settingsLangSelect.value;
-    if (settingsTimeSelect) appSettings.timeFormat = settingsTimeSelect.value;
 
     localStorage.setItem('xamo_app_settings', JSON.stringify(appSettings));
     settingsModal.classList.add('hidden');
@@ -1198,7 +1377,7 @@ if (imageInput) {
         return;
       }
 
-      showXamoToast("Encoding full video...");
+      showXamoToast("Encoding video...");
       const reader = new FileReader();
       reader.onload = function(uploadEvent) {
         const fullVideoDataUrl = uploadEvent.target.result;
@@ -1696,7 +1875,6 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Bulletproof Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -1709,7 +1887,6 @@ async function saveCurrentSession() {
     }
   }
 
-  // Strip massive inline_data so the database JSON payload stays clean
   const cleanHistory = currentChatHistory.map(msg => {
     const newParts = msg.parts.map(part => {
       if (part.inline_data) {
@@ -1724,7 +1901,7 @@ async function saveCurrentSession() {
         name: msg.file.name,
         category: msg.file.category,
         mimeType: msg.file.mimeType,
-        uri: msg.file.uri || "", // Preserves full playable video URI
+        uri: msg.file.uri || "",
         content: msg.file.content || ""
       };
     }
@@ -2125,7 +2302,7 @@ if (exportBtn) {
   });
 }
 
-// Instant Dispatch with Immediate Session Persistence
+// Form Dispatch with Immediate Save
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2382,9 +2559,10 @@ async function triggerApiCall() {
   }
 }
 
-// --- Lifecycle Bootstrap ---
+// --- Lifecycle Initialization ---
 injectGeminiThemeStyles();
 injectScrollDownButton();
+updateSearchPlaceholder();
 initVoices();
 initAuth();
 handleUrlAuthFlags();

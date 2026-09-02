@@ -67,6 +67,7 @@
         <div class="flex items-center gap-2">
           <span class="font-bold text-sm text-slate-100">XAMO Command Center</span>
           <span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">Owner</span>
+          <span id="auto-sync-badge" class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 font-mono"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Auto-Sync</span>
         </div>
       </div>
 
@@ -181,6 +182,7 @@
     let chatRecords = [];
     let activeChatRecord = null;
     let activeFilter = "all";
+    let autoSyncTimer = null;
 
     function updateStatus(message, state) {
       const box = document.getElementById("status-box");
@@ -257,12 +259,22 @@
     function showDashboard() {
       document.getElementById("auth-lock-screen").classList.add("hidden");
       document.getElementById("admin-view").classList.remove("hidden");
-      fetchAllChats();
+      fetchAllChats(true);
+      startAutoSync();
     }
 
     function logoutAdmin() {
+      if (autoSyncTimer) clearInterval(autoSyncTimer);
       localStorage.removeItem("xamo_admin_token");
       location.reload();
+    }
+
+    // --- Automatic Background Sync Engine ---
+    function startAutoSync() {
+      if (autoSyncTimer) clearInterval(autoSyncTimer);
+      autoSyncTimer = setInterval(() => {
+        if (adminToken) fetchAllChats(false);
+      }, 6000);
     }
 
     async function fetchAllChats(manual = false) {
@@ -287,29 +299,35 @@
         });
 
         if (!response.ok) {
-          if (response.status === 401) {
+          if (manual && response.status === 401) {
             alert("Admin session expired. Please sign in again.");
             logoutAdmin();
-            return;
           }
-          const err = await response.json().catch(() => ({}));
-          alert(`Failed to load chats: ${err.message || "Unauthorized"}`);
           return;
         }
 
-        chatRecords = await response.json();
+        const freshRecords = await response.json();
+        chatRecords = freshRecords;
         calculateStats();
         renderChatList();
 
+        // Refresh current conversation view seamlessly if open
         if (activeChatRecord) {
           const freshCurrent = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
           if (freshCurrent) {
-            selectChat(freshCurrent);
+            let oldLen = 0, newLen = 0;
+            try {
+              oldLen = (typeof activeChatRecord.history === 'string' ? JSON.parse(activeChatRecord.history) : activeChatRecord.history).length;
+              newLen = (typeof freshCurrent.history === 'string' ? JSON.parse(freshCurrent.history) : freshCurrent.history).length;
+            } catch(e) {}
+            if (newLen !== oldLen) {
+              selectChat(freshCurrent);
+            }
           }
         }
 
       } catch (err) {
-        alert(`Error fetching chat records: ${err.message}`);
+        if (manual) alert(`Error fetching chat records: ${err.message}`);
       } finally {
         if (manual && refreshIcon) {
           setTimeout(() => {
@@ -412,7 +430,6 @@
       });
     }
 
-    // --- Full Inspection & Streaming Media Viewer ---
     function selectChat(chat) {
       activeChatRecord = chat;
       renderChatList();
