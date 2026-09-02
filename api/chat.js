@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge', // Instant edge worker execution with zero cold-start delay
+  runtime: 'edge', // Instant edge worker execution
 };
 
 export default async function handler(req) {
@@ -32,35 +32,34 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
 
+    // Strictly Gemini 3 and 3.5 series
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
-      'gemini-2.0-flash'
+      'gemini-3-flash'
     ];
 
     let rawInstructionText = typeof systemInstruction === 'string'
       ? systemInstruction
       : (systemInstruction?.parts?.[0]?.text || 'You are XAMO AI created by Zaeem.');
 
-    // Fast-regex for real-time keywords only
-    const searchIntentRegex = /\b(news|latest|today|current|weather|score|price|stock|update|who is|recent|release date|live|2025|2026)\b/i;
-    const shouldSearch = !hasAttachment && (searchIntentRegex.test(userPromptText || '') || userPromptText?.length > 120);
+    const enhancedInstruction = `${rawInstructionText}
+[Search Grounding Directive: Real-time Google Search is enabled. The current year is 2026. For any queries regarding current events, news, live updates, dates, or recent facts, you must execute Google Search to deliver accurate, up-to-date information.]`;
 
     const payload = {
       systemInstruction: {
-        parts: [{ text: rawInstructionText }]
+        parts: [{ text: enhancedInstruction }]
       },
-      // Keep payload light: Only process the last 4 messages for rapid context evaluation
-      contents: contents.slice(-4),
+      contents: contents.slice(-6),
       generationConfig: {
-        temperature: 0.5, // Lower temperature delivers faster first-token generation
-        topP: 0.9,
-        maxOutputTokens: 2048
+        temperature: 0.6,
+        topP: 0.95,
+        maxOutputTokens: 2500
       }
     };
 
-    // Only attach search overhead if actually needed
-    if (shouldSearch) {
+    // Attach Google Search Grounding for real-time browsing
+    if (!hasAttachment) {
       payload.tools = [{ googleSearch: {} }];
     }
 
@@ -78,14 +77,15 @@ export default async function handler(req) {
         });
 
         if (response.ok) break;
-        
-        // If search fails or rate limits, retry model instantly without tools
-        if (payload.tools) {
-          delete payload.tools;
+
+        // Fallback retry without search tools if the grounding quota fails
+        if (payload.tools && response.status !== 429) {
+          const fallbackPayload = { ...payload };
+          delete fallbackPayload.tools;
           response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(fallbackPayload)
           });
           if (response.ok) break;
         }
@@ -97,13 +97,12 @@ export default async function handler(req) {
     }
 
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `Service unavailable: ${lastError}` }), {
+      return new Response(JSON.stringify({ error: `AI Service Error: ${lastError}` }), {
         status: response ? response.status : 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
-    // Direct pipe straight to browser stream
     return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',

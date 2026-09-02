@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (STABLE LIFECYCLE, GEMINI DOCK & CUSTOM PICKERS)
+// XAMO AI - COMPLETE CORE ENGINE (GEMINI PRO DOCK, VIDEO STREAM & SMART CHEVRON)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -18,6 +18,7 @@ try {
 let currentUser = null;
 let userNickname = "";
 let activeStreamAbortController = null;
+let scrollVanishTimer = null;
 
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
@@ -27,7 +28,7 @@ const withTimeout = (promise, ms = 7000) =>
     new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
   ]);
 
-// --- DOM References (Declared Top-Level to Avoid Initialization Errors) ---
+// --- DOM References ---
 const form = document.getElementById('chat-form');
 const input = document.getElementById('user-input');
 const submitBtn = document.getElementById('submit-btn');
@@ -134,7 +135,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection (Gemini Typography, Floating Pill & Dropdowns) ---
+// --- CSS Engine Injection (Gemini Typography, Floating Pill & Selectors) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
@@ -208,13 +209,14 @@ function injectGeminiThemeStyles() {
       font-size: 15px !important;
     }
 
+    /* Floating Scroll-Down Chevron */
     #scroll-down-dock-btn {
       position: fixed;
-      bottom: 84px;
+      bottom: 82px;
       left: 50%;
-      transform: translateX(-50%) translateY(12px);
-      width: 38px;
-      height: 38px;
+      transform: translateX(-50%) translateY(10px);
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       background: #1e1f20;
       border: 1px solid #3c4043;
@@ -224,10 +226,10 @@ function injectGeminiThemeStyles() {
       justify-content: center;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
       cursor: pointer;
-      z-index: 40;
+      z-index: 30;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.25s ease, transform 0.25s ease, background 0.15s ease;
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
 
     #scroll-down-dock-btn.visible {
@@ -235,73 +237,57 @@ function injectGeminiThemeStyles() {
       pointer-events: auto;
       transform: translateX(-50%) translateY(0);
     }
-
-    #scroll-down-dock-btn:hover {
-      background: #2d2f31;
-    }
-
-    .xamo-custom-select-trigger {
-      width: 100%;
-      background-color: #141518;
-      border: 1px solid #282a2e;
-      border-radius: 14px;
-      padding: 10px 14px;
-      color: #f1f3f4;
-      font-size: 13px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .xamo-custom-select-trigger:hover {
-      border-color: #3b3e45;
-    }
-
-    .xamo-select-menu {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      width: 100%;
-      max-height: 230px;
-      overflow-y: auto;
-      background: #18191d;
-      border: 1px solid #2e3036;
-      border-radius: 16px;
-      padding: 6px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-      z-index: 60;
-    }
-
-    .xamo-select-option {
-      padding: 9px 12px;
-      font-size: 12.5px;
-      color: #c4c7c5;
-      border-radius: 10px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .xamo-select-option:hover {
-      background: #25272c;
-      color: #ffffff;
-    }
-
-    .xamo-select-option.selected {
-      background: rgba(59, 130, 246, 0.15);
-      color: #60a5fa;
-      font-weight: 600;
-    }
   `;
   document.head.appendChild(style);
 }
 
-// --- Floating Scroll-To-Bottom Dock ---
+// --- Smart Auto-Hiding Scroll Down Button ---
+function hideScrollDownBtn() {
+  const btn = document.getElementById('scroll-down-dock-btn');
+  if (btn) btn.classList.remove('visible');
+  if (scrollVanishTimer) {
+    clearTimeout(scrollVanishTimer);
+    scrollVanishTimer = null;
+  }
+}
+
+function updateScrollDownBtn() {
+  const btn = document.getElementById('scroll-down-dock-btn');
+  if (!btn || !chatBox) return;
+
+  // Hide if sidebar drawer is open
+  if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+    hideScrollDownBtn();
+    return;
+  }
+
+  // Hide if search bar input is focused (keyboard open)
+  if (document.activeElement === input) {
+    hideScrollDownBtn();
+    return;
+  }
+
+  // Hide if modal dialogs are open
+  const openModal = document.querySelector('#settings-modal:not(.hidden), #nickname-modal:not(.hidden), #persona-modal:not(.hidden), #auth-modal:not(.hidden), #file-viewer-modal:not(.hidden)');
+  if (openModal) {
+    hideScrollDownBtn();
+    return;
+  }
+
+  const scrollOffset = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
+  if (scrollOffset > 150) {
+    btn.classList.add('visible');
+    
+    // Auto-vanish after 2.5 seconds when staying in place
+    if (scrollVanishTimer) clearTimeout(scrollVanishTimer);
+    scrollVanishTimer = setTimeout(() => {
+      btn.classList.remove('visible');
+    }, 2500);
+  } else {
+    hideScrollDownBtn();
+  }
+}
+
 function injectScrollDownButton() {
   if (document.getElementById('scroll-down-dock-btn')) return;
   const btn = document.createElement('button');
@@ -317,14 +303,12 @@ function injectScrollDownButton() {
   document.body.appendChild(btn);
 
   if (chatBox) {
-    chatBox.addEventListener('scroll', () => {
-      const scrollOffset = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
-      if (scrollOffset > 120) {
-        btn.classList.add('visible');
-      } else {
-        btn.classList.remove('visible');
-      }
-    }, { passive: true });
+    chatBox.addEventListener('scroll', updateScrollDownBtn, { passive: true });
+  }
+
+  if (input) {
+    input.addEventListener('focus', hideScrollDownBtn);
+    input.addEventListener('blur', () => setTimeout(updateScrollDownBtn, 300));
   }
 }
 
@@ -367,114 +351,6 @@ function attachLongPressCopy(element, rawText) {
   element.addEventListener('touchend', cancel);
   element.addEventListener('touchcancel', cancel);
   element.addEventListener('touchmove', move, { passive: true });
-  element.addEventListener('mousedown', start);
-  element.addEventListener('mouseup', cancel);
-  element.addEventListener('mouseleave', cancel);
-}
-
-// --- Custom Sleek Select Pickers ---
-function initCustomSelectors() {
-  const timeSelect = document.getElementById('settings-time-format-select');
-  const langSelect = document.getElementById('settings-language-select');
-
-  const TIME_OPTIONS = [
-    { value: '12', label: '12-Hour Format (e.g. 03:30 PM)' },
-    { value: '24', label: '24-Hour Format (e.g. 15:30)' }
-  ];
-
-  const LANG_OPTIONS = [
-    { value: 'auto', label: "Auto-Detect / User's Query Language (Default)" },
-    { value: 'English', label: 'English' },
-    { value: 'Spanish', label: 'Spanish (Español)' },
-    { value: 'French', label: 'French (Français)' },
-    { value: 'German', label: 'German (Deutsch)' },
-    { value: 'Italian', label: 'Italian (Italiano)' },
-    { value: 'Portuguese', label: 'Portuguese (Português)' },
-    { value: 'Russian', label: 'Russian (Русский)' },
-    { value: 'Chinese', label: 'Chinese (Simplified)' },
-    { value: 'Hindi', label: 'Hindi (हिन्दी)' },
-    { value: 'Urdu', label: 'Urdu (اردو)' },
-    { value: 'Kashmiri', label: 'Kashmiri (کٲشُر)' },
-    { value: 'Arabic', label: 'Arabic (العربية)' },
-    { value: 'Japanese', label: 'Japanese (日本語)' },
-    { value: 'Korean', label: 'Korean (한국어)' }
-  ];
-
-  function buildPicker(selectEl, options, currentVal, onChange) {
-    if (!selectEl || !selectEl.parentElement) return;
-    selectEl.style.display = 'none';
-
-    const existingWrapper = selectEl.parentElement.querySelector('.xamo-custom-select-wrapper');
-    if (existingWrapper) existingWrapper.remove();
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'xamo-custom-select-wrapper relative w-full mt-1.5';
-
-    const currentItem = options.find(o => o.value === currentVal) || options[0];
-
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'xamo-custom-select-trigger';
-    trigger.innerHTML = `
-      <span class="truncate selected-text">${currentItem.label}</span>
-      <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-2 flex-shrink-0 transition-transform"></i>
-    `;
-
-    const menu = document.createElement('div');
-    menu.className = 'xamo-select-menu hidden';
-
-    options.forEach(opt => {
-      const item = document.createElement('div');
-      const isSelected = opt.value === currentVal;
-      item.className = `xamo-select-option ${isSelected ? 'selected' : ''}`;
-      item.innerHTML = `
-        <span class="truncate">${opt.label}</span>
-        ${isSelected ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}
-      `;
-
-      item.onclick = (e) => {
-        e.stopPropagation();
-        menu.classList.add('hidden');
-        trigger.querySelector('.selected-text').textContent = opt.label;
-        trigger.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
-        selectEl.value = opt.value;
-        onChange(opt.value);
-        wrapper.querySelectorAll('.xamo-select-option').forEach(el => el.classList.remove('selected'));
-        item.classList.add('selected');
-      };
-
-      menu.appendChild(item);
-    });
-
-    trigger.onclick = (e) => {
-      e.stopPropagation();
-      const isClosed = menu.classList.contains('hidden');
-      document.querySelectorAll('.xamo-select-menu').forEach(m => m.classList.add('hidden'));
-      document.querySelectorAll('.xamo-custom-select-trigger .fa-chevron-down').forEach(i => i.style.transform = 'rotate(0deg)');
-
-      if (isClosed) {
-        menu.classList.remove('hidden');
-        trigger.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
-      }
-    };
-
-    wrapper.appendChild(trigger);
-    wrapper.appendChild(menu);
-    selectEl.parentElement.appendChild(wrapper);
-  }
-
-  buildPicker(timeSelect, TIME_OPTIONS, appSettings.timeFormat || '12', (val) => {
-    appSettings.timeFormat = val;
-  });
-
-  buildPicker(langSelect, LANG_OPTIONS, appSettings.language || 'auto', (val) => {
-    appSettings.language = val;
-  });
-
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.xamo-select-menu').forEach(m => m.classList.add('hidden'));
-    document.querySelectorAll('.xamo-custom-select-trigger .fa-chevron-down').forEach(i => i.style.transform = 'rotate(0deg)');
-  });
 }
 
 // --- Persistent Nickname Storage ---
@@ -1003,7 +879,7 @@ function showXamoToast(message) {
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => toast.remove(), 300);
-  }, 3500);
+  }, 3000);
 }
 
 // --- Attachment Modal Viewer ---
@@ -1030,7 +906,7 @@ window.viewAttachedFile = function(index) {
   } else if (file.category === 'video') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-video text-purple-400 text-sm";
     if (viewerContentContainer) {
-      viewerContentContainer.innerHTML = src ? `<video controls src="${src}" class="max-w-full max-h-[72vh] rounded-2xl shadow-2xl"></video>` : `<p class="text-xs text-slate-400 p-4 text-center">Video preview expired.</p>`;
+      viewerContentContainer.innerHTML = src ? `<video controls playsinline preload="metadata" src="${src}" class="max-w-full max-h-[72vh] rounded-2xl shadow-2xl bg-black"></video>` : `<p class="text-xs text-slate-400 p-4 text-center">Video preview expired.</p>`;
     }
   } else if (file.category === 'pdf') {
     if (viewerFileIcon) viewerFileIcon.className = "fa-solid fa-file-pdf text-red-400 text-sm";
@@ -1095,8 +971,10 @@ if (input && slashMenu) {
 // --- Settings Modal Handler ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
+  if (settingsLangSelect) settingsLangSelect.value = appSettings.language || "auto";
+  if (settingsTimeSelect) settingsTimeSelect.value = appSettings.timeFormat || "12";
   settingsModal.classList.remove('hidden');
-  initCustomSelectors();
+  hideScrollDownBtn();
 });
 
 if (closeSettings && settingsModal) closeSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
@@ -1107,6 +985,9 @@ if (saveSettings && settingsModal) {
       const newNick = settingsNicknameInput.value.trim();
       if (newNick) saveCurrentNickname(newNick);
     }
+
+    if (settingsLangSelect) appSettings.language = settingsLangSelect.value;
+    if (settingsTimeSelect) appSettings.timeFormat = settingsTimeSelect.value;
 
     localStorage.setItem('xamo_app_settings', JSON.stringify(appSettings));
     settingsModal.classList.add('hidden');
@@ -1249,7 +1130,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- Media Processor ---
+// --- Fast & Complete Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1258,6 +1139,7 @@ if (imageInput) {
     const fileName = file.name || "Upload";
 
     if (fileType.startsWith('image/') || (!fileType && /\.(jpe?g|png|webp|heic|bmp)$/i.test(fileName))) {
+      showXamoToast("Optimizing image...");
       const objectUrl = URL.createObjectURL(file);
       const img = new Image();
 
@@ -1266,7 +1148,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1000;
+        const maxDim = 1200;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -1280,10 +1162,9 @@ if (imageInput) {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         
         attachedFile = {
           category: 'image',
@@ -1310,11 +1191,45 @@ if (imageInput) {
 
       img.src = objectUrl;
 
+    } else if (fileType.startsWith('video/')) {
+      if (file.size > 20 * 1024 * 1024) {
+        showXamoToast("Video must be under 20MB. Please select a shorter video.");
+        imageInput.value = "";
+        return;
+      }
+
+      showXamoToast("Encoding full video...");
+      const reader = new FileReader();
+      reader.onload = function(uploadEvent) {
+        const fullVideoDataUrl = uploadEvent.target.result;
+        attachedFile = {
+          category: 'video',
+          mimeType: fileType || 'video/mp4',
+          base64: fullVideoDataUrl.split(',')[1],
+          uri: fullVideoDataUrl,
+          name: fileName
+        };
+
+        if (imagePreview) imagePreview.classList.add('hidden');
+        if (fileIcon) {
+          fileIcon.classList.remove('hidden');
+          fileIcon.innerHTML = '<i class="fa-solid fa-file-video text-purple-400"></i>';
+        }
+        if (fileNamePreview) {
+          fileNamePreview.textContent = fileName;
+          fileNamePreview.classList.remove('hidden');
+        }
+        if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
+        updateSendButtonState();
+        showXamoToast("Video ready to send!");
+      };
+      reader.readAsDataURL(file);
+
     } else if (fileType === 'application/pdf') {
       const reader = new FileReader();
       reader.onload = async function(uploadEvent) {
         try {
-          showXamoToast("Reading PDF contents...");
+          showXamoToast("Reading PDF text...");
           const typedarray = new Uint8Array(uploadEvent.target.result);
           
           if (typeof pdfjsLib !== 'undefined') {
@@ -1356,37 +1271,6 @@ if (imageInput) {
       };
       reader.readAsArrayBuffer(file);
 
-    } else if (fileType.startsWith('video/')) {
-      const videoElem = document.createElement('video');
-      videoElem.src = URL.createObjectURL(file);
-      videoElem.muted = true;
-      videoElem.currentTime = 1.0;
-
-      videoElem.onloadeddata = function() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 480;
-        canvas.height = 270;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-        const thumbUrl = canvas.toDataURL('image/jpeg', 0.7);
-
-        attachedFile = {
-          category: 'video',
-          mimeType: fileType,
-          base64: thumbUrl.split(',')[1],
-          uri: thumbUrl,
-          name: fileName
-        };
-
-        if (imagePreview) {
-          imagePreview.src = thumbUrl;
-          imagePreview.classList.remove('hidden');
-        }
-        if (fileIcon) fileIcon.classList.add('hidden');
-        if (fileNamePreview) fileNamePreview.classList.add('hidden');
-        if (imagePreviewContainer) imagePreviewContainer.classList.remove('hidden');
-        updateSendButtonState();
-      };
     } else {
       const reader = new FileReader();
       reader.onload = function(uploadEvent) {
@@ -1451,9 +1335,11 @@ function toggleSidebar() {
   if (isOpen) {
     sidebar.classList.add('-translate-x-full');
     if (sidebarOverlay) sidebarOverlay.classList.add('hidden');
+    setTimeout(updateScrollDownBtn, 200);
   } else {
     sidebar.classList.remove('-translate-x-full');
     if (sidebarOverlay) sidebarOverlay.classList.remove('hidden');
+    hideScrollDownBtn();
   }
 }
 
@@ -1823,6 +1709,7 @@ async function saveCurrentSession() {
     }
   }
 
+  // Strip massive inline_data so the database JSON payload stays clean
   const cleanHistory = currentChatHistory.map(msg => {
     const newParts = msg.parts.map(part => {
       if (part.inline_data) {
@@ -1837,7 +1724,7 @@ async function saveCurrentSession() {
         name: msg.file.name,
         category: msg.file.category,
         mimeType: msg.file.mimeType,
-        uri: msg.file.uri || "",
+        uri: msg.file.uri || "", // Preserves full playable video URI
         content: msg.file.content || ""
       };
     }
@@ -1981,9 +1868,18 @@ function renderChatBox() {
               </div>
             </div>
           `;
+        } else if (msg.file.category === 'video' && fileSrc) {
+          contentHtml += `
+            <div class="mb-2.5 rounded-2xl overflow-hidden border border-slate-700/70 max-w-xs bg-slate-900 shadow-md">
+              <video controls playsinline preload="metadata" src="${fileSrc}" class="w-full max-h-56 object-contain bg-black"></video>
+              <div class="px-3 py-1.5 text-[11px] text-slate-300 font-mono flex items-center justify-between bg-slate-950/80">
+                <span class="truncate">${msg.file.name}</span>
+                <a href="${fileSrc}" download="${msg.file.name}" class="text-blue-400 hover:text-blue-300"><i class="fa-solid fa-download"></i></a>
+              </div>
+            </div>
+          `;
         } else {
           let iconHtml = '<i class="fa-solid fa-file-code text-blue-400"></i>';
-          if (msg.file.category === 'video') iconHtml = '<i class="fa-solid fa-file-video text-purple-400"></i>';
           if (msg.file.category === 'pdf') iconHtml = '<i class="fa-solid fa-file-pdf text-red-400"></i>';
 
           contentHtml += `
@@ -2322,7 +2218,7 @@ async function triggerApiCall() {
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
     const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
-    const payloadHistory = currentChatHistory.slice(-4).map(m => ({ role: m.role, parts: m.parts }));
+    const payloadHistory = currentChatHistory.slice(-6).map(m => ({ role: m.role, parts: m.parts }));
 
     const lastUserMessage = currentChatHistory.slice().reverse().find(m => m.role === 'user');
     const rawUserText = lastUserMessage?.rawUserText || "";

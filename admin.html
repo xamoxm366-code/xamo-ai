@@ -412,6 +412,7 @@
       });
     }
 
+    // --- Full Inspection & Streaming Media Viewer ---
     function selectChat(chat) {
       activeChatRecord = chat;
       renderChatList();
@@ -448,33 +449,37 @@
 
           if (msg.file.category === "image" && src) {
             mediaBlock = `
-              <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
+              <div class="mb-2.5 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
                 <a href="${src}" target="_blank"><img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto hover:opacity-90 transition-opacity" /></a>
-                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${fileName} (Click to Expand)</div>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${fileName} (Click to View)</div>
               </div>
             `;
           } else if (msg.file.category === "video" && src) {
             mediaBlock = `
-              <div class="mb-2 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
-                <img src="${src}" class="rounded-lg max-h-48 w-full object-cover" />
-                <div class="text-[10px] font-mono text-purple-400 mt-1 truncate"><i class="fa-solid fa-file-video mr-1"></i> ${fileName} (Captured Frame)</div>
+              <div class="mb-2.5 p-2.5 bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full">
+                <video controls playsinline preload="metadata" src="${src}" class="rounded-lg max-h-72 w-full bg-black shadow-inner"></video>
+                <div class="flex items-center justify-between mt-2 px-1">
+                  <span class="text-[11px] font-mono text-purple-400 truncate"><i class="fa-solid fa-file-video mr-1"></i> ${fileName}</span>
+                  <a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold"><i class="fa-solid fa-download mr-1"></i> Download Video</a>
+                </div>
               </div>
             `;
           } else if (msg.file.category === "pdf") {
             mediaBlock = `
-              <div class="mb-2 p-3 bg-slate-900 border border-slate-700 rounded-xl text-xs max-w-sm">
+              <div class="mb-2.5 p-3 bg-slate-900 border border-slate-700 rounded-xl text-xs max-w-sm">
                 <div class="flex items-center justify-between gap-3">
                   <div class="flex items-center gap-2 truncate">
                     <i class="fa-solid fa-file-pdf text-red-400 text-base"></i>
                     <span class="font-mono text-slate-200 truncate font-semibold">${fileName}</span>
                   </div>
+                  ${src ? `<a href="${src}" download="${fileName}" target="_blank" class="px-2.5 py-1 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-lg text-[11px] font-semibold transition-colors flex-shrink-0"><i class="fa-solid fa-download mr-1"></i> Download</a>` : ''}
                 </div>
                 ${msg.file.content ? `<div class="mt-2 text-[10px] text-slate-400 max-h-24 overflow-y-auto font-mono bg-slate-950 p-2 rounded">${DOMPurify.sanitize(msg.file.content.slice(0, 300))}...</div>` : ''}
               </div>
             `;
           } else if (msg.file.content) {
             mediaBlock = `
-              <div class="mb-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs max-w-lg w-full">
+              <div class="mb-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs max-w-lg w-full">
                 <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
                   <span class="font-mono text-blue-400 font-semibold truncate"><i class="fa-solid fa-file-code mr-1"></i> ${fileName}</span>
                   <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(msg.file.content)}')); alert('Code copied to clipboard!');" class="text-[10px] text-slate-400 hover:text-slate-200 bg-slate-800 px-2 py-0.5 rounded cursor-pointer">Copy</button>
@@ -484,11 +489,12 @@
             `;
           } else {
             mediaBlock = `
-              <div class="mb-2 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs flex items-center justify-between gap-3 max-w-sm">
+              <div class="mb-2.5 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs flex items-center justify-between gap-3 max-w-sm">
                 <div class="flex items-center gap-2 truncate">
                   <i class="fa-solid fa-file text-blue-400"></i>
                   <span class="font-mono text-slate-300 truncate">${fileName}</span>
                 </div>
+                ${src ? `<a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:underline"><i class="fa-solid fa-download"></i></a>` : ''}
               </div>
             `;
           }
