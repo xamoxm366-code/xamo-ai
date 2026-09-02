@@ -32,20 +32,29 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
 
-    // Validated 3.x and 3.5 series model identifiers
+    // Validated 3.5 and 3.6 endpoints
     const MODELS = [
       'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-3.5-pro'
+      'gemini-3.6-flash'
     ];
 
     let rawInstructionText = typeof systemInstruction === 'string'
       ? systemInstruction
-      : (systemInstruction?.parts?.[0]?.text || 'You are XAMO AI created by Zaeem.');
+      : (systemInstruction?.parts?.[0]?.text || '');
 
     const enhancedInstruction = `${rawInstructionText}
-[Search Grounding Directive: Google Search is active. The current year is 2026. For news, events, live facts, dates, or recent queries, run Google Search to provide accurate, up-to-date information.]`;
+[IDENTITY DIRECTIVE: You are XAMO, an authentic, fast, and helpful AI assistant created exclusively by Zaeem. You are powered by XAMO's proprietary neural engine. You must NEVER claim or imply that you are built by Google, Gemini, OpenAI, or any third party. If asked who you are, state proudly that you are XAMO created by Zaeem.]
+
+[AUTONOMOUS APP CONTROL DIRECTIVE: You possess direct autonomous control over the user's preferences. Whenever the user naturally asks to change settings, themes, formats, languages, or manage accounts in plain conversation, warmly confirm the change and APPEND the corresponding action tag at the very end of your response:
+- Change Nickname: [[ACTION:SET_NICKNAME:newName]]
+- Change Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
+- Change Clock: [[ACTION:SET_CLOCK:12|24]]
+- Change Language: [[ACTION:SET_LANG:languageName]]
+- Switch Account: [[ACTION:SWITCH_ACCOUNT:userEmail]]
+- Remove Account: [[ACTION:REMOVE_ACCOUNT:userEmail]]
+- Clear / New Chat: [[ACTION:NEW_CHAT:true]]
+Example: If the user says "remove the account xamore234@gmail.com", respond "I am removing the account xamore234@gmail.com for you right now." and append [[ACTION:REMOVE_ACCOUNT:xamore234@gmail.com]].]`;
 
     const payload = {
       systemInstruction: {
@@ -78,7 +87,7 @@ export default async function handler(req) {
 
         if (response.ok) break;
 
-        // If search grounding triggers an error or quota cap, retry without tools
+        // If search grounding triggers quota or tool limits, instantly fallback without tools
         if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;

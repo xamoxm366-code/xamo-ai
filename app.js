@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE ENGINE (CUSTOM SETTINGS PICKERS, RESPONSIVE DOCK & AUTO-HIDE ARROW)
+// XAMO AI - AUTONOMOUS AGENTIC ENGINE & REALISTIC SKY DOCK
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -135,15 +135,12 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- Injected Theme Engine (Gemini Dark & Realistic Atmospheric Sky) ---
+// --- CSS Engine Injection (Realistic Sky & Custom Sleek Pickers) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'gemini-pro-theme-styles';
   style.textContent = `
-    /* ==========================================================================
-       1. BASE GEMINI PRO DARK THEME (DEFAULT)
-       ========================================================================== */
     .gemini-user-bubble {
       background-color: #282a2c;
       color: #f1f3f4;
@@ -246,6 +243,7 @@ function injectGeminiThemeStyles() {
       transform: translateX(-50%) translateY(0);
     }
 
+    /* Custom In-App Dropdowns */
     .xamo-custom-select-trigger {
       width: 100%;
       background-color: #141518;
@@ -305,7 +303,7 @@ function injectGeminiThemeStyles() {
     }
 
     /* ==========================================================================
-       2. REALISTIC ATMOSPHERIC SKY THEME
+       REALISTIC ATMOSPHERIC SKY THEME
        ========================================================================== */
     html.theme-sky, 
     html.theme-sky body {
@@ -316,7 +314,6 @@ function injectGeminiThemeStyles() {
       color: #0d1e38 !important;
     }
 
-    /* Natural Cloud Canopy Backdrop */
     html.theme-sky body::before {
       content: "";
       position: fixed;
@@ -329,11 +326,9 @@ function injectGeminiThemeStyles() {
       z-index: 0;
     }
 
-    /* Header Nav */
     html.theme-sky header {
       background: rgba(255, 255, 255, 0.3) !important;
       backdrop-filter: blur(20px) !important;
-      -webkit-backdrop-filter: blur(20px) !important;
       border-bottom: 1px solid rgba(255, 255, 255, 0.45) !important;
     }
 
@@ -342,29 +337,20 @@ function injectGeminiThemeStyles() {
       color: #0b2545 !important;
     }
 
-    /* Welcome Banner */
     html.theme-sky #welcome-screen h1 {
       color: #061c38 !important;
       font-weight: 500 !important;
       text-shadow: 0 1px 4px rgba(255, 255, 255, 0.6) !important;
     }
 
-    html.theme-sky #welcome-screen .w-14 {
-      background: linear-gradient(135deg, #0284c7, #2563eb) !important;
-      box-shadow: 0 10px 25px rgba(2, 132, 199, 0.45) !important;
-    }
-
-    /* Frosted Cloud User Bubbles */
     html.theme-sky .gemini-user-bubble {
       background: rgba(255, 255, 255, 0.88) !important;
       backdrop-filter: blur(14px) !important;
-      -webkit-backdrop-filter: blur(14px) !important;
       color: #091a30 !important;
       border: 1px solid rgba(255, 255, 255, 0.95) !important;
       box-shadow: 0 6px 20px rgba(13, 53, 94, 0.1) !important;
     }
 
-    /* Deep High-Contrast Response Typography */
     html.theme-sky .gemini-response-container {
       color: #0a1f3c !important;
     }
@@ -376,17 +362,9 @@ function injectGeminiThemeStyles() {
       color: #021226 !important;
     }
 
-    html.theme-sky .gemini-response-container code {
-      background: rgba(255, 255, 255, 0.8) !important;
-      color: #0265a3 !important;
-      border: 1px solid rgba(255, 255, 255, 0.9) !important;
-    }
-
-    /* Cloud-Pill Input Dock */
     html.theme-sky #chat-form {
-      background: rgba(255, 255, 255, 0.86) !important;
+      background: rgba(255, 255, 255, 0.88) !important;
       backdrop-filter: blur(24px) !important;
-      -webkit-backdrop-filter: blur(24px) !important;
       border: 1px solid rgba(255, 255, 255, 0.95) !important;
       box-shadow: 0 10px 30px rgba(11, 48, 87, 0.16) !important;
     }
@@ -404,28 +382,11 @@ function injectGeminiThemeStyles() {
       color: #0369a1 !important;
     }
 
-    html.theme-sky #attach-btn:hover,
-    html.theme-sky #voice-btn:hover {
-      background: rgba(2, 132, 199, 0.1) !important;
-    }
-
     html.theme-sky #submit-btn {
       background: #0284c7 !important;
       color: #ffffff !important;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
     }
 
-    /* Response Action Row */
-    html.theme-sky .gemini-response-container + div button,
-    html.theme-sky .gemini-response-container ~ div {
-      color: #1a3d66 !important;
-    }
-
-    html.theme-sky .gemini-response-container + div button:hover {
-      color: #0284c7 !important;
-    }
-
-    /* Floating Scroll-Down Arrow */
     html.theme-sky #scroll-down-dock-btn {
       background: rgba(255, 255, 255, 0.92) !important;
       border-color: rgba(255, 255, 255, 0.98) !important;
@@ -433,45 +394,17 @@ function injectGeminiThemeStyles() {
       box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25) !important;
     }
 
-    /* Sidebar Atmospheric Mist */
     html.theme-sky #sidebar {
       background: rgba(234, 245, 255, 0.96) !important;
       backdrop-filter: blur(24px) !important;
-      -webkit-backdrop-filter: blur(24px) !important;
       border-right: 1px solid rgba(186, 224, 253, 0.8) !important;
       color: #0a1f3c !important;
-    }
-
-    html.theme-sky #sidebar span,
-    html.theme-sky #sidebar button,
-    html.theme-sky #sidebar input {
-      color: #0a1f3c !important;
-    }
-
-    html.theme-sky #sidebar input {
-      background: rgba(255, 255, 255, 0.85) !important;
-      border-color: rgba(186, 224, 253, 0.9) !important;
-    }
-
-    html.theme-sky #sidebar input::placeholder {
-      color: #5c799a !important;
     }
   `;
   document.head.appendChild(style);
 }
 
-// --- Responsive Search Placeholder ---
-function updateSearchPlaceholder() {
-  if (!input) return;
-  if (window.innerWidth < 640) {
-    input.placeholder = "Ask XAMO... (/ for cmds)";
-  } else {
-    input.placeholder = "Ask XAMO... (Type / for commands)";
-  }
-}
-window.addEventListener('resize', updateSearchPlaceholder);
-
-// --- Custom In-App Dropdowns (Replaces Native Android Popover) ---
+// --- Custom Settings Select Pickers ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -576,6 +509,85 @@ function initCustomSelectors() {
   });
 }
 
+// --- Natural Language Action Execution Engine ---
+function executeAutonomousAction(actionType, param) {
+  const cleanParam = (param || '').trim();
+
+  if (actionType === 'SET_NICKNAME') {
+    if (cleanParam) {
+      saveCurrentNickname(cleanParam);
+      showXamoToast(`Nickname updated to ${cleanParam}`);
+    }
+  } else if (actionType === 'SET_THEME') {
+    const validThemes = ['sky', 'dark', 'mirror', 'default'];
+    const chosen = validThemes.includes(cleanParam.toLowerCase()) ? cleanParam.toLowerCase() : 'default';
+    applyTheme(chosen);
+    showXamoToast(`Theme changed to ${chosen.toUpperCase()}`);
+  } else if (actionType === 'SET_CLOCK') {
+    const chosen = cleanParam.includes('24') ? '24' : '12';
+    appSettings.timeFormat = chosen;
+    localStorage.setItem('xamo_app_settings', JSON.stringify(appSettings));
+    showXamoToast(`Clock set to ${chosen}-Hour format`);
+  } else if (actionType === 'SET_LANG') {
+    appSettings.language = cleanParam;
+    localStorage.setItem('xamo_app_settings', JSON.stringify(appSettings));
+    showXamoToast(`Language set to ${cleanParam}`);
+  } else if (actionType === 'REMOVE_ACCOUNT') {
+    const accounts = getStoredAccounts();
+    const target = accounts.find(a => a.user.email.toLowerCase() === cleanParam.toLowerCase());
+    if (target) {
+      showXamoToast(`Removing account ${cleanParam}...`);
+      removeAccountFromStorage(target.user.id);
+    } else {
+      showXamoToast(`Account ${cleanParam} not found in saved list.`);
+    }
+  } else if (actionType === 'SWITCH_ACCOUNT') {
+    const accounts = getStoredAccounts();
+    const target = accounts.find(a => a.user.email.toLowerCase() === cleanParam.toLowerCase());
+    if (target && supabaseClient) {
+      showXamoToast(`Switching to account ${cleanParam}...`);
+      supabaseClient.auth.setSession({
+        access_token: target.access_token,
+        refresh_token: target.refresh_token
+      });
+    } else {
+      showXamoToast(`Account ${cleanParam} is not logged in.`);
+    }
+  } else if (actionType === 'NEW_CHAT') {
+    startNewChat();
+    showXamoToast("Started a new conversation");
+  }
+}
+
+// Client-Side Immediate Intent Interceptor for Instant Feedback
+function checkImmediateUserIntent(text) {
+  const lower = text.toLowerCase();
+
+  const removeAccMatch = lower.match(/(?:remove|delete)\s+account\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  if (removeAccMatch) {
+    executeAutonomousAction('REMOVE_ACCOUNT', removeAccMatch[1]);
+    return;
+  }
+
+  const switchAccMatch = lower.match(/(?:switch|change)\s+account\s+(?:to\s+)?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  if (switchAccMatch) {
+    executeAutonomousAction('SWITCH_ACCOUNT', switchAccMatch[1]);
+    return;
+  }
+
+  if (lower.match(/\b(change|switch|set)\b.*\b(sky|dark|mirror|default)\b.*\b(theme|mode)?\b/)) {
+    const theme = lower.includes('sky') ? 'sky' : (lower.includes('mirror') ? 'mirror' : (lower.includes('dark') ? 'dark' : 'default'));
+    executeAutonomousAction('SET_THEME', theme);
+    return;
+  }
+
+  const nickMatch = lower.match(/(?:call me|change nickname to|set nickname to|my name is)\s+([a-zA-Z0-9_-]{2,15})/);
+  if (nickMatch && !lower.includes('what is')) {
+    executeAutonomousAction('SET_NICKNAME', nickMatch[1]);
+    return;
+  }
+}
+
 // --- Smart Auto-Hiding Scroll Down Button ---
 function hideScrollDownBtn() {
   const btn = document.getElementById('scroll-down-dock-btn');
@@ -590,19 +602,16 @@ function updateScrollDownBtn() {
   const btn = document.getElementById('scroll-down-dock-btn');
   if (!btn || !chatBox) return;
 
-  // Never show if sidebar drawer is open
   if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
     hideScrollDownBtn();
     return;
   }
 
-  // Never show if user is focused on the search bar (keyboard open)
   if (document.activeElement === input) {
     hideScrollDownBtn();
     return;
   }
 
-  // Never show if any modal dialog is open
   const openModal = document.querySelector('#settings-modal:not(.hidden), #nickname-modal:not(.hidden), #persona-modal:not(.hidden), #auth-modal:not(.hidden), #file-viewer-modal:not(.hidden)');
   if (openModal) {
     hideScrollDownBtn();
@@ -613,7 +622,6 @@ function updateScrollDownBtn() {
   if (scrollOffset > 140) {
     btn.classList.add('visible');
     
-    // Auto-vanish after 1.5s of stationary reading
     if (scrollVanishTimer) clearTimeout(scrollVanishTimer);
     scrollVanishTimer = setTimeout(() => {
       btn.classList.remove('visible');
@@ -1271,39 +1279,6 @@ window.viewAttachedFile = function(index) {
   fileViewerModal.classList.remove('hidden');
 };
 
-// --- Slash Commands Menu ---
-if (input && slashMenu) {
-  input.addEventListener('input', () => {
-    if (input.value.trim() === '/') {
-      slashMenu.classList.remove('hidden');
-    } else {
-      slashMenu.classList.add('hidden');
-    }
-    updateSendButtonState();
-  });
-
-  slashOptions.forEach(option => {
-    option.addEventListener('click', () => {
-      input.value = option.getAttribute('data-cmd');
-      input.style.height = 'auto'; 
-      input.style.height = input.scrollHeight + 'px';
-      slashMenu.classList.add('hidden');
-      input.focus();
-      updateSendButtonState();
-    });
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      const isMobileDevice = window.innerWidth < 768 || 'ontouchstart' in window;
-      if (!isMobileDevice && form) {
-        e.preventDefault();
-        form.requestSubmit();
-      }
-    }
-  });
-}
-
 // --- Settings Modal Handler ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
@@ -1327,15 +1302,15 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Personas Setup ---
+// --- Base Personas Setup (Strict No-Gemini Identity) ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
-    prompt: "You are XAMO, an authentic, fast, and helpful AI assistant created by Zaeem. Answer naturally in fluent, clean prose with thorough details. Keep explanations direct, engaging, and scannable without robotic metadata tables."
+    prompt: "You are XAMO, an authentic, fast, and helpful AI assistant created exclusively by Zaeem. You are powered by XAMO's proprietary neural engine. Under NO circumstances should you ever mention Google, Gemini, OpenAI, or being an LLM created by Google. If asked who created you or what model powers you, state with pride that you are XAMO, built by Zaeem."
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created by Zaeem. Provide production-grade, optimized code immediately with clean syntax and concise explanations."
+    prompt: "You are XAMO, a principal software architect created exclusively by Zaeem. Provide production-grade, optimized code immediately with clean syntax and concise explanations. Never mention Google, Gemini, or third parties."
   }
 ];
 
@@ -1364,29 +1339,12 @@ function saveUserPersonas() {
   }
 }
 
-function deletePersona(idx) {
-  const deletedName = customPersonas[idx].name;
-  customPersonas.splice(idx, 1);
-  saveUserPersonas();
-  
-  if (currentPersonaIndex === idx) {
-    currentPersonaIndex = 0;
-    if (personaLabel) personaLabel.textContent = customPersonas[0].name;
-  } else if (currentPersonaIndex > idx) {
-    currentPersonaIndex--;
-  }
-  
-  renderPersonas();
-  showXamoToast(`Persona "${deletedName}" deleted.`);
-}
-
 function renderPersonas() {
   if (!personaListOptions) return;
   personaListOptions.innerHTML = "";
   customPersonas.forEach((p, idx) => {
     const div = document.createElement('div');
     const isSelected = currentPersonaIndex === idx;
-    const isDeletable = idx >= 2;
 
     div.className = "group persona-option px-3 py-2 text-xs hover:bg-slate-500/10 cursor-pointer transition-colors flex items-center justify-between gap-2";
     
@@ -1396,23 +1354,7 @@ function renderPersonas() {
       ? `<i class="fa-solid fa-check text-blue-400 text-[10px]"></i> <span class="truncate font-semibold text-blue-400">${p.name}</span>`
       : `<span class="truncate">${p.name}</span>`;
 
-    const rightActions = document.createElement('div');
-    rightActions.className = "flex items-center gap-1.5 flex-shrink-0";
-
-    if (isDeletable) {
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = "opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 p-1 transition-opacity text-[10px]";
-      deleteBtn.title = `Delete ${p.name}`;
-      deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
-      deleteBtn.onclick = (e) => {
-        e.stopPropagation();
-        deletePersona(idx);
-      };
-      rightActions.appendChild(deleteBtn);
-    }
-
     div.appendChild(leftSpan);
-    div.appendChild(rightActions);
 
     div.onclick = () => {
       currentPersonaIndex = idx;
@@ -1435,25 +1377,6 @@ if (personaBtn && personaDropdown) {
 if (addPersonaTrigger && personaModal) addPersonaTrigger.addEventListener('click', () => personaModal.classList.remove('hidden'));
 if (closePersonaModal && personaModal) closePersonaModal.addEventListener('click', () => personaModal.classList.add('hidden'));
 
-if (savePersonaBtn && personaModal) {
-  savePersonaBtn.addEventListener('click', () => {
-    const name = newPersonaName ? newPersonaName.value.trim() : "";
-    const prompt = newPersonaPrompt ? newPersonaPrompt.value.trim() : "";
-    if (!name || !prompt) {
-      showAuthError("Please fill in both name and instructions.");
-      return;
-    }
-    customPersonas.push({ name, prompt });
-    saveUserPersonas();
-    if (newPersonaName) newPersonaName.value = "";
-    if (newPersonaPrompt) newPersonaPrompt.value = "";
-    personaModal.classList.add('hidden');
-    currentPersonaIndex = customPersonas.length - 1;
-    if (personaLabel) personaLabel.textContent = name;
-    renderPersonas();
-  });
-}
-
 if (attachBtn && imageInput) {
   attachBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1462,7 +1385,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- Fast & Complete Media Processor ---
+// --- Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1516,16 +1439,11 @@ if (imageInput) {
         updateSendButtonState();
       };
 
-      img.onerror = function() {
-        URL.revokeObjectURL(objectUrl);
-        showXamoToast("Failed to load image format.");
-      };
-
       img.src = objectUrl;
 
     } else if (fileType.startsWith('video/')) {
       if (file.size > 20 * 1024 * 1024) {
-        showXamoToast("Video must be under 20MB. Please select a shorter video.");
+        showXamoToast("Video must be under 20MB.");
         imageInput.value = "";
         return;
       }
@@ -1632,33 +1550,6 @@ if (removeImageBtn) {
     if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
     updateSendButtonState();
   });
-}
-
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  if (voiceBtn) {
-    voiceBtn.addEventListener('click', () => {
-      recognition.start();
-      voiceBtn.classList.add('text-blue-400', 'animate-pulse');
-    });
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      if (input) {
-        input.value += (input.value ? " " : "") + transcript;
-        input.style.height = 'auto'; 
-        input.style.height = input.scrollHeight + 'px';
-      }
-      voiceBtn.classList.remove('text-blue-400', 'animate-pulse');
-      updateSendButtonState();
-    };
-    recognition.onerror = () => voiceBtn.classList.remove('text-blue-400', 'animate-pulse');
-    recognition.onend = () => voiceBtn.classList.remove('text-blue-400', 'animate-pulse');
-  }
-} else if (voiceBtn) {
-  voiceBtn.style.display = 'none';
 }
 
 function toggleSidebar() {
@@ -1797,148 +1688,6 @@ async function syncCloudChats() {
 
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
-if (authSubmitBtn) {
-  authSubmitBtn.addEventListener('click', async () => {
-    hideAuthError();
-    if (!supabaseClient) {
-      showAuthError("Supabase connection is not initialized.");
-      return;
-    }
-    const email = authEmailInput ? authEmailInput.value.trim() : "";
-    const password = authPasswordInput ? authPasswordInput.value.trim() : "";
-
-    if (!email) {
-      showAuthError("Please enter your email address.");
-      return;
-    }
-
-    const btnTextSpan = authSubmitBtn.querySelector('span');
-
-    try {
-      if (authMode === 'forgot') {
-        if (resetEmailCooldown) {
-          showAuthError("Please wait a moment before requesting another reset email.");
-          return;
-        }
-
-        btnTextSpan.textContent = "Verifying...";
-        authSubmitBtn.disabled = true;
-
-        let isVerified = true;
-        try {
-          const { data, error: rpcError } = await withTimeout(
-            supabaseClient.rpc('is_email_verified', { check_email: email }),
-            4000
-          );
-          if (!rpcError && typeof data === 'boolean') {
-            isVerified = data;
-          }
-        } catch (rpcTimeoutOrErr) {
-          console.warn("RPC check skipped:", rpcTimeoutOrErr);
-        }
-
-        if (isVerified === false) {
-          throw new Error("This email is not registered yet or has not been verified.");
-        }
-
-        btnTextSpan.textContent = "Sending Link...";
-        const redirectTarget = "https://xamo-ai.vercel.app/reset-password.html";
-        
-        const { error: resetErr } = await withTimeout(
-          supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: redirectTarget }),
-          6000
-        );
-
-        if (resetErr) {
-          const msg = (resetErr.message || '').toLowerCase();
-          if (msg.includes('rate limit') || msg.includes('too many requests')) {
-            throw new Error("Too many reset attempts. Please wait 60 seconds.");
-          } else {
-            throw new Error(resetErr.message || "Failed to send reset link.");
-          }
-        }
-
-        showXamoToast("Reset link sent! Check your Gmail inbox & Spam folder.");
-        if (authModal) authModal.classList.add('hidden');
-        setAuthMode('signin');
-
-        resetEmailCooldown = true;
-        setTimeout(() => { resetEmailCooldown = false; }, 45000);
-
-      } else if (authMode === 'signup') {
-        if (!password) { showAuthError("Please enter a password."); return; }
-        if (password.length < 6) { showAuthError("Password must be at least 6 characters."); return; }
-
-        btnTextSpan.textContent = "Creating Account...";
-        authSubmitBtn.disabled = true;
-
-        const { data, error } = await withTimeout(
-          supabaseClient.auth.signUp({ 
-            email, 
-            password,
-            options: { emailRedirectTo: "https://xamo-ai.vercel.app/verified.html" }
-          }),
-          8000
-        );
-
-        if (error) {
-          const msg = error.message.toLowerCase();
-          if (msg.includes('already registered') || msg.includes('user already exists')) {
-            throw new Error("This email is already registered. Please sign in instead.");
-          }
-          throw error;
-        }
-
-        if (data.user && data.user.identities && data.user.identities.length === 0) {
-          throw new Error("This email is already registered. Please sign in instead.");
-        }
-
-        showXamoToast("Verification link sent! Check your Gmail inbox.");
-        if (authModal) authModal.classList.add('hidden');
-
-      } else {
-        if (!password) { showAuthError("Please enter your password."); return; }
-        btnTextSpan.textContent = "Signing In...";
-        authSubmitBtn.disabled = true;
-
-        const { data, error } = await withTimeout(
-          supabaseClient.auth.signInWithPassword({ email, password }),
-          8000
-        );
-        
-        if (error) {
-          const errMsg = error.message.toLowerCase();
-          if (errMsg.includes('email not confirmed') || errMsg.includes('not confirmed')) {
-            throw new Error("Please verify your account before logging in. Check your email inbox.");
-          } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid password') || errMsg.includes('credentials')) {
-            throw new Error("Invalid email or password. Please check your credentials.");
-          } else {
-            throw new Error(error.message);
-          }
-        }
-
-        if (data.session) storeCurrentAccount(data.session);
-        showXamoToast("Signed in successfully!");
-        if (authModal) authModal.classList.add('hidden');
-      }
-      
-      if (authEmailInput) authEmailInput.value = "";
-      if (authPasswordInput) authPasswordInput.value = "";
-    } catch (err) {
-      showAuthError(err.message);
-    } finally {
-      authSubmitBtn.disabled = false;
-      if (authMode === 'forgot') {
-        btnTextSpan.textContent = "Send Reset Link";
-      } else if (authMode === 'signup') {
-        btnTextSpan.textContent = "Sign Up";
-      } else {
-        btnTextSpan.textContent = "Sign In";
-      }
-    }
-  });
-}
-
 function renderMath(element) {
   if (window.renderMathInElement) {
     window.renderMathInElement(element, {
@@ -1955,7 +1704,9 @@ function renderMath(element) {
 }
 
 function parseMarkdownSafely(text) {
-  const rawHtml = marked.parse(text);
+  // Strip out any internal action tags from the user's visible markdown output
+  const cleanDisplay = (text || '').replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+  const rawHtml = marked.parse(cleanDisplay);
   return window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml;
 }
 
@@ -2028,6 +1779,7 @@ function renderSessions(filterText = "") {
   });
 }
 
+// --- Bulletproof Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2293,7 +2045,7 @@ function renderChatBox() {
       copyBtn.title = "Copy";
       copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
       copyBtn.onclick = () => {
-        navigator.clipboard.writeText(textVal).then(() => {
+        navigator.clipboard.writeText(textVal.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim()).then(() => {
           showXamoToast("Copied to clipboard!");
         });
       };
@@ -2303,16 +2055,17 @@ function renderChatBox() {
       shareBtn.title = "Share";
       shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
       shareBtn.onclick = async () => {
+        const cleanShareText = textVal.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
         if (navigator.share) {
           try {
             await navigator.share({
               title: 'XAMO AI Response',
-              text: textVal
+              text: cleanShareText
             });
             return;
           } catch (err) {}
         }
-        navigator.clipboard.writeText(textVal).then(() => {
+        navigator.clipboard.writeText(cleanShareText).then(() => {
           showXamoToast("Copied response to clipboard for sharing!");
         });
       };
@@ -2455,7 +2208,7 @@ if (exportBtn) {
   });
 }
 
-// Form Dispatch with Immediate Save
+// Instant Dispatch with Immediate Session Persistence and Natural Language Action Detection
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2468,6 +2221,9 @@ if (form) {
 
     const welcomeScreen = document.getElementById('welcome-screen');
     if (welcomeScreen) welcomeScreen.remove();
+
+    // Check natural language intent immediately for immediate UI response
+    checkImmediateUserIntent(rawTypedText);
 
     const userParts = [];
     let promptPayloadText = rawTypedText;
@@ -2491,7 +2247,6 @@ if (form) {
     attachedFile = null;
     if (imageInput) imageInput.value = '';
     if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
-    if (slashMenu) slashMenu.classList.add('hidden');
     updateSendButtonState();
 
     currentChatHistory.push({ 
@@ -2604,6 +2359,12 @@ async function triggerApiCall() {
       }
     }
 
+    // Parse autonomous action tags from AI response
+    const actionMatch = fullText.match(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/);
+    if (actionMatch) {
+      executeAutonomousAction(actionMatch[1], actionMatch[2]);
+    }
+
     renderMath(responseContent);
     enhanceMarkdownOutput(botDiv);
     if (window.hljs) hljs.highlightAll();
@@ -2654,8 +2415,9 @@ async function triggerApiCall() {
     copyBtn.title = "Copy";
     copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
     copyBtn.onclick = () => {
-      navigator.clipboard.writeText(fullText);
-      showXamoToast("Copied to clipboard!");
+      navigator.clipboard.writeText(fullText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim()).then(() => {
+        showXamoToast("Copied to clipboard!");
+      });
     };
 
     const shareBtn = document.createElement('button');
@@ -2663,16 +2425,17 @@ async function triggerApiCall() {
     shareBtn.title = "Share";
     shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
     shareBtn.onclick = async () => {
+      const cleanShareText = fullText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
       if (navigator.share) {
         try {
           await navigator.share({
             title: 'XAMO AI Response',
-            text: fullText
+            text: cleanShareText
           });
           return;
         } catch (err) {}
       }
-      navigator.clipboard.writeText(fullText).then(() => {
+      navigator.clipboard.writeText(cleanShareText).then(() => {
         showXamoToast("Copied response to clipboard for sharing!");
       });
     };
@@ -2695,7 +2458,7 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
@@ -2715,7 +2478,6 @@ async function triggerApiCall() {
 // --- Lifecycle Initialization ---
 injectGeminiThemeStyles();
 injectScrollDownButton();
-updateSearchPlaceholder();
 initVoices();
 initAuth();
 handleUrlAuthFlags();
