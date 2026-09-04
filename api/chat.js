@@ -97,14 +97,14 @@ export default async function handler(req) {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.2,
-        topP: 0.9,
+        temperature: 0.1,
+        topP: 0.8,
         maxOutputTokens: 2048
       }
     };
 
-    const model = 'gemini-1.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Stable v1 endpoint with gemini-3.5-flash-lite
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const response = await fetch(url, {
       method: 'POST',
