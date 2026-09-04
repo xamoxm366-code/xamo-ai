@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULLY OPTIMIZED & COMPLETE CLIENT ENGINE
+// XAMO AI - FULLY AUTONOMOUS PRODUCTION CLIENT ENGINE
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -184,7 +184,7 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input {
-      font-size: 14.5px;
+      font-size: 14px;
       line-height: 1.35;
       background: transparent;
       border: none;
@@ -192,6 +192,16 @@ function injectGeminiThemeStyles() {
       padding: 6px 2px;
       min-width: 0;
       flex: 1 1 0%;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    #user-input::placeholder {
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      font-size: 13px;
     }
 
     #scroll-down-dock-btn {
@@ -433,6 +443,7 @@ function updateSearchPlaceholder() {
   input.placeholder = "Ask XAMO... (Type / for commands)";
 }
 
+// --- Custom In-App Dropdowns ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -537,10 +548,119 @@ function initCustomSelectors() {
   });
 }
 
+// --- Native PDF Conversion Engine ---
+function exportChatToPdf() {
+  if (!currentChatHistory || currentChatHistory.length === 0) {
+    showXamoToast("No conversation to export to PDF.");
+    return;
+  }
+
+  showXamoToast("Preparing PDF print preview...");
+
+  const printWindow = window.open('', '_blank', 'width=800,height=900');
+  if (!printWindow) {
+    showXamoToast("Please allow popups to export as PDF.");
+    return;
+  }
+
+  const title = currentChatHistory.find(m => m.role === 'user')?.rawUserText?.slice(0, 30) || "XAMO Chat Export";
+
+  let conversationHtml = currentChatHistory.map(msg => {
+    const isUser = msg.role === 'user';
+    const sender = isUser ? (userNickname || "User") : "XAMO AI";
+    const bgStyle = isUser ? "background-color: #f1f5f9; border-left: 4px solid #2563eb;" : "background-color: #ffffff; border-left: 4px solid #10b981;";
+    const text = msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : "");
+    const cleanText = text.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+
+    return `
+      <div style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; ${bgStyle} box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px; text-transform: uppercase;">
+          ${sender}
+        </div>
+        <div style="font-size: 13.5px; line-height: 1.6; color: #0f172a; white-space: pre-wrap; word-break: break-word;">
+          ${cleanText}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${title} - XAMO AI</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 30px; margin: 0; color: #0f172a; background: #fff; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px; }
+        .logo { font-size: 18px; font-weight: bold; color: #2563eb; }
+        .date { font-size: 11px; color: #94a3b8; font-family: monospace; }
+        @media print {
+          body { padding: 15mm; }
+          button { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="logo">⚡ XAMO AI — Transcript</div>
+        <div class="date">${new Date().toLocaleString()}</div>
+      </div>
+      <div>${conversationHtml}</div>
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+// --- Natural Language Autonomous Action Handler ---
 function executeAutonomousAction(actionType, param) {
   const cleanParam = (param || '').trim();
 
-  if (actionType === 'SET_NICKNAME') {
+  if (actionType === 'SET_PERSONA') {
+    const target = cleanParam.toLowerCase();
+    const idx = customPersonas.findIndex(p => 
+      p.name.toLowerCase() === target || 
+      (target.includes('code') && p.name.toLowerCase().includes('code')) ||
+      (target.includes('default') && p.name.toLowerCase().includes('default'))
+    );
+
+    if (idx !== -1) {
+      currentPersonaIndex = idx;
+      if (personaLabel) personaLabel.textContent = customPersonas[idx].name;
+      renderPersonas();
+      showXamoToast(`Persona switched to ${customPersonas[idx].name}`);
+    } else {
+      showXamoToast(`Persona "${cleanParam}" not found.`);
+    }
+  } else if (actionType === 'PIN_NOTE') {
+    if (cleanParam) {
+      addPinnedNote(cleanParam);
+    } else {
+      const lastBotMsg = currentChatHistory.slice().reverse().find(m => m.role === 'model');
+      if (lastBotMsg && lastBotMsg.parts && lastBotMsg.parts[0]) {
+        addPinnedNote(lastBotMsg.parts[0].text);
+      } else {
+        showXamoToast("Nothing to pin right now.");
+      }
+    }
+  } else if (actionType === 'EXPORT_PDF') {
+    exportChatToPdf();
+  } else if (actionType === 'CLEAR_CHAT') {
+    if (activeSessionId) {
+      deleteSession(activeSessionId);
+    } else {
+      startNewChat();
+    }
+    showXamoToast("Conversation cleared");
+  } else if (actionType === 'NEW_CHAT') {
+    startNewChat();
+    showXamoToast("Started a new conversation");
+  } else if (actionType === 'SET_NICKNAME') {
     if (cleanParam) {
       saveCurrentNickname(cleanParam);
       showXamoToast(`Nickname updated to ${cleanParam}`);
@@ -580,15 +700,48 @@ function executeAutonomousAction(actionType, param) {
     } else {
       showXamoToast(`Account ${cleanParam} is not logged in.`);
     }
-  } else if (actionType === 'NEW_CHAT') {
-    startNewChat();
-    showXamoToast("Started a new conversation");
   }
 }
 
+// --- Instant Intent Catching ---
 function checkImmediateUserIntent(text) {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase().trim();
 
+  // 1. PDF Export Trigger
+  if (lower.match(/\b(convert.*to pdf|export.*pdf|save.*as pdf|download.*pdf|print chat)\b/)) {
+    executeAutonomousAction('EXPORT_PDF', 'true');
+    return;
+  }
+
+  // 2. Clear Chat / History Trigger
+  if (lower.match(/\b(clear chat|clear history|delete this chat|wipe chat|clean screen)\b/)) {
+    executeAutonomousAction('CLEAR_CHAT', 'true');
+    return;
+  }
+
+  // 3. New Chat Trigger
+  if (lower.match(/\b(new chat|start new chat|create new chat|fresh chat)\b/)) {
+    executeAutonomousAction('NEW_CHAT', 'true');
+    return;
+  }
+
+  // 4. Pin Note Trigger
+  if (lower.match(/\b(pin this|pin note|save to pin|bookmark this)\b/)) {
+    executeAutonomousAction('PIN_NOTE', '');
+    return;
+  }
+
+  // 5. Persona Trigger
+  if (lower.match(/\b(coder mode|coder persona|switch to coder|change to coder|be a coder|set persona to coder|act as coder|switch persona to coder)\b/)) {
+    executeAutonomousAction('SET_PERSONA', 'Coder');
+    return;
+  }
+  if (lower.match(/\b(default mode|default persona|switch to default|change to default|reset persona|normal mode)\b/)) {
+    executeAutonomousAction('SET_PERSONA', 'Default');
+    return;
+  }
+
+  // 6. Account Management Trigger
   const removeAccMatch = lower.match(/(?:remove|delete)\s+account\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
   if (removeAccMatch) {
     executeAutonomousAction('REMOVE_ACCOUNT', removeAccMatch[1]);
@@ -601,12 +754,14 @@ function checkImmediateUserIntent(text) {
     return;
   }
 
+  // 7. Theme Trigger
   if (lower.match(/\b(change|switch|set)\b.*\b(sky|dark|mirror|default)\b.*\b(theme|mode)?\b/)) {
     const theme = lower.includes('sky') ? 'sky' : (lower.includes('mirror') ? 'mirror' : (lower.includes('dark') ? 'dark' : 'default'));
     executeAutonomousAction('SET_THEME', theme);
     return;
   }
 
+  // 8. Nickname Trigger
   const nickMatch = lower.match(/(?:call me|change nickname to|set nickname to|my name is)\s+([a-zA-Z0-9_-]{2,15})/);
   if (nickMatch && !lower.includes('what is')) {
     executeAutonomousAction('SET_NICKNAME', nickMatch[1]);
@@ -614,6 +769,7 @@ function checkImmediateUserIntent(text) {
   }
 }
 
+// --- Smart Auto-Hiding Scroll Down Button ---
 function hideScrollDownBtn() {
   const btn = document.getElementById('scroll-down-dock-btn');
   if (btn) btn.classList.remove('visible');
@@ -681,6 +837,7 @@ function injectScrollDownButton() {
   }
 }
 
+// --- Long-Press Clipboard Engine ---
 function attachLongPressCopy(element, rawText) {
   if (!element || !rawText) return;
   let pressTimer = null;
@@ -721,6 +878,7 @@ function attachLongPressCopy(element, rawText) {
   element.addEventListener('touchmove', move, { passive: true });
 }
 
+// --- Nickname Engine ---
 function getNicknameStorageKey() {
   return currentUser ? `xamo_nickname_${currentUser.id}` : 'xamo_guest_nickname';
 }
@@ -771,6 +929,7 @@ if (saveNicknameBtn && nicknameInput) {
   });
 }
 
+// --- Theme Picker ---
 function applyTheme(themeName) {
   document.documentElement.classList.remove('theme-light', 'theme-dark', 'theme-sky', 'theme-mirror');
   localStorage.setItem('xamo_theme', themeName);
@@ -838,6 +997,7 @@ function hideAuthError() {
   if (authErrorBanner) authErrorBanner.classList.add('hidden');
 }
 
+// --- Multi-Account Registry Engine ---
 function getStoredAccounts() {
   try {
     return JSON.parse(localStorage.getItem('xamo_multi_accounts') || '[]');
@@ -957,6 +1117,7 @@ if (signoutCurrentAccountBtn) {
   });
 }
 
+// --- Pinned Notes System ---
 if (pinnedNotesTriggerBtn && pinnedNotesModal) {
   pinnedNotesTriggerBtn.addEventListener('click', () => {
     renderPinnedNotes();
@@ -1105,6 +1266,9 @@ if (closeAuthModal && authModal) {
   });
 }
 
+// ============================================================================
+// COMPLETE AUTH DISPATCH HANDLER (STRICT EMAIL & REGEX VALIDATION)
+// ============================================================================
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -1260,6 +1424,7 @@ if (closeVerifiedBtn && verifiedModal) {
   closeVerifiedBtn.addEventListener('click', () => verifiedModal.classList.add('hidden'));
 }
 
+// --- Text-to-Speech (TTS) Engine ---
 let ttsSettings = {
   gender: localStorage.getItem('xamo_tts_gender') || 'female',
   rate: 1.0,
@@ -1361,6 +1526,7 @@ function resetSpeechButton(btn) {
   if (activeSpeakerBtn === btn) activeSpeakerBtn = null;
 }
 
+// Send Button Visibility Check
 function updateSendButtonState() {
   if (!submitBtn || !input) return;
   const hasText = input.value.trim().length > 0;
@@ -1395,6 +1561,7 @@ function showXamoToast(message) {
   }, 3000);
 }
 
+// --- Attachment Modal Viewer ---
 if (closeFileViewer && fileViewerModal) {
   closeFileViewer.addEventListener('click', () => fileViewerModal.classList.add('hidden'));
 }
@@ -1444,9 +1611,10 @@ window.viewAttachedFile = function(index) {
     if (window.hljs) hljs.highlightElement(code);
   }
 
-  fileViewerModal.classList.add('hidden'); // Fixed toggle
+  fileViewerModal.classList.remove('hidden');
 };
 
+// --- Settings Modal Handler ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
   settingsModal.classList.remove('hidden');
@@ -1469,6 +1637,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
+// --- Base Personas ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1570,6 +1739,7 @@ if (attachBtn && imageInput) {
   });
 }
 
+// --- High-Speed Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1754,6 +1924,7 @@ if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
 if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
 if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
 
+// --- Auth State Handshake ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1967,6 +2138,7 @@ function renderSessions(filterText = "") {
   });
 }
 
+// --- Bulletproof Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2395,6 +2567,7 @@ if (exportBtn) {
   });
 }
 
+// --- Search Bar Input & Slash Command Menu Engine ---
 function initSearchBarAndSlashMenu() {
   if (!input) return;
 
@@ -2451,6 +2624,7 @@ function initSearchBarAndSlashMenu() {
   });
 }
 
+// Form Dispatch with Intent Checking
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2503,6 +2677,7 @@ if (form) {
   });
 }
 
+// Sub-Second Streaming Execution
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -2599,9 +2774,10 @@ async function triggerApiCall() {
       }
     }
 
-    const actionMatch = fullText.match(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/);
-    if (actionMatch) {
-      executeAutonomousAction(actionMatch[1], actionMatch[2]);
+    // Process autonomous action tags emitted by model
+    const actionMatches = [...fullText.matchAll(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/g)];
+    for (const match of actionMatches) {
+      executeAutonomousAction(match[1], match[2]);
     }
 
     renderMath(responseContent);
@@ -2703,6 +2879,7 @@ async function triggerApiCall() {
     }
 
     botDiv.appendChild(footerDiv);
+
   } catch (err) {
     if (err.name === 'AbortError') return;
     responseContent.classList.remove('animate-pulse');

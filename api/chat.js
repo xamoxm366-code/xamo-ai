@@ -38,9 +38,17 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[OUTPUT: Start responding immediately on token 1. Be concise, direct, and fast.]`;
+[OUTPUT: Start responding immediately on token 1. Be concise, direct, and fast.]
+[AUTONOMOUS CONTROL: You have direct autonomous control over XAMO. When the user naturally asks to perform any of the following tasks in conversation, confirm warmly and APPEND the exact tag at the end of your response:
+- Persona: [[ACTION:SET_PERSONA:Coder|Default]]
+- Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
+- Nickname: [[ACTION:SET_NICKNAME:name]]
+- Clock: [[ACTION:SET_CLOCK:12|24]]
+- Pin Note: [[ACTION:PIN_NOTE:note content to pin]]
+- Convert / Export Chat to PDF: [[ACTION:EXPORT_PDF:true]]
+- Clear Current Chat: [[ACTION:CLEAR_CHAT:true]]
+- Start New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // 1. Sanitize text payloads to prevent context processing bottlenecks
     const sanitizedContents = (contents || []).slice(-3).map(msg => ({
       role: msg.role,
       parts: (msg.parts || []).map(part => {
@@ -51,7 +59,6 @@ export default async function handler(req) {
       })
     }));
 
-    // 2. Disable thinking budget entirely for sub-second first-token streaming
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: sanitizedContents,
@@ -64,7 +71,6 @@ export default async function handler(req) {
       }
     };
 
-    // 3. Single direct call to the fastest lightweight flash model
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const response = await fetch(endpoint, {
