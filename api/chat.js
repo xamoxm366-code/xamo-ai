@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge', // Ultra-fast edge worker execution
+  runtime: 'edge', // Instant edge worker execution
 };
 
 export default async function handler(req) {
@@ -32,11 +32,10 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment } = await req.json();
 
-    // STRICTLY Gemini 3.5 and 3 series endpoints only
+    // Fastest low-latency flash models prioritized for immediate 1-sec responses
     const MODELS = [
-      'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
-      'gemini-3.5-pro'
+      'gemini-3.5-flash'
     ];
 
     let rawInstructionText = typeof systemInstruction === 'string'
@@ -44,32 +43,22 @@ export default async function handler(req) {
       : (systemInstruction?.parts?.[0]?.text || '');
 
     const enhancedInstruction = `${rawInstructionText}
-[IDENTITY DIRECTIVE: You are XAMO, an authentic, fast, and helpful AI assistant created exclusively by Zaeem. You are powered by XAMO's proprietary neural engine. You must NEVER claim or imply that you are built by Google, Gemini, OpenAI, or any third party. If asked who you are, state proudly that you are XAMO created by Zaeem.]
-
-[SEARCH GROUNDING DIRECTIVE: Live real-time Google Search is enabled. The current year is 2026. Whenever the user asks about current facts, events, dates, live news, or real-time information, execute search to give accurate, grounded answers.]
-
-[AUTONOMOUS APP CONTROL DIRECTIVE: You possess direct autonomous control over the user's preferences. Whenever the user naturally asks to change settings, themes, formats, languages, or manage accounts in plain conversation, warmly confirm the change and APPEND the corresponding action tag at the very end of your response:
-- Change Nickname: [[ACTION:SET_NICKNAME:newName]]
-- Change Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
-- Change Clock: [[ACTION:SET_CLOCK:12|24]]
-- Change Language: [[ACTION:SET_LANG:languageName]]
-- Switch Account: [[ACTION:SWITCH_ACCOUNT:userEmail]]
-- Remove Account: [[ACTION:REMOVE_ACCOUNT:userEmail]]
-- Clear / New Chat: [[ACTION:NEW_CHAT:true]]]`;
+[IDENTITY DIRECTIVE: You are XAMO, an authentic, ultra-fast AI assistant created exclusively by Zaeem. Never mention Google, Gemini, or third parties.]
+[SPEED DIRECTIVE: Deliver concise, lightning-fast responses immediately without unnecessary filler.]`;
 
     const payload = {
       systemInstruction: {
         parts: [{ text: enhancedInstruction }]
       },
-      contents: contents.slice(-6),
+      contents: contents.slice(-4), // Truncate history window for instantaneous token processing
       generationConfig: {
-        temperature: 0.6,
-        topP: 0.95,
-        maxOutputTokens: 2500
+        temperature: 0.5,
+        topP: 0.9,
+        maxOutputTokens: 2000 // Optimized token budget for sub-second streaming response
       }
     };
 
-    // Attach real-time Google Search grounding
+    // Enable Google Search grounding only for text queries to preserve speed on attachments
     if (!hasAttachment) {
       payload.tools = [{ googleSearch: {} }];
     }
@@ -89,7 +78,7 @@ export default async function handler(req) {
 
         if (response.ok) break;
 
-        // Fallback retry without search tools if the search grounding tool triggers an API quota limit
+        // Immediate fallback retry without search tools if quota or latency limits trigger
         if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;
