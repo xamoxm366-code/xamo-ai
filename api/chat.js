@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Output concise answers immediately. Zero preamble, zero filler. Emit token 1 on arrival.]
+[SPEED DIRECTIVE: Concise, immediate output. Emit token 1 instantly.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -49,7 +49,6 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // 1. Sanitize history and enforce clean structure
     const rawTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
@@ -77,8 +76,7 @@ export default async function handler(req) {
       }
     });
 
-    // 2. Ensure context starts with 'user'
-    let finalContents = rawTurns.slice(-5);
+    let finalContents = rawTurns.slice(-4);
     while (finalContents.length > 0 && finalContents[0].role !== 'user') {
       finalContents.shift();
     }
@@ -97,15 +95,15 @@ export default async function handler(req) {
       }
     };
 
+    // Explicitly target gemini-3.5-flash and gemini-3.5-flash-lite with automated failover
     const MODELS = [
       'gemini-3.5-flash-lite',
-      'gemini-3.8-flash'
+      'gemini-3.5-flash'
     ];
 
     let response = null;
     let lastErrorText = '';
 
-    // Standard non-aborting connection loop
     for (const model of MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
