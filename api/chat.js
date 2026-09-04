@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge', // Instant edge worker execution
+  runtime: 'edge',
 };
 
 export default async function handler(req) {
@@ -30,9 +30,9 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents, hasAttachment } = await req.json();
+    const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
 
-    // Fastest low-latency flash models prioritized for immediate 1-sec responses
+    // Use the absolute lightest, lowest-latency flash-lite model for instant responses
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash'
@@ -43,23 +43,34 @@ export default async function handler(req) {
       : (systemInstruction?.parts?.[0]?.text || '');
 
     const enhancedInstruction = `${rawInstructionText}
-[IDENTITY DIRECTIVE: You are XAMO, an authentic, ultra-fast AI assistant created exclusively by Zaeem. Never mention Google, Gemini, or third parties.]
-[SPEED DIRECTIVE: Deliver concise, lightning-fast responses immediately without unnecessary filler.]`;
+[IDENTITY: You are XAMO, built exclusively by Zaeem. Never mention Google or third parties.]
+[SPEED: Stream your response immediately with zero delay.]`;
 
     const payload = {
       systemInstruction: {
         parts: [{ text: enhancedInstruction }]
       },
-      contents: contents.slice(-4), // Truncate history window for instantaneous token processing
+      contents: contents.slice(-4), // Keep context minimal for lightning-fast token generation
       generationConfig: {
-        temperature: 0.5,
-        topP: 0.9,
-        maxOutputTokens: 2000 // Optimized token budget for sub-second streaming response
+        temperature: 0.4,
+        maxOutputTokens: 1500
       }
     };
 
-    // Enable Google Search grounding only for text queries to preserve speed on attachments
-    if (!hasAttachment) {
+    // CRITICAL: Only attach Google Search tools if there are NO attachments AND the prompt explicitly requires web info.
+    // This prevents heavy search tool overhead from lagging image/video/file queries.
+    const queryLower = (userPromptText || "").toLowerCase();
+    const needsSearch = !hasAttachment && (
+      queryLower.includes('search') || 
+      queryLower.includes('news') || 
+      queryLower.includes('latest') || 
+      queryLower.includes('2026') || 
+      queryLower.includes('current') || 
+      queryLower.includes('weather') ||
+      queryLower.includes('live')
+    );
+
+    if (needsSearch) {
       payload.tools = [{ googleSearch: {} }];
     }
 
@@ -78,7 +89,7 @@ export default async function handler(req) {
 
         if (response.ok) break;
 
-        // Immediate fallback retry without search tools if quota or latency limits trigger
+        // Fallback without tools if any error occurs
         if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;
