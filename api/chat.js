@@ -49,7 +49,7 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // 1. Sanitize parts and enforce valid structure
+    // 1. Sanitize history and enforce clean structure
     const rawTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
@@ -77,7 +77,7 @@ export default async function handler(req) {
       }
     });
 
-    // 2. Take the latest turns FIRST, then strictly ensure the slice starts with 'user'
+    // 2. Ensure context starts with 'user'
     let finalContents = rawTurns.slice(-5);
     while (finalContents.length > 0 && finalContents[0].role !== 'user') {
       finalContents.shift();
@@ -105,7 +105,7 @@ export default async function handler(req) {
     let response = null;
     let lastErrorText = '';
 
-    // Fast failover loop without hanging
+    // Standard non-aborting connection loop
     for (const model of MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
@@ -113,8 +113,7 @@ export default async function handler(req) {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(9000)
+          body: JSON.stringify(payload)
         });
 
         if (res.ok) {
