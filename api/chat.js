@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Answer directly and concisely. Zero preamble, zero filler. Output token 1 immediately.]
+[SPEED DIRECTIVE: Output concise answers immediately. Zero preamble, zero filler. Emit token 1 on arrival.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -49,8 +49,8 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Multi-turn cleanup
-    const cleanTurns = [];
+    // 1. Sanitize parts and enforce valid structure
+    const rawTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
       const cleanParts = [];
@@ -64,28 +64,34 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 3000) });
+          cleanParts.push({ text: part.text.slice(0, 4000) });
         }
       });
 
       if (cleanParts.length > 0) {
-        if (cleanTurns.length > 0 && cleanTurns[cleanTurns.length - 1].role === validRole) {
-          cleanTurns[cleanTurns.length - 1].parts.push(...cleanParts);
+        if (rawTurns.length > 0 && rawTurns[rawTurns.length - 1].role === validRole) {
+          rawTurns[rawTurns.length - 1].parts.push(...cleanParts);
         } else {
-          cleanTurns.push({ role: validRole, parts: cleanParts });
+          rawTurns.push({ role: validRole, parts: cleanParts });
         }
       }
     });
 
-    while (cleanTurns.length > 0 && cleanTurns[0].role !== 'user') {
-      cleanTurns.shift();
+    // 2. Take the latest turns FIRST, then strictly ensure the slice starts with 'user'
+    let finalContents = rawTurns.slice(-5);
+    while (finalContents.length > 0 && finalContents[0].role !== 'user') {
+      finalContents.shift();
+    }
+
+    if (finalContents.length === 0) {
+      finalContents = [{ role: 'user', parts: [{ text: 'Hello' }] }];
     }
 
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
-      contents: cleanTurns.slice(-3),
+      contents: finalContents,
       generationConfig: {
-        temperature: 0.0,
+        temperature: 0.1,
         topP: 0.8,
         maxOutputTokens: 1024
       }
@@ -96,34 +102,40 @@ export default async function handler(req) {
       'gemini-3.8-flash'
     ];
 
-    const abortControllers = MODELS.map(() => new AbortController());
+    let response = null;
+    let lastErrorText = '';
 
-    // Parallel hot-swap race: query both models at the exact same millisecond
-    const fetchPromises = MODELS.map(async (model, idx) => {
+    // Fast failover loop without hanging
+    for (const model of MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: abortControllers[idx].signal
-      });
 
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`${model} failed: ${err}`);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(9000)
+        });
+
+        if (res.ok) {
+          response = res;
+          break;
+        }
+
+        lastErrorText = await res.text();
+      } catch (err) {
+        lastErrorText = err.message;
       }
-      return { res, idx };
-    });
+    }
 
-    // Promise.any resolves immediately with the first successful 200 OK stream
-    const { res: winnerRes, idx: winnerIdx } = await Promise.any(fetchPromises);
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: `AI Gateway Error: ${lastErrorText}` }), {
+        status: response ? response.status : 502,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
 
-    // Cancel the slower connection
-    abortControllers.forEach((ctrl, idx) => {
-      if (idx !== winnerIdx) ctrl.abort();
-    });
-
-    return new Response(winnerRes.body, {
+    return new Response(response.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
@@ -133,7 +145,7 @@ export default async function handler(req) {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || 'All models busy or unavailable' }), {
+    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
