@@ -30,102 +30,53 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
+    const { systemInstruction, contents } = await req.json();
 
-    // Prioritize the fastest flash models for immediate streaming
-    const MODELS = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash'
-    ];
-
-    let rawInstructionText = typeof systemInstruction === 'string'
+    let rawInstruction = typeof systemInstruction === 'string'
       ? systemInstruction
       : (systemInstruction?.parts?.[0]?.text || '');
 
-    const enhancedInstruction = `${rawInstructionText}
-[IDENTITY: You are XAMO, built exclusively by Zaeem. Never mention Google or third parties.]
-[SPEED: Deliver answers immediately with zero delay or filler.]`;
+    const instruction = `${rawInstruction}
+[IDENTITY: You are XAMO, built exclusively by Zaeem.]
+[OUTPUT: Start responding immediately on token 1. Be concise, direct, and fast.]`;
 
-    // OPTIMIZATION: If the user prompt contains a massive attached document text, 
-    // trim it to the most relevant 15,000 characters to prevent server-side choking and latency.
-    let sanitizedContents = contents;
-    if (contents && Array.isArray(contents)) {
-      sanitizedContents = contents.map(msg => {
-        if (msg.parts && Array.isArray(msg.parts)) {
-          const newParts = msg.parts.map(part => {
-            if (part.text && part.text.length > 15000) {
-              return { text: part.text.slice(0, 15000) + "\n[Document truncated for optimal speed...]" };
-            }
-            return part;
-          });
-          return { ...msg, parts: newParts };
+    // 1. Sanitize text payloads to prevent context processing bottlenecks
+    const sanitizedContents = (contents || []).slice(-3).map(msg => ({
+      role: msg.role,
+      parts: (msg.parts || []).map(part => {
+        if (part.text && part.text.length > 8000) {
+          return { text: part.text.slice(0, 8000) + "\n[Content truncated for instant response]" };
         }
-        return msg;
-      });
-    }
+        return part;
+      })
+    }));
 
+    // 2. Disable thinking budget entirely for sub-second first-token streaming
     const payload = {
-      systemInstruction: {
-        parts: [{ text: enhancedInstruction }]
-      },
-      contents: sanitizedContents.slice(-4), // Keep history window lean for sub-second first token
+      systemInstruction: { parts: [{ text: instruction }] },
+      contents: sanitizedContents,
       generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 1500
+        temperature: 0.2,
+        maxOutputTokens: 1000,
+        thinkingConfig: {
+          thinkingBudget: 0
+        }
       }
     };
 
-    // Keep search tools strictly optional for plain text queries only
-    const queryLower = (userPromptText || "").toLowerCase();
-    const needsSearch = !hasAttachment && (
-      queryLower.includes('search') || 
-      queryLower.includes('news') || 
-      queryLower.includes('latest') || 
-      queryLower.includes('2026') || 
-      queryLower.includes('current') || 
-      queryLower.includes('weather') ||
-      queryLower.includes('live')
-    );
+    // 3. Single direct call to the fastest lightweight flash model
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    if (needsSearch) {
-      payload.tools = [{ googleSearch: {} }];
-    }
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-    let response = null;
-    let lastError = '';
-
-    for (const model of MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok) break;
-
-        if (payload.tools) {
-          const fallbackPayload = { ...payload };
-          delete fallbackPayload.tools;
-          response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fallbackPayload)
-          });
-          if (response.ok) break;
-        }
-
-        lastError = await response.text();
-      } catch (err) {
-        lastError = err.message;
-      }
-    }
-
-    if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `AI Service Error: ${lastError}` }), {
-        status: response ? response.status : 500,
+    if (!response.ok) {
+      const errText = await response.text();
+      return new Response(JSON.stringify({ error: `API Error: ${errText}` }), {
+        status: response.status,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
