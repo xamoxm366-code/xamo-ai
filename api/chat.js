@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Output concise answers directly. Zero preamble, zero internal reasoning, zero greetings. Emit token 1 immediately.]
+[SPEED DIRECTIVE: Answer directly and concisely. Zero preamble, zero filler. Output token 1 immediately.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -49,7 +49,7 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Multi-turn normalization
+    // Multi-turn cleanup
     const cleanTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
@@ -64,7 +64,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 4000) });
+          cleanParts.push({ text: part.text.slice(0, 3000) });
         }
       });
 
@@ -81,58 +81,49 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    const finalContents = cleanTurns.slice(-3);
-
     const payload = {
-      systemInstruction: {
-        parts: [{ text: instruction }]
-      },
-      contents: finalContents,
+      systemInstruction: { parts: [{ text: instruction }] },
+      contents: cleanTurns.slice(-3),
       generationConfig: {
-        temperature: 0.1,
+        temperature: 0.0,
         topP: 0.8,
         maxOutputTokens: 1024
       }
     };
 
-    // Fast active models: gemini-3.5-flash-lite as primary, with automatic failover to gemini-3.8-flash on 503 load spikes
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.8-flash'
     ];
 
-    let response = null;
-    let lastError = '';
+    const abortControllers = MODELS.map(() => new AbortController());
 
-    for (const model of MODELS) {
+    // Parallel hot-swap race: query both models at the exact same millisecond
+    const fetchPromises = MODELS.map(async (model, idx) => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-      try {
-        // Generous 12s timeout allows initial TLS connection without premature aborts
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(12000)
-        });
-
-        if (response.ok) break;
-
-        // If 503 (high demand) or 429 occurs, fall back to gemini-3.8-flash immediately
-        lastError = await response.text();
-      } catch (err) {
-        lastError = err.message;
-      }
-    }
-
-    if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `AI Service Error: ${lastError}` }), {
-        status: response ? response.status : 500,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: abortControllers[idx].signal
       });
-    }
 
-    return new Response(response.body, {
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`${model} failed: ${err}`);
+      }
+      return { res, idx };
+    });
+
+    // Promise.any resolves immediately with the first successful 200 OK stream
+    const { res: winnerRes, idx: winnerIdx } = await Promise.any(fetchPromises);
+
+    // Cancel the slower connection
+    abortControllers.forEach((ctrl, idx) => {
+      if (idx !== winnerIdx) ctrl.abort();
+    });
+
+    return new Response(winnerRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
@@ -142,7 +133,7 @@ export default async function handler(req) {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), {
+    return new Response(JSON.stringify({ error: error.message || 'All models busy or unavailable' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });

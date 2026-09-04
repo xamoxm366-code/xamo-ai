@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (SUB-SECOND OPTIMIZED)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (SUB-SECOND STREAMING & AUTONOMOUS)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -274,7 +274,6 @@ function injectGeminiThemeStyles() {
       font-weight: 600;
     }
 
-    /* REALISTIC SKY THEME */
     html.theme-sky, 
     html.theme-sky body {
       background: 
@@ -1252,7 +1251,7 @@ if (closeAuthModal && authModal) {
   });
 }
 
-// --- Complete Auth Dispatch Handler ---
+// --- Auth Dispatch Handler ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -1723,7 +1722,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- High-Speed Media Compression (Optimized for Sub-Second Processing) ---
+// --- High-Speed Media Compression (Optimized for Sub-Second Streaming) ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1741,7 +1740,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 800; // Scaled for 4x faster upload latency
+        const maxDim = 800; // Scaled for 4x faster transmission
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -2608,7 +2607,7 @@ function initSearchBarAndSlashMenu() {
   });
 }
 
-// Form Dispatch with Intent Checking
+// --- Non-Blocking Form Dispatch Engine ---
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2656,7 +2655,11 @@ if (form) {
     });
     
     renderChatBox();
-    await saveCurrentSession();
+
+    // Fire cloud persistence asynchronously without delaying the AI stream
+    saveCurrentSession().catch(() => {});
+
+    // Stream response immediately
     await triggerApiCall();
   });
 }
@@ -2696,13 +2699,11 @@ async function triggerApiCall() {
     const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
     const userAddressing = userNickname ? `\nUser's Nickname: "${userNickname}".` : "";
     const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond strictly in ${appSettings.language}.` : "";
-
     const liveClockInstruction = `\n[Reference System Clock: UTC ${currentDateUTC} | Local ${currentDateLocal} (${userTimeZone})]`;
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    // LATENCY OPTIMIZATION: Only the current message contains inline media base64 data.
-    // Older chat turns are converted to lightweight markers to eliminate payload bloat.
+    // LATENCY OPTIMIZATION: Only active turn keeps heavy inline base64 media. Older turns carry lightweight markers.
     const payloadHistory = currentChatHistory.slice(-4).map((m, idx, arr) => {
       const isCurrentTurn = idx === arr.length - 1;
       if (isCurrentTurn) {
@@ -2746,8 +2747,6 @@ async function triggerApiCall() {
     const decoder = new TextDecoder("utf-8");
     let fullText = "";
     let sseBuffer = "";
-    responseContent.classList.remove('animate-pulse');
-    responseContent.innerHTML = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -2762,14 +2761,28 @@ async function triggerApiCall() {
           if (dataStr === "[DONE]") continue;
           try {
             const json = JSON.parse(dataStr);
-            const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (textChunk) {
-              fullText += textChunk;
-              responseContent.innerHTML = parseMarkdownSafely(fullText);
+            const candidateParts = json.candidates?.[0]?.content?.parts;
+            if (Array.isArray(candidateParts)) {
+              for (const p of candidateParts) {
+                // Filter thought blocks so actual answer starts streaming immediately
+                if (p.text && !p.thought) {
+                  if (!fullText) {
+                    responseContent.classList.remove('animate-pulse');
+                    responseContent.innerHTML = "";
+                  }
+                  fullText += p.text;
+                  responseContent.innerHTML = parseMarkdownSafely(fullText);
+                }
+              }
             }
           } catch (e) {}
         }
       }
+    }
+
+    if (!fullText) {
+      responseContent.classList.remove('animate-pulse');
+      responseContent.innerHTML = `<span class="text-slate-400 text-xs italic">Response complete.</span>`;
     }
 
     // Process autonomous action tags emitted by model
@@ -2784,9 +2797,8 @@ async function triggerApiCall() {
 
     currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
     
-    try {
-      await saveCurrentSession();
-    } catch (saveErr) {}
+    // Save state non-blockingly
+    saveCurrentSession().catch(() => {});
 
     const footerDiv = document.createElement('div');
     footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
@@ -2872,7 +2884,7 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
