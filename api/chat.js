@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[LATENCY REQUIREMENT: Output the first token instantly. Never provide conversational filler, meta-announcements, or greetings. Jump straight into the answer.]
+[SPEED DIRECTIVE: Zero preamble, zero internal reasoning, zero greetings. Emit token 1 instantly.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -49,66 +49,68 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Fast payload sanitation: prune bloated historical texts to prevent context deliberation
-    const sanitizedContents = (contents || []).slice(-3).map(msg => ({
-      role: msg.role === 'model' ? 'model' : 'user',
-      parts: (msg.parts || []).map(part => {
-        if (part.text && part.text.length > 6000) {
-          return { text: part.text.slice(0, 6000) + "\n[Content truncated for 1s response]" };
-        }
+    // Strict multi-turn normalization: eliminates alternating-role validation stalls
+    const cleanTurns = [];
+    (contents || []).forEach(msg => {
+      const validRole = msg.role === 'model' ? 'model' : 'user';
+      const cleanParts = [];
+
+      (msg.parts || []).forEach(part => {
         if (part.inline_data) {
-          return {
+          cleanParts.push({
             inlineData: {
               mimeType: part.inline_data.mime_type || part.inline_data.mimeType,
               data: part.inline_data.data
             }
-          };
+          });
+        } else if (part.text && part.text.trim().length > 0) {
+          // Lean slice prevents heavy context evaluation lag
+          cleanParts.push({ text: part.text.slice(0, 4000) });
         }
-        return part;
-      })
-    }));
+      });
+
+      if (cleanParts.length > 0) {
+        if (cleanTurns.length > 0 && cleanTurns[cleanTurns.length - 1].role === validRole) {
+          cleanTurns[cleanTurns.length - 1].parts.push(...cleanParts);
+        } else {
+          cleanTurns.push({ role: validRole, parts: cleanParts });
+        }
+      }
+    });
+
+    while (cleanTurns.length > 0 && cleanTurns[0].role !== 'user') {
+      cleanTurns.shift();
+    }
+
+    // Keep history lean (last 3 turns) for sub-second generation
+    const finalContents = cleanTurns.slice(-3);
 
     const payload = {
       systemInstruction: {
         parts: [{ text: instruction }]
       },
-      contents: sanitizedContents,
+      contents: finalContents,
       generationConfig: {
-        temperature: 0.2, // Low temperature avoids token-sampling hesitation
-        topP: 0.85,
-        maxOutputTokens: 1500
+        temperature: 0.0, // Greedy decoding: selects top token instantly with zero sampling hesitation
+        topP: 0.8,
+        maxOutputTokens: 1024
       }
     };
 
-    // The exact models requested
-    const MODELS = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.8-flash'
-    ];
+    // Direct single-shot route: no loop, no retry penalty
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    let response = null;
-    let lastError = '';
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000)
+    });
 
-    for (const model of MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok) break;
-        lastError = await response.text();
-      } catch (err) {
-        lastError = err.message;
-      }
-    }
-
-    if (!response || !response.ok) {
+    if (!response.ok) {
+      const lastError = await response.text();
       return new Response(JSON.stringify({ error: `AI Service Error: ${lastError}` }), {
-        status: response ? response.status : 500,
+        status: response.status,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
