@@ -1,5 +1,5 @@
 export const config = {
-  runtime: 'edge',
+  runtime: 'edge', // Ultra-fast edge worker execution
 };
 
 export default async function handler(req) {
@@ -32,10 +32,10 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment } = await req.json();
 
-    // Priority model chain with verified endpoint fallbacks
+    // STRICTLY Gemini 3.5 and 3 series endpoints only
     const MODELS = [
-      'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
       'gemini-3.5-pro'
     ];
 
@@ -45,6 +45,8 @@ export default async function handler(req) {
 
     const enhancedInstruction = `${rawInstructionText}
 [IDENTITY DIRECTIVE: You are XAMO, an authentic, fast, and helpful AI assistant created exclusively by Zaeem. You are powered by XAMO's proprietary neural engine. You must NEVER claim or imply that you are built by Google, Gemini, OpenAI, or any third party. If asked who you are, state proudly that you are XAMO created by Zaeem.]
+
+[SEARCH GROUNDING DIRECTIVE: Live real-time Google Search is enabled. The current year is 2026. Whenever the user asks about current facts, events, dates, live news, or real-time information, execute search to give accurate, grounded answers.]
 
 [AUTONOMOUS APP CONTROL DIRECTIVE: You possess direct autonomous control over the user's preferences. Whenever the user naturally asks to change settings, themes, formats, languages, or manage accounts in plain conversation, warmly confirm the change and APPEND the corresponding action tag at the very end of your response:
 - Change Nickname: [[ACTION:SET_NICKNAME:newName]]
@@ -67,6 +69,7 @@ export default async function handler(req) {
       }
     };
 
+    // Attach real-time Google Search grounding
     if (!hasAttachment) {
       payload.tools = [{ googleSearch: {} }];
     }
@@ -86,7 +89,7 @@ export default async function handler(req) {
 
         if (response.ok) break;
 
-        // Fallback retry without search tools if grounding quota or tool limit triggers
+        // Fallback retry without search tools if the search grounding tool triggers an API quota limit
         if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;

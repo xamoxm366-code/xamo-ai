@@ -135,7 +135,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection (Seamless Sky Theme, Bottom Glass & In-App Selectors) ---
+// --- CSS Engine Injection ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
@@ -184,7 +184,7 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input {
-      font-size: 14px;
+      font-size: 14.5px;
       line-height: 1.35;
       background: transparent;
       border: none;
@@ -438,13 +438,12 @@ function injectGeminiThemeStyles() {
   document.head.appendChild(style);
 }
 
-// Consistent command preview on both phone and desktop
 function updateSearchPlaceholder() {
   if (!input) return;
   input.placeholder = "Ask XAMO... (Type / for commands)";
 }
 
-// --- Custom In-App Dropdowns (Prevents Native Mobile OS Select Menus) ---
+// --- Custom In-App Dropdowns ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -1118,7 +1117,7 @@ if (toggleAuthModeBtn) {
 }
 
 // ============================================================================
-// COMPLETE AUTH DISPATCH HANDLER (WITH STRICT REGEX & VERIFIED CHECKS)
+// COMPLETE AUTH DISPATCH HANDLER (STRICT EMAIL & REGEX VALIDATION)
 // ============================================================================
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async (e) => {
@@ -1133,7 +1132,6 @@ if (authSubmitBtn) {
     const email = authEmailInput ? authEmailInput.value.trim() : "";
     const password = authPasswordInput ? authPasswordInput.value.trim() : "";
 
-    // 1. Strict Email Format Check (Blocks random strings/words)
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
       showAuthError("Please enter a valid email address (e.g. name@domain.com).");
@@ -1152,7 +1150,6 @@ if (authSubmitBtn) {
 
         if (btnTextSpan) btnTextSpan.textContent = "Verifying email...";
 
-        // Verify that the email is registered and verified before claiming to send
         let isVerified = null;
         try {
           const { data, error: rpcError } = await withTimeout(
@@ -1213,7 +1210,6 @@ if (authSubmitBtn) {
           throw error;
         }
 
-        // Supabase returns an empty identities array if user already registered and verified
         if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
           throw new Error("This email is already registered and verified. Please sign in instead.");
         }
@@ -1222,7 +1218,6 @@ if (authSubmitBtn) {
         if (authModal) authModal.classList.add('hidden');
 
       } else {
-        // Sign In Flow
         if (!password) {
           showAuthError("Please enter your password.");
           return;
@@ -1856,50 +1851,6 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
   updatePinnedBadge();
 }
 
-// Load cloud history and preserve existing chat session
-async function syncCloudChats() {
-  if (!supabaseClient || !currentUser) return;
-  try {
-    const { data, error } = await supabaseClient
-      .from('chats')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .eq('is_deleted_by_user', false)
-      .order('updated_at', { ascending: false });
-
-    if (!error && data) {
-      sessions = data.map(item => {
-        let parsedHistory = item.history;
-        if (typeof parsedHistory === 'string') {
-          try { parsedHistory = JSON.parse(parsedHistory); } catch(e) { parsedHistory = []; }
-        }
-        return {
-          id: String(item.id),
-          title: item.title,
-          history: Array.isArray(parsedHistory) ? parsedHistory : []
-        };
-      });
-      const key = getChatStorageKey();
-      if (key) {
-        try { localStorage.setItem(key, JSON.stringify(sessions)); } catch(e) {}
-      }
-      renderSessions(searchChatsInput ? searchChatsInput.value : "");
-
-      // Restore active chat if one was previously open
-      const savedActiveId = localStorage.getItem('xamo_active_session_id');
-      if (savedActiveId && sessions.some(s => String(s.id) === String(savedActiveId))) {
-        loadSession(savedActiveId);
-      } else if (sessions.length > 0 && !activeSessionId) {
-        loadSession(sessions[0].id);
-      } else if (!activeSessionId) {
-        startNewChat();
-      }
-    }
-  } catch (err) {
-    console.error("Cloud fetch error:", err);
-  }
-}
-
 if (closeAuthModal && authModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
 function renderMath(element) {
@@ -1992,7 +1943,7 @@ function renderSessions(filterText = "") {
   });
 }
 
-// Persistent Chat Threads: Keeps questions together in the same session
+// --- Bulletproof Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
