@@ -2121,7 +2121,7 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Session Storage ---
+// --- Bulletproof Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2607,7 +2607,7 @@ function initSearchBarAndSlashMenu() {
   });
 }
 
-// --- Form Dispatch Engine ---
+// --- Non-Blocking Form Dispatch Engine ---
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2656,15 +2656,15 @@ if (form) {
     
     renderChatBox();
 
-    // Persist session state asynchronously
+    // Fire cloud persistence asynchronously without delaying the AI stream
     saveCurrentSession().catch(() => {});
 
-    // Trigger streaming API response
+    // Stream response immediately
     await triggerApiCall();
   });
 }
 
-// --- Sub-Second Streaming Execution Engine ---
+// Sub-Second Streaming Execution
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -2673,10 +2673,9 @@ async function triggerApiCall() {
   const signal = activeStreamAbortController.signal;
 
   const isLocalEnvironment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-  const apiEndpoint = isLocalEnvironment ? '/api/chat' : '/api/chat';
 
   const botDiv = document.createElement('div');
-  botDiv.className = 'flex flex-col items-start my-4 w-full group relative';
+  botDiv.className = 'flex flex-col items-start my-4 w-full';
   const responseContent = document.createElement('div');
   responseContent.className = 'gemini-response-container w-full leading-relaxed break-words animate-pulse';
   responseContent.textContent = "● ● ●";
@@ -2690,104 +2689,221 @@ async function triggerApiCall() {
   try {
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     const now = new Date();
-    const currentDate = now.toLocaleDateString('en-US', { timeZone: userTimeZone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const currentTime = now.toLocaleTimeString('en-US', { timeZone: userTimeZone, hour: '2-digit', minute: '2-digit', hour12: appSettings.timeFormat !== '24' });
+    const currentDateLocal = now.toLocaleString('en-US', { 
+      timeZone: userTimeZone,
+      hour12: appSettings.timeFormat !== '24',
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' 
+    });
+    const currentDateUTC = now.toUTCString();
 
-    const activePersona = customPersonas[currentPersonaIndex] || customPersonas[0];
-    let systemInstruction = activePersona.prompt || "";
-    
-    if (userNickname) {
-      systemInstruction += `\nThe user's name/nickname is "${userNickname}". Refer to them warmly by name when appropriate.`;
-    }
-    if (appSettings.language && appSettings.language !== 'auto') {
-      systemInstruction += `\nPlease respond in ${appSettings.language}.`;
-    }
-    systemInstruction += `\nCurrent date: ${currentDate}, Time: ${currentTime} (${userTimeZone}).`;
+    const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
+    const userAddressing = userNickname ? `\nUser's Nickname: "${userNickname}".` : "";
+    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond strictly in ${appSettings.language}.` : "";
+    const liveClockInstruction = `\n[Reference System Clock: UTC ${currentDateUTC} | Local ${currentDateLocal} (${userTimeZone})]`;
 
-    const contents = currentChatHistory.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: msg.parts
-    }));
+    const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    const response = await fetch(apiEndpoint, {
+    // LATENCY OPTIMIZATION: Only active turn keeps heavy inline base64 media. Older turns carry lightweight markers.
+    const payloadHistory = currentChatHistory.slice(-4).map((m, idx, arr) => {
+      const isCurrentTurn = idx === arr.length - 1;
+      if (isCurrentTurn) {
+        return { role: m.role, parts: m.parts };
+      }
+      const prunedParts = (m.parts || []).map(p => {
+        if (p.inline_data) {
+          return { text: `[Analyzed Attachment: ${m.file?.name || 'Media'}]` };
+        }
+        return p;
+      });
+      return { role: m.role, parts: prunedParts };
+    });
+
+    const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
+    const lastUserMessage = currentChatHistory.slice().reverse().find(m => m.role === 'user');
+    const rawUserText = lastUserMessage?.rawUserText || "";
+
+    const requestBody = {
+      systemInstruction: { parts: [{ text: dynamicSystemInstruction }] },
+      contents: payloadHistory,
+      hasAttachment: hasAnyAttachment,
+      userPromptText: rawUserText
+    };
+
+    const targetUrl = isLocalEnvironment ? 'https://xamo-ai.vercel.app/api/chat' : '/api/chat';
+
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction,
-        contents,
-        timeZone: userTimeZone,
-        timeFormat: appSettings.timeFormat
-      }),
-      signal
+      body: JSON.stringify(requestBody),
+      signal: signal
     });
 
     if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`API Error (${response.status}): ${errText || 'Failed to fetch response'}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || errData.error || `HTTP ${response.status}`);
     }
 
-    responseContent.classList.remove('animate-pulse');
-    responseContent.textContent = "";
-
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
     let fullText = "";
+    let sseBuffer = "";
 
-    if (response.body && response.body.getReader) {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuffer += decoder.decode(value, { stream: true });
+      const lines = sseBuffer.split("\n");
+      sseBuffer = lines.pop();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        fullText += chunk;
-
-        responseContent.innerHTML = parseMarkdownSafely(fullText);
-        renderMath(botDiv);
-        enhanceMarkdownOutput(botDiv);
-
-        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const dataStr = line.replace("data: ", "").trim();
+          if (dataStr === "[DONE]") continue;
+          try {
+            const json = JSON.parse(dataStr);
+            const candidateParts = json.candidates?.[0]?.content?.parts;
+            if (Array.isArray(candidateParts)) {
+              for (const p of candidateParts) {
+                // Filter thought blocks so actual answer starts streaming immediately
+                if (p.text && !p.thought) {
+                  if (!fullText) {
+                    responseContent.classList.remove('animate-pulse');
+                    responseContent.innerHTML = "";
+                  }
+                  fullText += p.text;
+                  responseContent.innerHTML = parseMarkdownSafely(fullText);
+                }
+              }
+            }
+          } catch (e) {}
+        }
       }
-    } else {
-      fullText = await response.text();
-      responseContent.innerHTML = parseMarkdownSafely(fullText);
-      renderMath(botDiv);
-      enhanceMarkdownOutput(botDiv);
     }
 
-    const actionMatch = fullText.match(/\[\[ACTION:([A-Z_]+):([^\]]*)\]\]/);
-    if (actionMatch) {
-      executeAutonomousAction(actionMatch[1], actionMatch[2]);
+    if (!fullText) {
+      responseContent.classList.remove('animate-pulse');
+      responseContent.innerHTML = `<span class="text-slate-400 text-xs italic">Response complete.</span>`;
     }
 
-    currentChatHistory.push({
-      role: 'model',
-      parts: [{ text: fullText }]
-    });
+    // Process autonomous action tags emitted by model
+    const actionMatches = [...fullText.matchAll(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/g)];
+    for (const match of actionMatches) {
+      executeAutonomousAction(match[1], match[2]);
+    }
 
-    renderChatBox();
-    await saveCurrentSession();
+    renderMath(responseContent);
+    enhanceMarkdownOutput(botDiv);
+    if (window.hljs) hljs.highlightAll();
+
+    currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
+    
+    // Save state non-blockingly
+    saveCurrentSession().catch(() => {});
+
+    const footerDiv = document.createElement('div');
+    footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
+    
+    const pinBtn = document.createElement('button');
+    pinBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    pinBtn.title = "Pin to Notes Vault";
+    pinBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
+    pinBtn.onclick = () => pinMessageDirect(encodeURIComponent(fullText));
+
+    const likeBtn = document.createElement('button');
+    likeBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    likeBtn.title = "Good response";
+    likeBtn.innerHTML = '<i class="fa-regular fa-thumbs-up"></i>';
+    likeBtn.onclick = () => {
+      const existingNotice = footerDiv.querySelector('.feedback-notice');
+      if (existingNotice) existingNotice.remove();
+      const notice = document.createElement('span');
+      notice.className = "feedback-notice text-xs text-blue-400 ml-2 font-medium";
+      notice.textContent = "Glad that it was helpful for you!";
+      footerDiv.appendChild(notice);
+    };
+
+    const dislikeBtn = document.createElement('button');
+    dislikeBtn.className = "hover:text-red-400 transition-colors focus:outline-none";
+    dislikeBtn.title = "Bad response";
+    dislikeBtn.innerHTML = '<i class="fa-regular fa-thumbs-down"></i>';
+    dislikeBtn.onclick = () => {
+      const existingNotice = footerDiv.querySelector('.feedback-notice');
+      if (existingNotice) existingNotice.remove();
+      const notice = document.createElement('span');
+      notice.className = "feedback-notice text-xs text-red-400 ml-2 font-medium";
+      notice.textContent = "I apologize for that. Let me know how I can improve!";
+      footerDiv.appendChild(notice);
+    };
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    copyBtn.title = "Copy";
+    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(fullText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim()).then(() => {
+        showXamoToast("Copied to clipboard!");
+      });
+    };
+
+    const shareBtn = document.createElement('button');
+    shareBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+    shareBtn.title = "Share";
+    shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
+    shareBtn.onclick = async () => {
+      const cleanShareText = fullText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'XAMO AI Response',
+            text: cleanShareText
+          });
+          return;
+        } catch (err) {}
+      }
+      navigator.clipboard.writeText(cleanShareText).then(() => {
+        showXamoToast("Copied response to clipboard for sharing!");
+      });
+    };
+
+    const isKashmiri = appSettings.language && appSettings.language.toLowerCase().includes('kashmiri');
+
+    const regenBtn = document.createElement('button');
+    regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
+    regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
+    regenBtn.onclick = () => regenerateLastResponse();
+    footerDiv.appendChild(regenBtn);
+
+    footerDiv.appendChild(pinBtn);
+    footerDiv.appendChild(likeBtn);
+    footerDiv.appendChild(dislikeBtn);
+    footerDiv.appendChild(copyBtn);
+    footerDiv.appendChild(shareBtn);
+
+    if (!isKashmiri) {
+      const speakBtn = document.createElement('button');
+      speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
+      speakBtn.title = "Read Aloud";
+      speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+      footerDiv.appendChild(speakBtn);
+    }
+
+    botDiv.appendChild(footerDiv);
 
   } catch (err) {
-    if (err.name === 'AbortError') {
-      console.log('Stream aborted by user');
-      return;
-    }
-    console.error("API Call Error:", err);
+    if (err.name === 'AbortError') return;
     responseContent.classList.remove('animate-pulse');
-    responseContent.innerHTML = `<span class="text-red-400 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Error: ${err.message || 'Connection failed. Please try again.'}</span>`;
+    responseContent.innerHTML = `<span class="text-red-400">System Error: ${err.message}</span>`;
   } finally {
     activeStreamAbortController = null;
   }
 }
 
-// --- Application Boot Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
-  injectGeminiThemeStyles();
-  updateSearchPlaceholder();
-  initCustomSelectors();
-  injectScrollDownButton();
-  initSearchBarAndSlashMenu();
-  handleUrlAuthFlags();
-  initAuth();
-});
+// --- Lifecycle Initialization ---
+injectGeminiThemeStyles();
+injectScrollDownButton();
+updateSearchPlaceholder();
+initSearchBarAndSlashMenu();
+initVoices();
+initAuth();
+handleUrlAuthFlags();
