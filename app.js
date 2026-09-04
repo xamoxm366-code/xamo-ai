@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (COMPLETE SKY THEME, CUSTOM PICKERS & COMPACT DOCK)
+// XAMO AI - COMPLETE PRODUCTION CLIENT ENGINE
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -8,7 +8,7 @@ const ADMIN_EMAIL = "xamoxm366@gmail.com";
 
 let supabaseClient = null;
 try {
-  if (typeof window.supabase !== 'undefined' && SUPABASE_URL.startsWith('https://') && !SUPABASE_ANON_KEY.includes('PASTE_YOUR')) {
+  if (typeof window.supabase !== 'undefined' && SUPABASE_URL.startsWith('https://')) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch (e) {
@@ -28,7 +28,7 @@ const withTimeout = (promise, ms = 7000) =>
     new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
   ]);
 
-// --- DOM References ---
+// --- Top-Level DOM References ---
 const form = document.getElementById('chat-form');
 const input = document.getElementById('user-input');
 const submitBtn = document.getElementById('submit-btn');
@@ -135,13 +135,12 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection (Clean Sky Theme, Bottom Glass & In-App Selectors) ---
+// --- CSS Engine Injection (Seamless Sky Theme & Custom Selectors) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
   style.id = 'gemini-pro-theme-styles';
   style.textContent = `
-    /* User and Model Chat Formatting */
     .gemini-user-bubble {
       background-color: #282a2c;
       color: #f1f3f4;
@@ -153,7 +152,6 @@ function injectGeminiThemeStyles() {
       border: 1px solid rgba(255, 255, 255, 0.06);
       max-width: 86%;
       user-select: text;
-      -webkit-user-select: text;
     }
 
     .gemini-response-container {
@@ -162,7 +160,6 @@ function injectGeminiThemeStyles() {
       color: #e3e3e3;
       letter-spacing: -0.012em;
       user-select: text;
-      -webkit-user-select: text;
     }
 
     .gemini-response-container p { margin-bottom: 1.1rem; }
@@ -177,13 +174,9 @@ function injectGeminiThemeStyles() {
       font-size: 17px;
     }
 
-    /* Single-Line No-Wrap Search Bar Dock */
     #chat-form {
-      background-color: #1e1f20;
-      border: 1px solid #33353a;
       border-radius: 32px;
       padding: 6px 14px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -192,7 +185,6 @@ function injectGeminiThemeStyles() {
 
     #user-input {
       font-size: 14.5px;
-      color: #f1f3f4;
       line-height: 1.35;
       background: transparent;
       border: none;
@@ -206,14 +198,11 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input::placeholder {
-      color: #8e918f;
-      font-size: 14px;
       white-space: nowrap !important;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
     }
 
-    /* Auto-Hiding Scroll-Down Chevron */
     #scroll-down-dock-btn {
       position: fixed;
       bottom: 86px;
@@ -242,14 +231,13 @@ function injectGeminiThemeStyles() {
       transform: translateX(-50%) translateY(0);
     }
 
-    /* Custom In-App Dropdowns */
     .xamo-custom-select-trigger {
       width: 100%;
-      background-color: #141518;
-      border: 1px solid #2a2d33;
+      background-color: var(--bg-app);
+      border: 1px solid var(--border-main);
       border-radius: 14px;
       padding: 11px 14px;
-      color: #f1f3f4;
+      color: var(--text-main);
       font-size: 13px;
       font-weight: 500;
       display: flex;
@@ -265,18 +253,18 @@ function injectGeminiThemeStyles() {
       width: 100%;
       max-height: 220px;
       overflow-y: auto;
-      background: #18191d;
-      border: 1px solid #2e3036;
+      background: var(--bg-card);
+      border: 1px solid var(--border-main);
       border-radius: 16px;
       padding: 6px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       z-index: 90;
     }
 
     .xamo-select-option {
       padding: 9px 12px;
       font-size: 12.5px;
-      color: #c4c7c5;
+      color: var(--text-main);
       border-radius: 10px;
       cursor: pointer;
       display: flex;
@@ -285,29 +273,26 @@ function injectGeminiThemeStyles() {
     }
 
     .xamo-select-option:hover {
-      background: #25272c;
-      color: #ffffff;
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
     }
 
     .xamo-select-option.selected {
-      background: rgba(59, 130, 246, 0.18);
-      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
       font-weight: 600;
     }
 
-    /* ==========================================================================
-       REALISTIC SKY THEME FIXES (ELIMINATES ALL DARK PATCHES & UNREADABLE TEXT)
-       ========================================================================== */
+    /* REALISTIC SKY THEME FIXES */
     html.theme-sky, 
     html.theme-sky body {
       background: 
-        radial-gradient(ellipse 90% 60% at 50% -15%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.15) 45%, transparent 70%),
-        linear-gradient(180deg, #1c6ab5 0%, #3488e0 22%, #5ea4f7 50%, #90c2f8 78%, #c5e0fc 100%) !important;
+        radial-gradient(ellipse 90% 60% at 50% -15%, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.2) 45%, transparent 70%),
+        linear-gradient(180deg, #1d6ebc 0%, #368ee3 25%, #63a8f9 55%, #92c4f8 82%, #cae2fc 100%) !important;
       background-attachment: fixed !important;
-      color: #0d1e38 !important;
+      color: #0a1f3c !important;
     }
 
-    /* Header Nav in Sky */
     html.theme-sky header {
       background: rgba(255, 255, 255, 0.35) !important;
       backdrop-filter: blur(20px) !important;
@@ -320,17 +305,15 @@ function injectGeminiThemeStyles() {
       color: #0b2545 !important;
     }
 
-    /* Top Right Theme Selector in Sky */
     html.theme-sky #theme-btn {
-      background: rgba(255, 255, 255, 0.75) !important;
+      background: rgba(255, 255, 255, 0.85) !important;
       border: 1px solid rgba(255, 255, 255, 0.95) !important;
       color: #0b2545 !important;
-      box-shadow: 0 2px 8px rgba(11, 48, 87, 0.08) !important;
     }
 
     html.theme-sky #theme-dropdown {
       background: #ffffff !important;
-      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      border: 1px solid #badcfc !important;
       box-shadow: 0 10px 30px rgba(11, 48, 87, 0.15) !important;
     }
 
@@ -339,23 +322,19 @@ function injectGeminiThemeStyles() {
     }
 
     html.theme-sky .theme-option:hover {
-      background: rgba(2, 132, 199, 0.1) !important;
+      background: #e0f2fe !important;
       color: #0284c7 !important;
     }
 
-    /* Transparent Bottom Dock in Sky (Removes Black Bar) */
     html.theme-sky footer,
-    html.theme-sky main > div:last-child,
-    html.theme-sky div[class*="bottom-0"] {
+    html.theme-sky main > div:last-child {
       background: transparent !important;
-      background-color: transparent !important;
     }
 
-    html.theme-sky p[class*="text-slate"] {
+    html.theme-sky footer p {
       color: #1e3a5f !important;
     }
 
-    /* Cloud Input Dock in Sky */
     html.theme-sky #chat-form {
       background: rgba(255, 255, 255, 0.92) !important;
       backdrop-filter: blur(20px) !important;
@@ -381,17 +360,16 @@ function injectGeminiThemeStyles() {
       color: #ffffff !important;
     }
 
-    /* Unified Cohesive Sky Sidebar */
     html.theme-sky #sidebar {
       background: #f0f7ff !important;
-      border-right: 1px solid rgba(186, 224, 253, 0.9) !important;
+      border-right: 1px solid #badcfc !important;
       color: #0b2545 !important;
     }
 
     html.theme-sky #sidebar header,
     html.theme-sky #sidebar .border-b,
     html.theme-sky #sidebar .border-t {
-      border-color: rgba(186, 224, 253, 0.7) !important;
+      border-color: #badcfc !important;
     }
 
     html.theme-sky #sidebar span,
@@ -403,7 +381,7 @@ function injectGeminiThemeStyles() {
     html.theme-sky #search-chats,
     html.theme-sky #persona-btn {
       background: #ffffff !important;
-      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      border: 1px solid #badcfc !important;
       color: #0b2545 !important;
     }
 
@@ -412,7 +390,7 @@ function injectGeminiThemeStyles() {
     }
 
     html.theme-sky #chat-list div span {
-      color: #1e293b !important;
+      color: #0f2744 !important;
       font-weight: 500 !important;
     }
 
@@ -421,7 +399,7 @@ function injectGeminiThemeStyles() {
     }
 
     html.theme-sky #chat-list div[class*="bg-blue"] {
-      background: rgba(2, 132, 199, 0.18) !important;
+      background: rgba(2, 132, 199, 0.2) !important;
       border-color: rgba(2, 132, 199, 0.35) !important;
     }
 
@@ -430,17 +408,17 @@ function injectGeminiThemeStyles() {
       font-weight: 600 !important;
     }
 
-    /* Account Drawer at Bottom of Sidebar */
     html.theme-sky #user-logged-in-view,
     html.theme-sky #guest-signin-view,
     html.theme-sky #sidebar > div:last-child {
       background: #e2f0fd !important;
-      border-color: rgba(186, 224, 253, 0.9) !important;
+      border-color: #badcfc !important;
     }
 
-    html.theme-sky #account-switcher-btn {
+    html.theme-sky #account-switcher-btn,
+    html.theme-sky #guest-signin-btn {
       background: #ffffff !important;
-      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      border: 1px solid #badcfc !important;
     }
 
     html.theme-sky #user-email-display {
@@ -452,20 +430,20 @@ function injectGeminiThemeStyles() {
     html.theme-sky #clear-btn,
     html.theme-sky #export-btn {
       background: #ffffff !important;
-      border: 1px solid rgba(186, 224, 253, 0.9) !important;
+      border: 1px solid #badcfc !important;
       color: #0b2545 !important;
     }
   `;
   document.head.appendChild(style);
 }
 
-// --- Dynamic Responsive Placeholder ---
 function updateSearchPlaceholder() {
   if (!input) return;
-  input.placeholder = "Ask XAMO...";
+  input.placeholder = window.innerWidth < 640 ? "Ask XAMO..." : "Ask XAMO... (Type / for commands)";
 }
+window.addEventListener('resize', updateSearchPlaceholder);
 
-// --- Custom In-App Dropdowns (Blocks Native Mobile Popover) ---
+// --- Custom In-App Dropdowns (Prevents Native Mobile Select Dialogs) ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -495,8 +473,6 @@ function initCustomSelectors() {
 
   function buildPicker(selectEl, options, currentVal, onChange) {
     if (!selectEl || !selectEl.parentElement) return;
-    
-    // Completely hide native select so mobile OS dialog never opens
     selectEl.style.setProperty('display', 'none', 'important');
 
     const existingWrapper = selectEl.parentElement.querySelector('.xamo-custom-select-wrapper');
@@ -572,7 +548,7 @@ function initCustomSelectors() {
   });
 }
 
-// --- Natural Language Action Execution Engine ---
+// --- Natural Language Autonomous Action Handler ---
 function executeAutonomousAction(actionType, param) {
   const cleanParam = (param || '').trim();
 
@@ -1134,12 +1110,122 @@ if (forgotPasswordLink) {
 
 if (toggleAuthModeBtn) {
   toggleAuthModeBtn.addEventListener('click', () => {
-    if (authMode === 'forgot') {
-      setAuthMode('signin');
-    } else if (authMode === 'signin') {
-      setAuthMode('signup');
-    } else {
-      setAuthMode('signin');
+    if (authMode === 'forgot') setAuthMode('signin');
+    else if (authMode === 'signin') setAuthMode('signup');
+    else setAuthMode('signin');
+  });
+}
+
+// --- Complete Auth Submit Handler (Sign In, Sign Up & Reset Link) ---
+if (authSubmitBtn) {
+  authSubmitBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    hideAuthError();
+
+    if (!supabaseClient) {
+      showAuthError("Supabase connection is not initialized.");
+      return;
+    }
+
+    const email = authEmailInput ? authEmailInput.value.trim() : "";
+    const password = authPasswordInput ? authPasswordInput.value.trim() : "";
+
+    if (!email) {
+      showAuthError("Please enter your email address.");
+      return;
+    }
+
+    const btnTextSpan = authSubmitBtn.querySelector('span');
+    authSubmitBtn.disabled = true;
+
+    try {
+      if (authMode === 'forgot') {
+        if (resetEmailCooldown) {
+          showAuthError("Please wait a moment before requesting another reset email.");
+          return;
+        }
+
+        if (btnTextSpan) btnTextSpan.textContent = "Sending Link...";
+        
+        const { error } = await withTimeout(
+          supabaseClient.auth.resetPasswordForEmail(email, { 
+            redirectTo: "https://xamo-ai.vercel.app/reset-password.html" 
+          }),
+          6000
+        );
+
+        if (error) throw error;
+
+        showXamoToast("Reset link sent! Check your Gmail inbox & Spam folder.");
+        if (authModal) authModal.classList.add('hidden');
+        setAuthMode('signin');
+
+        resetEmailCooldown = true;
+        setTimeout(() => { resetEmailCooldown = false; }, 45000);
+
+      } else if (authMode === 'signup') {
+        if (!password || password.length < 6) {
+          showAuthError("Password must be at least 6 characters.");
+          return;
+        }
+
+        if (btnTextSpan) btnTextSpan.textContent = "Creating Account...";
+
+        const { data, error } = await withTimeout(
+          supabaseClient.auth.signUp({ 
+            email, 
+            password,
+            options: { emailRedirectTo: "https://xamo-ai.vercel.app/verified.html" }
+          }),
+          8000
+        );
+
+        if (error) throw error;
+
+        showXamoToast("Verification link sent! Check your Gmail inbox.");
+        if (authModal) authModal.classList.add('hidden');
+
+      } else {
+        if (!password) {
+          showAuthError("Please enter your password.");
+          return;
+        }
+
+        if (btnTextSpan) btnTextSpan.textContent = "Signing In...";
+
+        const { data, error } = await withTimeout(
+          supabaseClient.auth.signInWithPassword({ email, password }),
+          8000
+        );
+
+        if (error) {
+          const errMsg = error.message.toLowerCase();
+          if (errMsg.includes('not confirmed')) {
+            throw new Error("Please verify your email before signing in.");
+          } else if (errMsg.includes('invalid login credentials')) {
+            throw new Error("Invalid email or password.");
+          } else {
+            throw error;
+          }
+        }
+
+        if (data.session) storeCurrentAccount(data.session);
+        showXamoToast("Signed in successfully!");
+        if (authModal) authModal.classList.add('hidden');
+      }
+
+      if (authEmailInput) authEmailInput.value = "";
+      if (authPasswordInput) authPasswordInput.value = "";
+
+    } catch (err) {
+      showAuthError(err.message || "Authentication failed.");
+    } finally {
+      authSubmitBtn.disabled = false;
+      if (btnTextSpan) {
+        if (authMode === 'forgot') btnTextSpan.textContent = "Send Reset Link";
+        else if (authMode === 'signup') btnTextSpan.textContent = "Sign Up";
+        else btnTextSpan.textContent = "Sign In";
+      }
     }
   });
 }
@@ -1364,7 +1450,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Base Personas Setup (Strict No-Gemini Identity) ---
+// --- Base Personas Setup (Strict Brand Guard) ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1439,6 +1525,25 @@ if (personaBtn && personaDropdown) {
 if (addPersonaTrigger && personaModal) addPersonaTrigger.addEventListener('click', () => personaModal.classList.remove('hidden'));
 if (closePersonaModal && personaModal) closePersonaModal.addEventListener('click', () => personaModal.classList.add('hidden'));
 
+if (savePersonaBtn && personaModal) {
+  savePersonaBtn.addEventListener('click', () => {
+    const name = newPersonaName ? newPersonaName.value.trim() : "";
+    const prompt = newPersonaPrompt ? newPersonaPrompt.value.trim() : "";
+    if (!name || !prompt) {
+      showAuthError("Please fill in both name and instructions.");
+      return;
+    }
+    customPersonas.push({ name, prompt });
+    saveUserPersonas();
+    if (newPersonaName) newPersonaName.value = "";
+    if (newPersonaPrompt) newPersonaPrompt.value = "";
+    personaModal.classList.add('hidden');
+    currentPersonaIndex = customPersonas.length - 1;
+    if (personaLabel) personaLabel.textContent = name;
+    renderPersonas();
+  });
+}
+
 if (attachBtn && imageInput) {
   attachBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1447,7 +1552,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- Media Processor ---
+// --- High-Speed Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -2116,7 +2221,7 @@ function renderChatBox() {
       shareBtn.title = "Share";
       shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes"></i>';
       shareBtn.onclick = async () => {
-        const cleanShareText = textVal.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+        const cleanShareText = fullText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
         if (navigator.share) {
           try {
             await navigator.share({
@@ -2133,6 +2238,12 @@ function renderChatBox() {
 
       const isKashmiri = appSettings.language && appSettings.language.toLowerCase().includes('kashmiri');
 
+      const regenBtn = document.createElement('button');
+      regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
+      regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
+      regenBtn.onclick = () => regenerateLastResponse();
+      footerDiv.appendChild(regenBtn);
+
       footerDiv.appendChild(pinBtn);
       footerDiv.appendChild(likeBtn);
       footerDiv.appendChild(dislikeBtn);
@@ -2146,14 +2257,6 @@ function renderChatBox() {
         speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
         speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
         footerDiv.appendChild(speakBtn);
-      }
-
-      if (isLastBotMsg) {
-        const regenBtn = document.createElement('button');
-        regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
-        regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
-        regenBtn.onclick = () => regenerateLastResponse();
-        footerDiv.appendChild(regenBtn);
       }
 
       div.appendChild(footerDiv);
@@ -2269,7 +2372,64 @@ if (exportBtn) {
   });
 }
 
-// Instant Dispatch with Intent Checking
+// --- Search Bar Input & Slash Command Menu Engine ---
+function initSearchBarAndSlashMenu() {
+  if (!input) return;
+
+  input.addEventListener('input', () => {
+    const val = input.value;
+    
+    if (slashMenu) {
+      if (val.trim() === '/') {
+        slashMenu.classList.remove('hidden');
+      } else {
+        slashMenu.classList.add('hidden');
+      }
+    }
+
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+    updateSendButtonState();
+  });
+
+  if (slashOptions && slashMenu) {
+    slashOptions.forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cmd = opt.getAttribute('data-cmd');
+        if (cmd) {
+          input.value = cmd + ' ';
+          input.focus();
+          input.style.height = 'auto';
+          input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+          slashMenu.classList.add('hidden');
+          updateSendButtonState();
+        }
+      });
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (slashMenu && !slashMenu.contains(e.target) && e.target !== input) {
+      slashMenu.classList.add('hidden');
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+      if (!isMobile && form) {
+        e.preventDefault();
+        if (slashMenu) slashMenu.classList.add('hidden');
+        form.requestSubmit();
+      }
+    } else if (e.key === 'Escape' && slashMenu) {
+      slashMenu.classList.add('hidden');
+    }
+  });
+}
+
+// Form Dispatch with Intent Checking
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2419,7 +2579,6 @@ async function triggerApiCall() {
       }
     }
 
-    // Execute any autonomous action tag embedded in response
     const actionMatch = fullText.match(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/);
     if (actionMatch) {
       executeAutonomousAction(actionMatch[1], actionMatch[2]);
@@ -2519,12 +2678,11 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
     botDiv.appendChild(footerDiv);
-    
   } catch (err) {
     if (err.name === 'AbortError') return;
     responseContent.classList.remove('animate-pulse');
@@ -2532,70 +2690,6 @@ async function triggerApiCall() {
   } finally {
     activeStreamAbortController = null;
   }
-}
-
-// --- Search Bar Input & Slash Command Menu Engine ---
-function initSearchBarAndSlashMenu() {
-  if (!input) return;
-
-  // 1. Dynamic typing, send button visibility & slash menu toggle
-  input.addEventListener('input', () => {
-    const val = input.value;
-    
-    // Show slash menu only when input begins with or contains a bare '/'
-    if (slashMenu) {
-      if (val.trim() === '/') {
-        slashMenu.classList.remove('hidden');
-      } else {
-        slashMenu.classList.add('hidden');
-      }
-    }
-
-    // Auto-grow textarea height
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
-
-    updateSendButtonState();
-  });
-
-  // 2. Click-to-insert handler for slash menu items
-  if (slashOptions && slashMenu) {
-    slashOptions.forEach(opt => {
-      opt.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const cmd = opt.getAttribute('data-cmd');
-        if (cmd) {
-          input.value = cmd + ' ';
-          input.focus();
-          input.style.height = 'auto';
-          input.style.height = Math.min(input.scrollHeight, 160) + 'px';
-          slashMenu.classList.add('hidden');
-          updateSendButtonState();
-        }
-      });
-    });
-  }
-
-  // 3. Close slash menu on outside clicks
-  document.addEventListener('click', (e) => {
-    if (slashMenu && !slashMenu.contains(e.target) && e.target !== input) {
-      slashMenu.classList.add('hidden');
-    }
-  });
-
-  // 4. Keyboard dispatch (Enter to send, Shift+Enter for newline)
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
-      if (!isMobile && form) {
-        e.preventDefault();
-        if (slashMenu) slashMenu.classList.add('hidden');
-        form.requestSubmit();
-      }
-    } else if (e.key === 'Escape' && slashMenu) {
-      slashMenu.classList.add('hidden');
-    }
-  });
 }
 
 // --- Lifecycle Initialization ---
