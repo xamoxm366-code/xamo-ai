@@ -103,19 +103,42 @@ export default async function handler(req) {
       }
     };
 
-    // Stable v1 endpoint with gemini-3.5-flash-lite
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Resilient multi-tier failover array to automatically bypass 503 high-demand traffic spikes
+    const MODELS = [
+      'gemini-3.8-flash',
+      'gemini-3.7-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite'
+    ];
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let response = null;
+    let lastErrorText = '';
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return new Response(JSON.stringify({ error: `AI Gateway Error: ${errText}` }), {
-        status: response.status,
+    for (const model of MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          response = res;
+          break;
+        }
+
+        lastErrorText = await res.text();
+      } catch (err) {
+        lastErrorText = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: `AI Gateway Error: All flash models are currently experiencing high demand (503). Please try again shortly. Details: ${lastErrorText}` }), {
+        status: 503,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
