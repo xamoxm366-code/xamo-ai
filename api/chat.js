@@ -49,7 +49,7 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Standardize parts to ensure full compatibility with the Gemini API
+    // Format content parts cleanly for the v1beta schema
     const sanitizedContents = (contents || []).slice(-6).map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
       parts: (msg.parts || []).map(part => {
@@ -74,16 +74,16 @@ export default async function handler(req) {
       },
       contents: sanitizedContents,
       generationConfig: {
-        temperature: 0.4,
+        temperature: 0.3,
         topP: 0.9,
         maxOutputTokens: 2048
       }
     };
 
-    // Standard, production-ready models
+    // Active Gemini 3 flash models
     const MODELS = [
-      'gemini-1.5-flash',
-      'gemini-1.5-pro'
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash'
     ];
 
     let response = null;
