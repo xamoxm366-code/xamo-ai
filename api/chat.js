@@ -30,7 +30,18 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents, timeZone, timeFormat } = await req.json();
+    const bodyText = await req.text();
+    let requestData = {};
+    try {
+      requestData = JSON.parse(bodyText);
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    const { systemInstruction, contents } = requestData;
 
     const rawInstruction = typeof systemInstruction === 'string'
       ? systemInstruction
@@ -49,7 +60,6 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Fast multi-turn sanitization to prevent payload bloating & 504 timeouts
     const cleanTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
@@ -64,7 +74,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 3000) });
+          cleanParts.push({ text: part.text.slice(0, 2500) });
         }
       });
 
@@ -81,22 +91,23 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    const finalContents = cleanTurns.slice(-3); // Keep context tight for speed
+    const finalContents = cleanTurns.slice(-2);
 
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.0, // Zero deliberation delay
+        temperature: 0.0,
         topP: 0.8,
         maxOutputTokens: 1024
       }
     };
 
-    // Primary & backup models requested
+    // Fast model failover array including a reliable backup
     const MODELS = [
       'gemini-3.5-flash-lite',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash',
+      'gemini-1.5-flash'
     ];
 
     let response = null;
@@ -106,10 +117,12 @@ export default async function handler(req) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
       try {
+        // Tight 4s timeout prevents Vercel 504 Gateway Timeouts by failing fast and switching models
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(4000)
         });
 
         if (res.ok) {
@@ -124,8 +137,8 @@ export default async function handler(req) {
     }
 
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `AI Gateway Error: ${lastErrorText}` }), {
-        status: response ? response.status : 502,
+      return new Response(JSON.stringify({ error: `AI Gateway Error: ${lastErrorText || 'All models timed out'}` }), {
+        status: 502,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
