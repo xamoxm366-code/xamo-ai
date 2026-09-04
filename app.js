@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - COMPLETE PRODUCTION CLIENT ENGINE
+// XAMO AI - CORE CLIENT ENGINE (STRICT AUTH VALIDATION & COMPACT COMMAND DOCK)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -174,9 +174,10 @@ function injectGeminiThemeStyles() {
       font-size: 17px;
     }
 
+    /* Single-Line Search Bar Dock */
     #chat-form {
       border-radius: 32px;
-      padding: 6px 14px;
+      padding: 5px 12px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -184,7 +185,7 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input {
-      font-size: 14.5px;
+      font-size: 13.5px;
       line-height: 1.35;
       background: transparent;
       border: none;
@@ -201,6 +202,7 @@ function injectGeminiThemeStyles() {
       white-space: nowrap !important;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
+      font-size: 13px;
     }
 
     #scroll-down-dock-btn {
@@ -437,9 +439,10 @@ function injectGeminiThemeStyles() {
   document.head.appendChild(style);
 }
 
+// Consistent command preview across laptop and phone
 function updateSearchPlaceholder() {
   if (!input) return;
-  input.placeholder = window.innerWidth < 640 ? "Ask XAMO..." : "Ask XAMO... (Type / for commands)";
+  input.placeholder = "Ask XAMO... (Type / for commands)";
 }
 window.addEventListener('resize', updateSearchPlaceholder);
 
@@ -1116,22 +1119,26 @@ if (toggleAuthModeBtn) {
   });
 }
 
-// --- Complete Auth Submit Handler (Sign In, Sign Up & Reset Link) ---
+// ============================================================================
+// COMPLETE AUTH DISPATCH HANDLER (WITH STRICT REGEX & VERIFIED CHECKS)
+// ============================================================================
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     hideAuthError();
 
     if (!supabaseClient) {
-      showAuthError("Supabase connection is not initialized.");
+      showAuthError("Database connection not ready. Check your network.");
       return;
     }
 
     const email = authEmailInput ? authEmailInput.value.trim() : "";
     const password = authPasswordInput ? authPasswordInput.value.trim() : "";
 
-    if (!email) {
-      showAuthError("Please enter your email address.");
+    // 1. Strict Email Format Check (Blocks random strings/words)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      showAuthError("Please enter a valid email address (e.g. name@domain.com).");
       return;
     }
 
@@ -1143,6 +1150,26 @@ if (authSubmitBtn) {
         if (resetEmailCooldown) {
           showAuthError("Please wait a moment before requesting another reset email.");
           return;
+        }
+
+        if (btnTextSpan) btnTextSpan.textContent = "Verifying email...";
+
+        // Verify that the email is registered and verified before claiming to send
+        let isVerified = null;
+        try {
+          const { data, error: rpcError } = await withTimeout(
+            supabaseClient.rpc('is_email_verified', { check_email: email }),
+            4000
+          );
+          if (!rpcError && typeof data === 'boolean') {
+            isVerified = data;
+          }
+        } catch (rpcErr) {
+          console.warn("RPC check skipped:", rpcErr);
+        }
+
+        if (isVerified === false) {
+          throw new Error("This email is not registered or has not been verified yet.");
         }
 
         if (btnTextSpan) btnTextSpan.textContent = "Sending Link...";
@@ -1180,12 +1207,24 @@ if (authSubmitBtn) {
           8000
         );
 
-        if (error) throw error;
+        if (error) {
+          const msg = error.message.toLowerCase();
+          if (msg.includes('already registered') || msg.includes('user already exists')) {
+            throw new Error("This email is already registered. Please sign in instead.");
+          }
+          throw error;
+        }
+
+        // Supabase returns an empty identities array if user already registered and verified
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          throw new Error("This email is already registered and verified. Please sign in instead.");
+        }
 
         showXamoToast("Verification link sent! Check your Gmail inbox.");
         if (authModal) authModal.classList.add('hidden');
 
       } else {
+        // Sign In Flow
         if (!password) {
           showAuthError("Please enter your password.");
           return;
@@ -1200,10 +1239,10 @@ if (authSubmitBtn) {
 
         if (error) {
           const errMsg = error.message.toLowerCase();
-          if (errMsg.includes('not confirmed')) {
-            throw new Error("Please verify your email before signing in.");
-          } else if (errMsg.includes('invalid login credentials')) {
-            throw new Error("Invalid email or password.");
+          if (errMsg.includes('not confirmed') || errMsg.includes('email not confirmed')) {
+            throw new Error("Please verify your email before signing in. Check your inbox.");
+          } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid credentials')) {
+            throw new Error("Invalid email or password. Please check your credentials.");
           } else {
             throw error;
           }
@@ -2259,9 +2298,7 @@ function renderChatBox() {
         footerDiv.appendChild(speakBtn);
       }
 
-      div.appendChild(footerDiv);
-      renderMath(div);
-      enhanceMarkdownOutput(div);
+      botDiv.appendChild(footerDiv);
     }
     chatBox.appendChild(div);
   });
@@ -2678,11 +2715,12 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
     botDiv.appendChild(footerDiv);
+
   } catch (err) {
     if (err.name === 'AbortError') return;
     responseContent.classList.remove('animate-pulse');
