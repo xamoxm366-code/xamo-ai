@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Zero preamble, zero internal reasoning, zero greetings. Emit token 1 instantly.]
+[SPEED DIRECTIVE: Zero preamble, zero internal reasoning, zero greetings. Emit token 1 immediately.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -49,7 +49,7 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Strict multi-turn normalization: eliminates alternating-role validation stalls
+    // Multi-turn normalization
     const cleanTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
@@ -64,8 +64,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          // Lean slice prevents heavy context evaluation lag
-          cleanParts.push({ text: part.text.slice(0, 4000) });
+          cleanParts.push({ text: part.text.slice(0, 3500) });
         }
       });
 
@@ -82,7 +81,7 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    // Keep history lean (last 3 turns) for sub-second generation
+    // Keep context window tight (last 3 turns) for sub-second first-token response
     const finalContents = cleanTurns.slice(-3);
 
     const payload = {
@@ -91,26 +90,45 @@ export default async function handler(req) {
       },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.0, // Greedy decoding: selects top token instantly with zero sampling hesitation
+        temperature: 0.0, // Greedy decoding: zero token deliberation
         topP: 0.8,
         maxOutputTokens: 1024
       }
     };
 
-    // Direct single-shot route: no loop, no retry penalty
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Primary low-latency model with instant fallback if Google clusters experience a 503 spike
+    const FAST_MODELS = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.8-flash'
+    ];
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000)
-    });
+    let response = null;
+    let lastError = '';
 
-    if (!response.ok) {
-      const lastError = await response.text();
+    for (const model of FAST_MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(3500) // Fast 3.5s failover trigger
+        });
+
+        if (response.ok) break;
+
+        // If 503, 429, or 500, immediately hot-swap to the next Flash model without failing
+        lastError = await response.text();
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
       return new Response(JSON.stringify({ error: `AI Service Error: ${lastError}` }), {
-        status: response.status,
+        status: response ? response.status : 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
