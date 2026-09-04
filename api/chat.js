@@ -32,57 +32,84 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents } = await req.json();
 
-    let rawInstruction = typeof systemInstruction === 'string'
+    const rawInstruction = typeof systemInstruction === 'string'
       ? systemInstruction
       : (systemInstruction?.parts?.[0]?.text || '');
 
     const instruction = `${rawInstruction}
-[IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[OUTPUT: Start responding immediately on token 1. Be concise, direct, and fast.]
-[AUTONOMOUS CONTROL: You have direct autonomous control over XAMO. When the user naturally asks to perform any of the following tasks in conversation, confirm warmly and APPEND the exact tag at the end of your response:
+[IDENTITY: You are XAMO, built exclusively by Zaeem. Never mention Google or third parties.]
+[OUTPUT: Respond directly, concisely, and fast.]
+[AUTONOMOUS CONTROL: When the user asks to perform any of these actions in conversation, confirm warmly and APPEND the exact tag at the end:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
 - Nickname: [[ACTION:SET_NICKNAME:name]]
 - Clock: [[ACTION:SET_CLOCK:12|24]]
-- Pin Note: [[ACTION:PIN_NOTE:note content to pin]]
+- Pin Note: [[ACTION:PIN_NOTE:note text]]
 - Convert / Export Chat to PDF: [[ACTION:EXPORT_PDF:true]]
-- Clear Current Chat: [[ACTION:CLEAR_CHAT:true]]
-- Start New Chat: [[ACTION:NEW_CHAT:true]]]`;
+- Clear Chat: [[ACTION:CLEAR_CHAT:true]]
+- New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    const sanitizedContents = (contents || []).slice(-3).map(msg => ({
-      role: msg.role,
+    // Standardize parts to ensure full compatibility with the Gemini API
+    const sanitizedContents = (contents || []).slice(-6).map(msg => ({
+      role: msg.role === 'model' ? 'model' : 'user',
       parts: (msg.parts || []).map(part => {
-        if (part.text && part.text.length > 8000) {
-          return { text: part.text.slice(0, 8000) + "\n[Content truncated for instant response]" };
+        if (part.text && part.text.length > 12000) {
+          return { text: part.text.slice(0, 12000) + "\n[Content truncated for performance]" };
+        }
+        if (part.inline_data) {
+          return {
+            inlineData: {
+              mimeType: part.inline_data.mime_type || part.inline_data.mimeType,
+              data: part.inline_data.data
+            }
+          };
         }
         return part;
       })
     }));
 
     const payload = {
-      systemInstruction: { parts: [{ text: instruction }] },
+      systemInstruction: {
+        parts: [{ text: instruction }]
+      },
       contents: sanitizedContents,
       generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 1000,
-        thinkingConfig: {
-          thinkingBudget: 0
-        }
+        temperature: 0.4,
+        topP: 0.9,
+        maxOutputTokens: 2048
       }
     };
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${apiKey}`;
+    // Standard, production-ready models
+    const MODELS = [
+      'gemini-1.5-flash',
+      'gemini-1.5-pro'
+    ];
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let response = null;
+    let lastError = '';
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return new Response(JSON.stringify({ error: `API Error: ${errText}` }), {
-        status: response.status,
+    for (const model of MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) break;
+
+        lastError = await response.text();
+      } catch (err) {
+        lastError = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: `AI Service Error: ${lastError}` }), {
+        status: response ? response.status : 500,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
