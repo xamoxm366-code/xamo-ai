@@ -74,7 +74,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 2500) });
+          cleanParts.push({ text: part.text.slice(0, 3000) });
         }
       });
 
@@ -91,53 +91,31 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    const finalContents = cleanTurns.slice(-2);
+    const finalContents = cleanTurns.slice(-3);
 
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.0,
-        topP: 0.8,
-        maxOutputTokens: 1024
+        temperature: 0.2,
+        topP: 0.9,
+        maxOutputTokens: 2048
       }
     };
 
-    // Fast model failover array including a reliable backup
-    const MODELS = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
-    ];
+    const model = 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-    let response = null;
-    let lastErrorText = '';
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-    for (const model of MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
-      try {
-        // Tight 4s timeout prevents Vercel 504 Gateway Timeouts by failing fast and switching models
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(4000)
-        });
-
-        if (res.ok) {
-          response = res;
-          break;
-        }
-
-        lastErrorText = await res.text();
-      } catch (err) {
-        lastErrorText = err.message;
-      }
-    }
-
-    if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `AI Gateway Error: ${lastErrorText || 'All models timed out'}` }), {
-        status: 502,
+    if (!response.ok) {
+      const errText = await response.text();
+      return new Response(JSON.stringify({ error: `AI Gateway Error: ${errText}` }), {
+        status: response.status,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
