@@ -59,27 +59,33 @@
   <div id="admin-view" class="flex-1 flex flex-col h-full hidden">
     
     <!-- Top Bar -->
-    <header class="h-14 border-b border-[#24262b] bg-[#141518] px-6 flex items-center justify-between">
+    <header class="h-14 border-b border-[#24262b] bg-[#141518] px-4 md:px-6 flex items-center justify-between gap-2">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md text-sm font-bold">
           <i class="fa-solid fa-crown"></i>
         </div>
         <div class="flex items-center gap-2">
-          <span class="font-bold text-sm text-slate-100">XAMO Command Center</span>
+          <span class="font-bold text-sm text-slate-100 hidden sm:inline">XAMO Command Center</span>
           <span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">Owner</span>
-          <span id="auto-sync-badge" class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 font-mono"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Auto-Sync</span>
+          <span id="auto-sync-badge" class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 font-mono"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live</span>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <button id="refresh-btn" onclick="fetchAllChats(true)" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
           <i id="refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i> <span>Refresh</span>
         </button>
+
+        <!-- Purge All Conversations Button -->
+        <button id="delete-all-btn" onclick="deleteAllChats()" class="text-xs bg-red-600/15 hover:bg-red-600/25 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-trash-can text-xs"></i> <span class="hidden sm:inline">Purge All</span>
+        </button>
+
         <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
           Sign Out
         </button>
-        <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-1.5 rounded-xl transition-colors">
-          Open XAMO App
+        <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-1.5 rounded-xl transition-colors hidden md:inline">
+          Open XAMO
         </a>
       </div>
     </header>
@@ -166,7 +172,7 @@
         <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4">
           <div class="flex flex-col items-center justify-center h-full text-slate-500 text-xs text-center">
             <i class="fa-solid fa-comments text-3xl mb-2 text-slate-600"></i>
-            Select any chat from the left panel to inspect prompts, responses, and photos.
+            Select any chat from the left panel to inspect full question threads and attachments.
           </div>
         </div>
       </main>
@@ -247,7 +253,7 @@
         localStorage.setItem("xamo_admin_token", adminToken);
 
         updateStatus("Access verified. Opening Command Center...", "success");
-        setTimeout(showDashboard, 300);
+        setTimeout(showDashboard, 200);
 
       } catch (err) {
         updateStatus(`Network Error: ${err.message}`, "error");
@@ -269,22 +275,19 @@
       location.reload();
     }
 
-    // --- Automatic Background Sync Engine ---
+    // High-speed 2.5-second live polling
     function startAutoSync() {
       if (autoSyncTimer) clearInterval(autoSyncTimer);
       autoSyncTimer = setInterval(() => {
         if (adminToken) fetchAllChats(false);
-      }, 6000);
+      }, 2500);
     }
 
     async function fetchAllChats(manual = false) {
       const refreshBtn = document.getElementById("refresh-btn");
       const refreshIcon = document.getElementById("refresh-icon");
 
-      if (manual && refreshIcon) {
-        refreshIcon.classList.add("fa-spin");
-        if (refreshBtn) refreshBtn.disabled = true;
-      }
+      if (manual && refreshIcon) refreshIcon.classList.add("fa-spin");
 
       try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
@@ -293,8 +296,7 @@
           headers: {
             "apikey": SUPABASE_ANON_KEY,
             "Authorization": `Bearer ${adminToken}`,
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache"
+            "Cache-Control": "no-cache"
           }
         });
 
@@ -306,58 +308,42 @@
           return;
         }
 
-        const freshRecords = await response.json();
-        chatRecords = freshRecords;
+        chatRecords = await response.json();
         calculateStats();
         renderChatList();
 
-        // Refresh current conversation view seamlessly if open
         if (activeChatRecord) {
-          const freshCurrent = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
-          if (freshCurrent) {
+          const fresh = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
+          if (fresh) {
             let oldLen = 0, newLen = 0;
             try {
               oldLen = (typeof activeChatRecord.history === 'string' ? JSON.parse(activeChatRecord.history) : activeChatRecord.history).length;
-              newLen = (typeof freshCurrent.history === 'string' ? JSON.parse(freshCurrent.history) : freshCurrent.history).length;
+              newLen = (typeof fresh.history === 'string' ? JSON.parse(fresh.history) : fresh.history).length;
             } catch(e) {}
-            if (newLen !== oldLen) {
-              selectChat(freshCurrent);
-            }
+            if (newLen !== oldLen) selectChat(fresh);
           }
         }
 
       } catch (err) {
-        if (manual) alert(`Error fetching chat records: ${err.message}`);
+        if (manual) alert(`Refresh failed: ${err.message}`);
       } finally {
-        if (manual && refreshIcon) {
-          setTimeout(() => {
-            refreshIcon.classList.remove("fa-spin");
-            if (refreshBtn) refreshBtn.disabled = false;
-          }, 350);
-        }
+        if (manual && refreshIcon) refreshIcon.classList.remove("fa-spin");
       }
     }
 
     function calculateStats() {
       document.getElementById("stat-total").textContent = chatRecords.length;
-
-      const userCount = chatRecords.filter(c => !isGuestChat(c)).length;
-      const guestCount = chatRecords.filter(c => isGuestChat(c)).length;
-      const deletedCount = chatRecords.filter(c => c.is_deleted_by_user === true).length;
+      document.getElementById("stat-users").textContent = chatRecords.filter(c => !isGuestChat(c)).length;
+      document.getElementById("stat-guests").textContent = chatRecords.filter(c => isGuestChat(c)).length;
+      document.getElementById("stat-deleted").textContent = chatRecords.filter(c => c.is_deleted_by_user === true).length;
 
       let fileCount = 0;
       chatRecords.forEach(c => {
         let history = typeof c.history === 'string' ? JSON.parse(c.history) : c.history;
         if (Array.isArray(history)) {
-          history.forEach(msg => {
-            if (msg.file) fileCount++;
-          });
+          history.forEach(msg => { if (msg.file) fileCount++; });
         }
       });
-
-      document.getElementById("stat-users").textContent = userCount;
-      document.getElementById("stat-guests").textContent = guestCount;
-      document.getElementById("stat-deleted").textContent = deletedCount;
       document.getElementById("stat-media").textContent = fileCount;
     }
 
@@ -390,7 +376,7 @@
       });
 
       if (filtered.length === 0) {
-        list.innerHTML = '<div class="p-4 text-xs text-slate-500 text-center">No matching conversations found</div>';
+        list.innerHTML = '<div class="p-4 text-xs text-slate-500 text-center">No conversations found</div>';
         return;
       }
 
@@ -415,13 +401,13 @@
 
         item.innerHTML = `
           <div class="flex items-center justify-between mb-1">
-            <div class="flex items-center gap-1">
-              <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${badgeColor}">${badgeText}</span>
+            <div class="flex items-center gap-1 truncate flex-1 mr-2">
+              <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${badgeColor} truncate">${badgeText}</span>
               ${deletedBadge}
             </div>
-            <span class="text-[10px] text-slate-500">${date}</span>
+            <span class="text-[10px] text-slate-500 flex-shrink-0">${date}</span>
           </div>
-          <div class="text-xs font-medium text-slate-200 truncate">${chat.title || "Untitled Conversation"}</div>
+          <div class="text-xs font-medium text-slate-200 truncate">${chat.title || "Conversation"}</div>
           ${containsMedia ? '<div class="mt-1 flex items-center gap-1 text-[10px] text-amber-400"><i class="fa-solid fa-paperclip"></i> Contains Uploaded Media</div>' : ""}
         `;
 
@@ -443,14 +429,14 @@
       badge.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-semibold ${isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`;
       badge.textContent = isGuest ? `Guest: ${chat.nickname || "Unknown"}` : chat.user_email;
 
-      title.textContent = (chat.is_deleted_by_user ? "[DELETED BY USER] " : "") + (chat.title || "Untitled Chat");
+      title.textContent = (chat.is_deleted_by_user ? "[DELETED BY USER] " : "") + (chat.title || "Chat");
       actions.classList.remove("hidden");
       box.innerHTML = "";
 
       let history = typeof chat.history === 'string' ? JSON.parse(chat.history) : chat.history;
 
       if (!Array.isArray(history) || history.length === 0) {
-        box.innerHTML = '<div class="text-xs text-slate-500 text-center">Empty conversation history.</div>';
+        box.innerHTML = '<div class="text-xs text-slate-500 text-center">Empty conversation thread.</div>';
         return;
       }
 
@@ -467,8 +453,8 @@
           if (msg.file.category === "image" && src) {
             mediaBlock = `
               <div class="mb-2.5 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
-                <a href="${src}" target="_blank"><img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto hover:opacity-90 transition-opacity" /></a>
-                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${fileName} (Click to View)</div>
+                <a href="${src}" target="_blank"><img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto" /></a>
+                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${fileName}</div>
               </div>
             `;
           } else if (msg.file.category === "video" && src) {
@@ -477,7 +463,7 @@
                 <video controls playsinline preload="metadata" src="${src}" class="rounded-lg max-h-72 w-full bg-black shadow-inner"></video>
                 <div class="flex items-center justify-between mt-2 px-1">
                   <span class="text-[11px] font-mono text-purple-400 truncate"><i class="fa-solid fa-file-video mr-1"></i> ${fileName}</span>
-                  <a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold"><i class="fa-solid fa-download mr-1"></i> Download Video</a>
+                  <a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold"><i class="fa-solid fa-download mr-1"></i> Download</a>
                 </div>
               </div>
             `;
@@ -489,29 +475,8 @@
                     <i class="fa-solid fa-file-pdf text-red-400 text-base"></i>
                     <span class="font-mono text-slate-200 truncate font-semibold">${fileName}</span>
                   </div>
-                  ${src ? `<a href="${src}" download="${fileName}" target="_blank" class="px-2.5 py-1 bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded-lg text-[11px] font-semibold transition-colors flex-shrink-0"><i class="fa-solid fa-download mr-1"></i> Download</a>` : ''}
+                  ${src ? `<a href="${src}" download="${fileName}" target="_blank" class="px-2.5 py-1 bg-red-500/20 text-red-300 rounded-lg text-[11px] font-semibold"><i class="fa-solid fa-download mr-1"></i> Download</a>` : ''}
                 </div>
-                ${msg.file.content ? `<div class="mt-2 text-[10px] text-slate-400 max-h-24 overflow-y-auto font-mono bg-slate-950 p-2 rounded">${DOMPurify.sanitize(msg.file.content.slice(0, 300))}...</div>` : ''}
-              </div>
-            `;
-          } else if (msg.file.content) {
-            mediaBlock = `
-              <div class="mb-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs max-w-lg w-full">
-                <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
-                  <span class="font-mono text-blue-400 font-semibold truncate"><i class="fa-solid fa-file-code mr-1"></i> ${fileName}</span>
-                  <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(msg.file.content)}')); alert('Code copied to clipboard!');" class="text-[10px] text-slate-400 hover:text-slate-200 bg-slate-800 px-2 py-0.5 rounded cursor-pointer">Copy</button>
-                </div>
-                <pre class="overflow-x-auto text-[11px] font-mono text-slate-300 max-h-48 leading-relaxed"><code>${DOMPurify.sanitize(msg.file.content)}</code></pre>
-              </div>
-            `;
-          } else {
-            mediaBlock = `
-              <div class="mb-2.5 p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs flex items-center justify-between gap-3 max-w-sm">
-                <div class="flex items-center gap-2 truncate">
-                  <i class="fa-solid fa-file text-blue-400"></i>
-                  <span class="font-mono text-slate-300 truncate">${fileName}</span>
-                </div>
-                ${src ? `<a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:underline"><i class="fa-solid fa-download"></i></a>` : ''}
               </div>
             `;
           }
@@ -522,7 +487,7 @@
         if (isUser) {
           row.innerHTML = `
             ${mediaBlock}
-            ${body ? `<div class="bg-[#282a2c] border border-slate-700/60 text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-[15px] leading-relaxed whitespace-pre-wrap font-sans">${DOMPurify.sanitize(body)}</div>` : ''}
+            ${body ? `<div class="bg-[#282a2c] border border-slate-700/60 text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-[14.5px] leading-relaxed whitespace-pre-wrap font-sans">${DOMPurify.sanitize(body)}</div>` : ''}
           `;
         } else {
           row.innerHTML = `
@@ -538,8 +503,9 @@
       box.scrollTop = 0;
     }
 
+    // Individual Chat Purge
     async function deleteSelectedChat() {
-      if (!activeChatRecord || !confirm("Permanently purge this record from Supabase Cloud? This will remove it from the admin console too.")) return;
+      if (!activeChatRecord || !confirm("Permanently purge this entire conversation from Supabase Cloud?")) return;
 
       try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?id=eq.${activeChatRecord.id}`, {
@@ -555,13 +521,55 @@
           activeChatRecord = null;
           calculateStats();
           renderChatList();
-          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center">Chat purged from database.</div>';
+          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center py-10">Conversation purged successfully.</div>';
+          document.getElementById("thread-actions").classList.add("hidden");
         } else {
-          const err = await response.json();
-          alert(`Failed to delete: ${err.message || "Error"}`);
+          alert("Delete failed.");
         }
       } catch (err) {
         alert(`Delete error: ${err.message}`);
+      }
+    }
+
+    // Purge All Conversations
+    async function deleteAllChats() {
+      if (!chatRecords.length) {
+        alert("No conversations found in the database to purge.");
+        return;
+      }
+
+      const confirmed = confirm(`CRITICAL: Are you sure you want to permanently delete ALL ${chatRecords.length} conversations? This cannot be undone.`);
+      if (!confirmed) return;
+
+      const confirmPrompt = prompt("Type 'DELETE ALL' to execute complete purge:");
+      if (confirmPrompt !== "DELETE ALL") {
+        alert("Purge cancelled.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?id=not.is.null`, {
+          method: "DELETE",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${adminToken}`,
+            "Prefer": "return=minimal"
+          }
+        });
+
+        if (response.ok) {
+          chatRecords = [];
+          activeChatRecord = null;
+          calculateStats();
+          renderChatList();
+          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center py-12">All conversations permanently deleted from cloud.</div>';
+          document.getElementById("thread-actions").classList.add("hidden");
+          alert("All conversations have been deleted.");
+        } else {
+          alert("Failed to delete all chats from database.");
+        }
+      } catch (err) {
+        alert(`Purge all error: ${err.message}`);
       }
     }
 

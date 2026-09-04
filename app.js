@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - CORE CLIENT ENGINE (STRICT AUTH VALIDATION & COMPACT COMMAND DOCK)
+// XAMO AI - CORE CLIENT ENGINE (COMPLETE, PERSISTENT & PRODUCTION-READY)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -28,7 +28,7 @@ const withTimeout = (promise, ms = 7000) =>
     new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
   ]);
 
-// --- Top-Level DOM References ---
+// --- DOM References ---
 const form = document.getElementById('chat-form');
 const input = document.getElementById('user-input');
 const submitBtn = document.getElementById('submit-btn');
@@ -135,7 +135,7 @@ let currentChatHistory = [];
 let sessions = [];
 let activeSessionId = null;
 
-// --- CSS Engine Injection (Seamless Sky Theme & Custom Selectors) ---
+// --- CSS Engine Injection (Seamless Sky Theme, Bottom Glass & In-App Selectors) ---
 function injectGeminiThemeStyles() {
   if (document.getElementById('gemini-pro-theme-styles')) return;
   const style = document.createElement('style');
@@ -174,10 +174,9 @@ function injectGeminiThemeStyles() {
       font-size: 17px;
     }
 
-    /* Single-Line Search Bar Dock */
     #chat-form {
       border-radius: 32px;
-      padding: 5px 12px;
+      padding: 6px 14px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -185,7 +184,7 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input {
-      font-size: 13.5px;
+      font-size: 14px;
       line-height: 1.35;
       background: transparent;
       border: none;
@@ -439,14 +438,13 @@ function injectGeminiThemeStyles() {
   document.head.appendChild(style);
 }
 
-// Consistent command preview across laptop and phone
+// Consistent command preview on both phone and desktop
 function updateSearchPlaceholder() {
   if (!input) return;
   input.placeholder = "Ask XAMO... (Type / for commands)";
 }
-window.addEventListener('resize', updateSearchPlaceholder);
 
-// --- Custom In-App Dropdowns (Prevents Native Mobile Select Dialogs) ---
+// --- Custom In-App Dropdowns (Prevents Native Mobile OS Select Menus) ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -1843,7 +1841,6 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
     renderAccountSwitcher();
     loadCurrentNickname();
     loadUserPersonas();
-    startNewChat();
     await syncCloudChats();
   } else {
     if (userLoggedInView) userLoggedInView.classList.add('hidden');
@@ -1859,6 +1856,7 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
   updatePinnedBadge();
 }
 
+// Load cloud history and preserve existing chat session
 async function syncCloudChats() {
   if (!supabaseClient || !currentUser) return;
   try {
@@ -1886,6 +1884,16 @@ async function syncCloudChats() {
         try { localStorage.setItem(key, JSON.stringify(sessions)); } catch(e) {}
       }
       renderSessions(searchChatsInput ? searchChatsInput.value : "");
+
+      // Restore active chat if one was previously open
+      const savedActiveId = localStorage.getItem('xamo_active_session_id');
+      if (savedActiveId && sessions.some(s => String(s.id) === String(savedActiveId))) {
+        loadSession(savedActiveId);
+      } else if (sessions.length > 0 && !activeSessionId) {
+        loadSession(sessions[0].id);
+      } else if (!activeSessionId) {
+        startNewChat();
+      }
     }
   } catch (err) {
     console.error("Cloud fetch error:", err);
@@ -1984,7 +1992,7 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Bulletproof Session Storage ---
+// Persistent Chat Threads: Keeps questions together in the same session
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2037,6 +2045,8 @@ async function saveCurrentSession() {
     }
   }
 
+  localStorage.setItem('xamo_active_session_id', activeSessionId);
+
   if (supabaseClient) {
     try {
       await supabaseClient.from('chats').upsert({
@@ -2048,19 +2058,17 @@ async function saveCurrentSession() {
         history: cleanHistory,
         is_deleted_by_user: false,
         updated_at: new Date().toISOString()
-      });
+      }, { onConflict: 'id' });
     } catch (err) {
       console.warn("Supabase upsert failed:", err);
     }
   }
 
-  if (currentUser) {
-    try {
-      if (sessions.length > 20) sessions = sessions.slice(0, 20);
-      const key = getChatStorageKey();
-      if (key) localStorage.setItem(key, JSON.stringify(sessions));
-    } catch (e) {}
-  }
+  try {
+    if (sessions.length > 25) sessions = sessions.slice(0, 25);
+    const key = getChatStorageKey();
+    if (key) localStorage.setItem(key, JSON.stringify(sessions));
+  } catch (e) {}
 
   renderSessions(searchChatsInput ? searchChatsInput.value : "");
 }
@@ -2074,6 +2082,7 @@ function loadSession(id) {
   const session = sessions.find(s => String(s.id) === String(id));
   if (!session) return;
   activeSessionId = String(session.id);
+  localStorage.setItem('xamo_active_session_id', activeSessionId);
   currentChatHistory = JSON.parse(JSON.stringify(session.history));
   renderChatBox();
   if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
@@ -2354,7 +2363,9 @@ function startNewChat() {
     activeStreamAbortController = null;
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  
   activeSessionId = null;
+  localStorage.removeItem('xamo_active_session_id');
   currentChatHistory = [];
   
   if (chatBox) {
@@ -2435,7 +2446,7 @@ function initSearchBarAndSlashMenu() {
         e.stopPropagation();
         const cmd = opt.getAttribute('data-cmd');
         if (cmd) {
-          input.value = cmd + ' ';
+          input.value = cmd;
           input.focus();
           input.style.height = 'auto';
           input.style.height = Math.min(input.scrollHeight, 160) + 'px';
@@ -2720,7 +2731,6 @@ async function triggerApiCall() {
     }
 
     botDiv.appendChild(footerDiv);
-
   } catch (err) {
     if (err.name === 'AbortError') return;
     responseContent.classList.remove('animate-pulse');

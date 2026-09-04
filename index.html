@@ -347,17 +347,50 @@
     </div>
 
     <!-- Slash Commands Menu -->
-    <div id="slash-menu" class="hidden absolute bottom-24 left-4 md:left-12 lg:left-24 border rounded-xl shadow-2xl p-1 w-64 z-30 text-xs" style="background-color: var(--bg-card); border-color: var(--border-main);">
-      <div class="px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase text-slate-400">Quick Actions</div>
-      <ul id="slash-list" class="space-y-0.5">
-        <li data-cmd="/summarize " class="px-3 py-2 rounded-lg hover:bg-blue-600/20 hover:text-blue-400 cursor-pointer flex items-center gap-2">
-          <i class="fa-solid fa-compress text-blue-400"></i> /summarize
+    <div id="slash-menu" class="hidden absolute bottom-24 left-4 md:left-12 lg:left-24 border rounded-2xl shadow-2xl p-1.5 w-72 z-30 text-xs backdrop-blur-xl" style="background-color: var(--bg-card); border-color: var(--border-main);">
+      <div class="px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase text-slate-400">Power Shortcuts</div>
+      <ul id="slash-list" class="space-y-1">
+        <li data-cmd="Proofread, fix all grammar/spelling, and polish the tone of this text: " class="px-3 py-2 rounded-xl hover:bg-blue-600/15 hover:text-blue-400 cursor-pointer flex items-center gap-2.5 transition-colors">
+          <i class="fa-solid fa-spell-check text-blue-400 text-sm"></i>
+          <div>
+            <div class="font-semibold text-slate-200">/fix</div>
+            <div class="text-[10px] text-slate-400">Proofread & polish grammar</div>
+          </div>
         </li>
-        <li data-cmd="/explain " class="px-3 py-2 rounded-lg hover:bg-blue-600/20 hover:text-blue-400 cursor-pointer flex items-center gap-2">
-          <i class="fa-solid fa-lightbulb text-amber-400"></i> /explain
+        <li data-cmd="Search the live web for 2026 facts and give me a sourced briefing on: " class="px-3 py-2 rounded-xl hover:bg-blue-600/15 hover:text-blue-400 cursor-pointer flex items-center gap-2.5 transition-colors">
+          <i class="fa-solid fa-globe text-emerald-400 text-sm"></i>
+          <div>
+            <div class="font-semibold text-slate-200">/search</div>
+            <div class="text-[10px] text-slate-400">Search live web with sources</div>
+          </div>
         </li>
-        <li data-cmd="/code " class="px-3 py-2 rounded-lg hover:bg-blue-600/20 hover:text-blue-400 cursor-pointer flex items-center gap-2">
-          <i class="fa-solid fa-code text-emerald-400"></i> /code
+        <li data-cmd="Format and compare the following information into a clear Markdown comparison table: " class="px-3 py-2 rounded-xl hover:bg-blue-600/15 hover:text-blue-400 cursor-pointer flex items-center gap-2.5 transition-colors">
+          <i class="fa-solid fa-table-columns text-purple-400 text-sm"></i>
+          <div>
+            <div class="font-semibold text-slate-200">/table</div>
+            <div class="text-[10px] text-slate-400">Format into comparison table</div>
+          </div>
+        </li>
+        <li data-cmd="Break this down into an actionable, step-by-step checklist and roadmap: " class="px-3 py-2 rounded-xl hover:bg-blue-600/15 hover:text-blue-400 cursor-pointer flex items-center gap-2.5 transition-colors">
+          <i class="fa-solid fa-list-check text-amber-400 text-sm"></i>
+          <div>
+            <div class="font-semibold text-slate-200">/steps</div>
+            <div class="text-[10px] text-slate-400">Generate step-by-step action plan</div>
+          </div>
+        </li>
+        <li data-cmd="Analyze this code, locate any syntax or runtime bugs, and provide the clean corrected version: " class="px-3 py-2 rounded-xl hover:bg-blue-600/15 hover:text-blue-400 cursor-pointer flex items-center gap-2.5 transition-colors">
+          <i class="fa-solid fa-bug-slash text-red-400 text-sm"></i>
+          <div>
+            <div class="font-semibold text-slate-200">/debug</div>
+            <div class="text-[10px] text-slate-400">Find & fix code errors</div>
+          </div>
+        </li>
+        <li data-cmd="Explain this concept in simple, easy-to-understand terms with a clear everyday analogy: " class="px-3 py-2 rounded-xl hover:bg-blue-600/15 hover:text-blue-400 cursor-pointer flex items-center gap-2.5 transition-colors">
+          <i class="fa-solid fa-lightbulb text-indigo-400 text-sm"></i>
+          <div>
+            <div class="font-semibold text-slate-200">/simplify</div>
+            <div class="text-[10px] text-slate-400">Explain simply with analogies</div>
+          </div>
         </li>
       </ul>
     </div>
