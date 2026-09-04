@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Zero preamble, zero internal reasoning, zero greetings. Emit token 1 immediately.]
+[SPEED DIRECTIVE: Output concise answers directly. Zero preamble, zero internal reasoning, zero greetings. Emit token 1 immediately.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -64,7 +64,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 3500) });
+          cleanParts.push({ text: part.text.slice(0, 4000) });
         }
       });
 
@@ -81,7 +81,6 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    // Keep context window tight (last 3 turns) for sub-second first-token response
     const finalContents = cleanTurns.slice(-3);
 
     const payload = {
@@ -90,36 +89,36 @@ export default async function handler(req) {
       },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.0, // Greedy decoding: zero token deliberation
+        temperature: 0.1,
         topP: 0.8,
         maxOutputTokens: 1024
       }
     };
 
-    // Primary low-latency model with instant fallback if Google clusters experience a 503 spike
-    const FAST_MODELS = [
+    // Fast active models: gemini-3.5-flash-lite as primary, with automatic failover to gemini-3.8-flash on 503 load spikes
+    const MODELS = [
       'gemini-3.5-flash-lite',
-      'gemini-3.6-flash',
       'gemini-3.8-flash'
     ];
 
     let response = null;
     let lastError = '';
 
-    for (const model of FAST_MODELS) {
+    for (const model of MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
       try {
+        // Generous 12s timeout allows initial TLS connection without premature aborts
         response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(3500) // Fast 3.5s failover trigger
+          signal: AbortSignal.timeout(12000)
         });
 
         if (response.ok) break;
 
-        // If 503, 429, or 500, immediately hot-swap to the next Flash model without failing
+        // If 503 (high demand) or 429 occurs, fall back to gemini-3.8-flash immediately
         lastError = await response.text();
       } catch (err) {
         lastError = err.message;
