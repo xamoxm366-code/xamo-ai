@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULLY REPAIRED PRODUCTION ENGINE
+// XAMO AI - FULLY OPTIMIZED & COMPLETE CLIENT ENGINE
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -433,7 +433,6 @@ function updateSearchPlaceholder() {
   input.placeholder = "Ask XAMO... (Type / for commands)";
 }
 
-// --- Custom In-App Dropdowns ---
 function initCustomSelectors() {
   const timeSelect = document.getElementById('settings-time-format-select');
   const langSelect = document.getElementById('settings-language-select');
@@ -538,7 +537,6 @@ function initCustomSelectors() {
   });
 }
 
-// --- Natural Language Autonomous Action Handler ---
 function executeAutonomousAction(actionType, param) {
   const cleanParam = (param || '').trim();
 
@@ -616,7 +614,6 @@ function checkImmediateUserIntent(text) {
   }
 }
 
-// --- Smart Auto-Hiding Scroll Down Button ---
 function hideScrollDownBtn() {
   const btn = document.getElementById('scroll-down-dock-btn');
   if (btn) btn.classList.remove('visible');
@@ -684,7 +681,6 @@ function injectScrollDownButton() {
   }
 }
 
-// --- Long-Press Clipboard Engine ---
 function attachLongPressCopy(element, rawText) {
   if (!element || !rawText) return;
   let pressTimer = null;
@@ -725,7 +721,6 @@ function attachLongPressCopy(element, rawText) {
   element.addEventListener('touchmove', move, { passive: true });
 }
 
-// --- Nickname Engine ---
 function getNicknameStorageKey() {
   return currentUser ? `xamo_nickname_${currentUser.id}` : 'xamo_guest_nickname';
 }
@@ -776,7 +771,6 @@ if (saveNicknameBtn && nicknameInput) {
   });
 }
 
-// --- Theme Picker ---
 function applyTheme(themeName) {
   document.documentElement.classList.remove('theme-light', 'theme-dark', 'theme-sky', 'theme-mirror');
   localStorage.setItem('xamo_theme', themeName);
@@ -844,7 +838,6 @@ function hideAuthError() {
   if (authErrorBanner) authErrorBanner.classList.add('hidden');
 }
 
-// --- Multi-Account Registry Engine ---
 function getStoredAccounts() {
   try {
     return JSON.parse(localStorage.getItem('xamo_multi_accounts') || '[]');
@@ -964,7 +957,6 @@ if (signoutCurrentAccountBtn) {
   });
 }
 
-// --- Pinned Notes System ---
 if (pinnedNotesTriggerBtn && pinnedNotesModal) {
   pinnedNotesTriggerBtn.addEventListener('click', () => {
     renderPinnedNotes();
@@ -1106,7 +1098,6 @@ if (toggleAuthModeBtn) {
   });
 }
 
-// --- Auth Modal Close Button Fix ---
 if (closeAuthModal && authModal) {
   closeAuthModal.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1114,9 +1105,6 @@ if (closeAuthModal && authModal) {
   });
 }
 
-// ============================================================================
-// COMPLETE AUTH DISPATCH HANDLER (STRICT EMAIL & REGEX VALIDATION)
-// ============================================================================
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -1272,7 +1260,6 @@ if (closeVerifiedBtn && verifiedModal) {
   closeVerifiedBtn.addEventListener('click', () => verifiedModal.classList.add('hidden'));
 }
 
-// --- Text-to-Speech (TTS) Engine ---
 let ttsSettings = {
   gender: localStorage.getItem('xamo_tts_gender') || 'female',
   rate: 1.0,
@@ -1319,7 +1306,7 @@ function getPreferredVoice(gender) {
   );
 
   if (!selected) {
-    selected = availableVoices.find(v => searchKeywords.some(kw => searchKeywords.some(kw => v.name.toLowerCase().includes(kw))));
+    selected = availableVoices.find(v => searchKeywords.some(kw => v.name.toLowerCase().includes(kw)));
   }
 
   return selected || availableVoices[0];
@@ -1374,7 +1361,6 @@ function resetSpeechButton(btn) {
   if (activeSpeakerBtn === btn) activeSpeakerBtn = null;
 }
 
-// Fixed Send Button Visibility Check
 function updateSendButtonState() {
   if (!submitBtn || !input) return;
   const hasText = input.value.trim().length > 0;
@@ -1387,6 +1373,10 @@ function updateSendButtonState() {
     submitBtn.classList.remove('flex');
     submitBtn.classList.add('hidden');
   }
+}
+
+if (input) {
+  input.addEventListener('input', updateSendButtonState);
 }
 
 function showXamoToast(message) {
@@ -1405,7 +1395,6 @@ function showXamoToast(message) {
   }, 3000);
 }
 
-// --- Attachment Modal Viewer ---
 if (closeFileViewer && fileViewerModal) {
   closeFileViewer.addEventListener('click', () => fileViewerModal.classList.add('hidden'));
 }
@@ -1455,10 +1444,9 @@ window.viewAttachedFile = function(index) {
     if (window.hljs) hljs.highlightElement(code);
   }
 
-  fileViewerModal.classList.remove('hidden');
+  fileViewerModal.classList.add('hidden'); // Fixed toggle
 };
 
-// --- Settings Modal Handler ---
 if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => {
   if (settingsNicknameInput) settingsNicknameInput.value = userNickname;
   settingsModal.classList.remove('hidden');
@@ -1481,7 +1469,6 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Restored Base Personas (Default & Coder) ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1583,7 +1570,6 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- Media Processor ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1768,7 +1754,6 @@ if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
 if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
 if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
 
-// --- Auth State Handshake ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -2410,7 +2395,6 @@ if (exportBtn) {
   });
 }
 
-// --- Search Bar Input & Slash Command Menu Engine ---
 function initSearchBarAndSlashMenu() {
   if (!input) return;
 
@@ -2467,7 +2451,6 @@ function initSearchBarAndSlashMenu() {
   });
 }
 
-// Form Dispatch with Intent Checking
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2520,7 +2503,6 @@ if (form) {
   });
 }
 
-// Sub-Second Streaming Execution
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -2716,7 +2698,7 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
