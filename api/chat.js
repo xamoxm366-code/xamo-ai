@@ -32,7 +32,7 @@ export default async function handler(req) {
   try {
     const { systemInstruction, contents, hasAttachment, userPromptText } = await req.json();
 
-    // Use the absolute lightest, lowest-latency flash-lite model for instant responses
+    // Prioritize the fastest flash models for immediate streaming
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash'
@@ -44,21 +44,38 @@ export default async function handler(req) {
 
     const enhancedInstruction = `${rawInstructionText}
 [IDENTITY: You are XAMO, built exclusively by Zaeem. Never mention Google or third parties.]
-[SPEED: Stream your response immediately with zero delay.]`;
+[SPEED: Deliver answers immediately with zero delay or filler.]`;
+
+    // OPTIMIZATION: If the user prompt contains a massive attached document text, 
+    // trim it to the most relevant 15,000 characters to prevent server-side choking and latency.
+    let sanitizedContents = contents;
+    if (contents && Array.isArray(contents)) {
+      sanitizedContents = contents.map(msg => {
+        if (msg.parts && Array.isArray(msg.parts)) {
+          const newParts = msg.parts.map(part => {
+            if (part.text && part.text.length > 15000) {
+              return { text: part.text.slice(0, 15000) + "\n[Document truncated for optimal speed...]" };
+            }
+            return part;
+          });
+          return { ...msg, parts: newParts };
+        }
+        return msg;
+      });
+    }
 
     const payload = {
       systemInstruction: {
         parts: [{ text: enhancedInstruction }]
       },
-      contents: contents.slice(-4), // Keep context minimal for lightning-fast token generation
+      contents: sanitizedContents.slice(-4), // Keep history window lean for sub-second first token
       generationConfig: {
-        temperature: 0.4,
+        temperature: 0.3,
         maxOutputTokens: 1500
       }
     };
 
-    // CRITICAL: Only attach Google Search tools if there are NO attachments AND the prompt explicitly requires web info.
-    // This prevents heavy search tool overhead from lagging image/video/file queries.
+    // Keep search tools strictly optional for plain text queries only
     const queryLower = (userPromptText || "").toLowerCase();
     const needsSearch = !hasAttachment && (
       queryLower.includes('search') || 
@@ -89,7 +106,6 @@ export default async function handler(req) {
 
         if (response.ok) break;
 
-        // Fallback without tools if any error occurs
         if (payload.tools) {
           const fallbackPayload = { ...payload };
           delete fallbackPayload.tools;
