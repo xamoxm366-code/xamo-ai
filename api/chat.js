@@ -30,7 +30,7 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents } = await req.json();
+    const { systemInstruction, contents, timeZone, timeFormat } = await req.json();
 
     const rawInstruction = typeof systemInstruction === 'string'
       ? systemInstruction
@@ -38,7 +38,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Concise, immediate output. Emit token 1 instantly.]
+[SPEED DIRECTIVE: Output concise answers immediately. Zero preamble, zero filler. Emit token 1 on arrival.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -49,7 +49,8 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    const rawTurns = [];
+    // Fast multi-turn sanitization to prevent payload bloating & 504 timeouts
+    const cleanTurns = [];
     (contents || []).forEach(msg => {
       const validRole = msg.role === 'model' ? 'model' : 'user';
       const cleanParts = [];
@@ -63,39 +64,36 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 4000) });
+          cleanParts.push({ text: part.text.slice(0, 3000) });
         }
       });
 
       if (cleanParts.length > 0) {
-        if (rawTurns.length > 0 && rawTurns[rawTurns.length - 1].role === validRole) {
-          rawTurns[rawTurns.length - 1].parts.push(...cleanParts);
+        if (cleanTurns.length > 0 && cleanTurns[cleanTurns.length - 1].role === validRole) {
+          cleanTurns[cleanTurns.length - 1].parts.push(...cleanParts);
         } else {
-          rawTurns.push({ role: validRole, parts: cleanParts });
+          cleanTurns.push({ role: validRole, parts: cleanParts });
         }
       }
     });
 
-    let finalContents = rawTurns.slice(-4);
-    while (finalContents.length > 0 && finalContents[0].role !== 'user') {
-      finalContents.shift();
+    while (cleanTurns.length > 0 && cleanTurns[0].role !== 'user') {
+      cleanTurns.shift();
     }
 
-    if (finalContents.length === 0) {
-      finalContents = [{ role: 'user', parts: [{ text: 'Hello' }] }];
-    }
+    const finalContents = cleanTurns.slice(-3); // Keep context tight for speed
 
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.1,
+        temperature: 0.0, // Zero deliberation delay
         topP: 0.8,
         maxOutputTokens: 1024
       }
     };
 
-    // Explicitly target gemini-3.5-flash and gemini-3.5-flash-lite with automated failover
+    // Primary & backup models requested
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash'
