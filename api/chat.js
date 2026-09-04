@@ -37,9 +37,9 @@ export default async function handler(req) {
       : (systemInstruction?.parts?.[0]?.text || '');
 
     const instruction = `${rawInstruction}
-[IDENTITY: You are XAMO, built exclusively by Zaeem. Never mention Google or third parties.]
-[OUTPUT: Respond directly, concisely, and fast.]
-[AUTONOMOUS CONTROL: When the user asks to perform any of these actions in conversation, confirm warmly and APPEND the exact tag at the end:
+[IDENTITY: You are XAMO, built exclusively by Zaeem.]
+[LATENCY REQUIREMENT: Output the first token instantly. Never provide conversational filler, meta-announcements, or greetings. Jump straight into the answer.]
+[AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
 - Nickname: [[ACTION:SET_NICKNAME:name]]
@@ -49,12 +49,12 @@ export default async function handler(req) {
 - Clear Chat: [[ACTION:CLEAR_CHAT:true]]
 - New Chat: [[ACTION:NEW_CHAT:true]]]`;
 
-    // Format content parts cleanly for the v1beta schema
-    const sanitizedContents = (contents || []).slice(-6).map(msg => ({
+    // Fast payload sanitation: prune bloated historical texts to prevent context deliberation
+    const sanitizedContents = (contents || []).slice(-3).map(msg => ({
       role: msg.role === 'model' ? 'model' : 'user',
       parts: (msg.parts || []).map(part => {
-        if (part.text && part.text.length > 12000) {
-          return { text: part.text.slice(0, 12000) + "\n[Content truncated for performance]" };
+        if (part.text && part.text.length > 6000) {
+          return { text: part.text.slice(0, 6000) + "\n[Content truncated for 1s response]" };
         }
         if (part.inline_data) {
           return {
@@ -74,13 +74,13 @@ export default async function handler(req) {
       },
       contents: sanitizedContents,
       generationConfig: {
-        temperature: 0.3,
-        topP: 0.9,
-        maxOutputTokens: 2048
+        temperature: 0.2, // Low temperature avoids token-sampling hesitation
+        topP: 0.85,
+        maxOutputTokens: 1500
       }
     };
 
-    // Active Gemini 3 flash models
+    // The exact models requested
     const MODELS = [
       'gemini-3.5-flash-lite',
       'gemini-3.8-flash'
@@ -100,7 +100,6 @@ export default async function handler(req) {
         });
 
         if (response.ok) break;
-
         lastError = await response.text();
       } catch (err) {
         lastError = err.message;

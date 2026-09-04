@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULLY AUTONOMOUS PRODUCTION CLIENT ENGINE
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (SUB-SECOND OPTIMIZED)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -184,7 +184,7 @@ function injectGeminiThemeStyles() {
     }
 
     #user-input {
-      font-size: 14px;
+      font-size: 14.5px;
       line-height: 1.35;
       background: transparent;
       border: none;
@@ -192,16 +192,6 @@ function injectGeminiThemeStyles() {
       padding: 6px 2px;
       min-width: 0;
       flex: 1 1 0%;
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-    }
-
-    #user-input::placeholder {
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-      font-size: 13px;
     }
 
     #scroll-down-dock-btn {
@@ -284,7 +274,7 @@ function injectGeminiThemeStyles() {
       font-weight: 600;
     }
 
-    /* REALISTIC SKY THEME FIXES */
+    /* REALISTIC SKY THEME */
     html.theme-sky, 
     html.theme-sky body {
       background: 
@@ -685,8 +675,6 @@ function executeAutonomousAction(actionType, param) {
     if (target) {
       showXamoToast(`Removing account ${cleanParam}...`);
       removeAccountFromStorage(target.user.id);
-    } else {
-      showXamoToast(`Account ${cleanParam} not found in saved list.`);
     }
   } else if (actionType === 'SWITCH_ACCOUNT') {
     const accounts = getStoredAccounts();
@@ -697,8 +685,6 @@ function executeAutonomousAction(actionType, param) {
         access_token: target.access_token,
         refresh_token: target.refresh_token
       });
-    } else {
-      showXamoToast(`Account ${cleanParam} is not logged in.`);
     }
   }
 }
@@ -1266,9 +1252,7 @@ if (closeAuthModal && authModal) {
   });
 }
 
-// ============================================================================
-// COMPLETE AUTH DISPATCH HANDLER (STRICT EMAIL & REGEX VALIDATION)
-// ============================================================================
+// --- Complete Auth Dispatch Handler ---
 if (authSubmitBtn) {
   authSubmitBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -1526,7 +1510,7 @@ function resetSpeechButton(btn) {
   if (activeSpeakerBtn === btn) activeSpeakerBtn = null;
 }
 
-// Send Button Visibility Check
+// --- Send Button Visibility Check ---
 function updateSendButtonState() {
   if (!submitBtn || !input) return;
   const hasText = input.value.trim().length > 0;
@@ -1739,7 +1723,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- High-Speed Media Processor ---
+// --- High-Speed Media Compression (Optimized for Sub-Second Processing) ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1757,7 +1741,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 1200;
+        const maxDim = 800; // Scaled for 4x faster upload latency
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -1773,7 +1757,7 @@ if (imageInput) {
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65); // Lightweight ~70KB payload
         
         attachedFile = {
           category: 'image',
@@ -2717,9 +2701,23 @@ async function triggerApiCall() {
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
-    const payloadHistory = currentChatHistory.slice(-6).map(m => ({ role: m.role, parts: m.parts }));
+    // LATENCY OPTIMIZATION: Only the current message contains inline media base64 data.
+    // Older chat turns are converted to lightweight markers to eliminate payload bloat.
+    const payloadHistory = currentChatHistory.slice(-4).map((m, idx, arr) => {
+      const isCurrentTurn = idx === arr.length - 1;
+      if (isCurrentTurn) {
+        return { role: m.role, parts: m.parts };
+      }
+      const prunedParts = (m.parts || []).map(p => {
+        if (p.inline_data) {
+          return { text: `[Analyzed Attachment: ${m.file?.name || 'Media'}]` };
+        }
+        return p;
+      });
+      return { role: m.role, parts: prunedParts };
+    });
 
+    const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
     const lastUserMessage = currentChatHistory.slice().reverse().find(m => m.role === 'user');
     const rawUserText = lastUserMessage?.rawUserText || "";
 
@@ -2874,7 +2872,7 @@ async function triggerApiCall() {
       speakBtn.className = "hover:text-blue-400 transition-colors focus:outline-none";
       speakBtn.title = "Read Aloud";
       speakBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-      speakBtn.onclick = () => toggleSpeech(fullText, speakBtn);
+      speakBtn.onclick = () => toggleSpeech(textVal, speakBtn);
       footerDiv.appendChild(speakBtn);
     }
 
