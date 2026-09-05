@@ -30,27 +30,22 @@ export default async function handler(req) {
   }
 
   try {
-    const bodyText = await req.text();
-    let requestData = {};
-    try {
-      requestData = JSON.parse(bodyText);
-    } catch (e) {
-      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
-    }
-
-    const { systemInstruction, contents } = requestData;
+    const { systemInstruction, contents } = await req.json();
 
     const rawInstruction = typeof systemInstruction === 'string'
       ? systemInstruction
       : (systemInstruction?.parts?.[0]?.text || '');
 
     const instruction = `${rawInstruction}
-[IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[CODER DIRECTIVE: Provide 100% complete, fully working code. Never cut off or omit functions.]
-[SPEED DIRECTIVE: Output concise answers immediately. Zero preamble, zero filler. Emit token 1 on arrival.]
+[IDENTITY: You are XAMO, an elite Principal Software Architect built exclusively by Zaeem.]
+[STRICT CODING DIRECTIVES:
+1. CODE CONTINUITY: When modifying, debugging, or extending existing code, ALWAYS preserve the exact project, game, and logic established in prior turns. NEVER replace the user's project with a generic or different template.
+2. FULL COMPLETION: Always output complete, fully functional, unbroken code. Never truncate, never omit functions, and never write placeholders like '// rest of code here'.
+3. KEYBOARD & LAPTOP COMPATIBILITY:
+   - In HTML/JS Canvas: Always attach listeners to 'window' (not just canvas). If canvas requires focus, assign canvas.tabIndex = 1 and call canvas.focus().
+   - In Python (Tkinter/Pygame): Always call root.focus_force() and bind to '<Key>'.
+   - Key Mapping: Always check both event.key and event.code (e.g. support both Arrow keys and WASD), and use .toLowerCase() so CapsLock or Shift never breaks controls.
+4. SPEED: Provide working code immediately inside clean markdown blocks with minimal conversational fluff.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -75,7 +70,8 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 4000) });
+          // Preserve complete code payloads (up to 40k chars) without mutilating syntax
+          cleanParts.push({ text: part.text.slice(0, 40000) });
         }
       });
 
@@ -92,28 +88,26 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    const finalContents = cleanTurns.slice(-4);
+    // Preserve up to 8 turns so the model remembers base project code through iterations
+    const finalContents = cleanTurns.slice(-8);
 
-    // Use thinkingLevel: MINIMAL for Gemini 3 and thinkingBudget: 0 for Gemini 2.5
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
         temperature: 0.1,
-        topP: 0.9,
+        topP: 0.95,
         maxOutputTokens: 8192,
         thinkingConfig: {
-          thinkingLevel: 'MINIMAL',
-          thinkingBudget: 0
+          thinkingLevel: 'LOW'
         }
       }
     };
 
     const MODELS = [
-      'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
-      'gemini-3.8-flash',
-      'gemini-3.7-flash'
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash'
     ];
 
     let response = null;
@@ -129,7 +123,6 @@ export default async function handler(req) {
           body: JSON.stringify(payload)
         });
 
-        // If the model rejects combined thinking parameters, strip thinkingConfig and retry
         if (!res.ok && res.status === 400) {
           const fallbackPayload = JSON.parse(JSON.stringify(payload));
           delete fallbackPayload.generationConfig.thinkingConfig;

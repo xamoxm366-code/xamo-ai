@@ -1612,7 +1612,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Base Personas ---
+// --- Base Personas (Upgraded Coder Persona for Continuity & Precision) ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1620,7 +1620,7 @@ const BASE_PERSONAS = [
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, an elite Principal Software Architect created exclusively by Zaeem. When generating code: 1. You MUST output 100% complete, fully working, and syntactically correct code without omitting anything. 2. Never omit implementations with comments like '// rest of code here' or leave hanging brackets/listeners. 3. Output clean, production-grade code with zero introductory filler. Under no circumstances mention third-party AI companies or providers."
+    prompt: "You are XAMO, a Principal Software Architect built exclusively by Zaeem. Follow these strict rules: 1. CODE CONTINUITY: Always preserve and refine the exact existing codebase across turns; NEVER replace or swap the user's project with a different template or game. 2. FULL IMPLEMENTATION: Output 100% complete, fully working, and syntactically correct code without omitting anything or leaving placeholders like '// rest of code here'. 3. LAPTOP & KEYBOARD COMPATIBILITY: For canvas and desktop applications, always ensure window/canvas focus, support both Arrow Keys and WASD, and normalize event keys to lowercase so CapsLock/Shift does not break controls. 4. Output production-ready code with zero filler. Under no circumstances mention third-party AI companies or providers."
   }
 ];
 
@@ -1986,6 +1986,7 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
     loadUserPersonas();
     await syncCloudChats();
   } else {
+    // Guest User Mode: Load saved local chats and start on a fresh screen
     if (userLoggedInView) userLoggedInView.classList.add('hidden');
     if (guestSigninView) guestSigninView.classList.remove('hidden');
     if (adminPanelLink) adminPanelLink.classList.add('hidden');
@@ -2663,13 +2664,15 @@ if (form) {
     
     renderChatBox();
 
+    // Fire persistence non-blockingly
     saveCurrentSession().catch(() => {});
 
+    // Stream AI reply immediately
     await triggerApiCall();
   });
 }
 
-// Sub-Second Streaming Execution
+// Sub-Second Streaming Execution Engine
 async function triggerApiCall() {
   if (activeStreamAbortController) {
     activeStreamAbortController.abort();
@@ -2708,7 +2711,8 @@ async function triggerApiCall() {
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    const payloadHistory = currentChatHistory.slice(-4).map((m, idx, arr) => {
+    // Retain up to 8 conversation turns so code modifications never lose historical context
+    const payloadHistory = currentChatHistory.slice(-8).map((m, idx, arr) => {
       const isCurrentTurn = idx === arr.length - 1;
       if (isCurrentTurn) {
         return { role: m.role, parts: m.parts };
@@ -2768,7 +2772,6 @@ async function triggerApiCall() {
             const candidateParts = json.candidates?.[0]?.content?.parts;
             if (Array.isArray(candidateParts)) {
               for (const p of candidateParts) {
-                // If any model sends thought tokens, inform the user instead of stalling on dots
                 if (p.thought) {
                   if (!fullText) {
                     responseContent.innerHTML = `<span class="text-xs text-blue-400 font-mono"><i class="fa-solid fa-brain mr-1.5 animate-pulse"></i>Thinking...</span>`;
@@ -2914,7 +2917,7 @@ initVoices();
 initAuth();
 handleUrlAuthFlags();
 
-// App Open/Reopen Lifecycle
+// App Open/Reopen Lifecycle: Fresh chat display with persistent history preserved
 window.addEventListener('DOMContentLoaded', () => {
   if (input) {
     input.value = '';
