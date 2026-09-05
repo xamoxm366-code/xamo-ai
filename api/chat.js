@@ -49,8 +49,8 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[CODE DIRECTIVE: When generating code, you MUST output 100% complete, fully working, and syntactically correct implementations. NEVER cut off mid-function, leave placeholders, or omit closing tags/brackets.]
-[SPEED DIRECTIVE: Think fast and output concise, direct answers with zero introductory fluff.]
+[CODER DIRECTIVE: Output 100% complete, fully working, and syntactically flawless code. Never leave placeholders, unclosed listeners, or missing functions. Complete the entire implementation in one go.]
+[SPEED DIRECTIVE: Answer immediately with zero delay. Zero preamble, zero filler. Output token 1 on arrival.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -94,6 +94,7 @@ export default async function handler(req) {
 
     const finalContents = cleanTurns.slice(-4);
 
+    // Explicitly set thinkingBudget to 0 to eliminate thinking stalls
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
@@ -102,7 +103,7 @@ export default async function handler(req) {
         topP: 0.95,
         maxOutputTokens: 8192,
         thinkingConfig: {
-          thinkingBudget: 1024
+          thinkingBudget: 0
         }
       }
     };
@@ -122,11 +123,22 @@ export default async function handler(req) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
       try {
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+
+        // Fallback retry without thinkingConfig if older model clusters reject thinkingBudget: 0
+        if (!res.ok && res.status === 400) {
+          const fallbackPayload = JSON.parse(JSON.stringify(payload));
+          delete fallbackPayload.generationConfig.thinkingConfig;
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
 
         if (res.ok) {
           response = res;

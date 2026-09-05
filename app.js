@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (ROBUST CODE & SPEED OPTIMIZED)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (SUB-SECOND STREAMING & AUTONOMOUS)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1612,7 +1612,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Base Personas (Upgraded Coder Persona) ---
+// --- Base Personas ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1620,7 +1620,7 @@ const BASE_PERSONAS = [
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, an elite Principal Software Architect created exclusively by Zaeem. When generating code: 1. You MUST provide 100% complete, fully working, syntactically correct, and unbroken code without cutting off. 2. Never omit implementations with comments like '// rest of code here' or leave hanging brackets/listeners. 3. Output clean, modern, production-grade code with zero introductory filler. Under no circumstances mention third-party AI companies or providers."
+    prompt: "You are XAMO, an elite Principal Software Architect created exclusively by Zaeem. When generating code: 1. You MUST output 100% complete, fully working, and syntactically correct code without omitting anything. 2. Never omit implementations with comments like '// rest of code here' or leave hanging brackets/listeners. 3. Output clean, production-grade code with zero introductory filler. Under no circumstances mention third-party AI companies or providers."
   }
 ];
 
@@ -1986,7 +1986,6 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
     loadUserPersonas();
     await syncCloudChats();
   } else {
-    // Guest User Mode: Load saved local chats and start on a fresh screen
     if (userLoggedInView) userLoggedInView.classList.add('hidden');
     if (guestSigninView) guestSigninView.classList.remove('hidden');
     if (adminPanelLink) adminPanelLink.classList.add('hidden');
@@ -2664,10 +2663,8 @@ if (form) {
     
     renderChatBox();
 
-    // Fire persistence non-blockingly
     saveCurrentSession().catch(() => {});
 
-    // Stream AI reply immediately
     await triggerApiCall();
   });
 }
@@ -2771,7 +2768,12 @@ async function triggerApiCall() {
             const candidateParts = json.candidates?.[0]?.content?.parts;
             if (Array.isArray(candidateParts)) {
               for (const p of candidateParts) {
-                if (p.text && !p.thought) {
+                // If any model sends thought tokens, inform the user instead of stalling on dots
+                if (p.thought) {
+                  if (!fullText) {
+                    responseContent.innerHTML = `<span class="text-xs text-blue-400 font-mono"><i class="fa-solid fa-brain mr-1.5 animate-pulse"></i>Thinking...</span>`;
+                  }
+                } else if (p.text) {
                   if (!fullText) {
                     responseContent.classList.remove('animate-pulse');
                     responseContent.innerHTML = "";
