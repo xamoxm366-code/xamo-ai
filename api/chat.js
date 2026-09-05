@@ -40,12 +40,12 @@ export default async function handler(req) {
 [IDENTITY: You are XAMO, an elite Principal Software Architect built exclusively by Zaeem.]
 [STRICT CODING DIRECTIVES:
 1. CODE CONTINUITY: When modifying, debugging, or extending existing code, ALWAYS preserve the exact project, game, and logic established in prior turns. NEVER replace the user's project with a generic or different template.
-2. FULL COMPLETION: Always output complete, fully functional, unbroken code. Never truncate, never omit functions, and never write placeholders like '// rest of code here'.
+2. FULL COMPLETION: Output 100% complete, working code in one shot. Never truncate, omit functions, or write placeholders.
 3. KEYBOARD & LAPTOP COMPATIBILITY:
-   - In HTML/JS Canvas: Always attach listeners to 'window' (not just canvas). If canvas requires focus, assign canvas.tabIndex = 1 and call canvas.focus().
-   - In Python (Tkinter/Pygame): Always call root.focus_force() and bind to '<Key>'.
-   - Key Mapping: Always check both event.key and event.code (e.g. support both Arrow keys and WASD), and use .toLowerCase() so CapsLock or Shift never breaks controls.
-4. SPEED: Provide working code immediately inside clean markdown blocks with minimal conversational fluff.]
+   - Always attach listeners to 'window' for web apps.
+   - For desktop apps, call root.focus_force() and bind keys case-insensitively (.toLowerCase()).
+   - Support both Arrow keys and WASD.
+4. ZERO DELIBERATION: Emit code immediately on arrival. Do not deliberate internally or write preambles.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -70,7 +70,6 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          // Preserve complete code payloads (up to 40k chars) without mutilating syntax
           cleanParts.push({ text: part.text.slice(0, 40000) });
         }
       });
@@ -88,25 +87,24 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    // Preserve up to 8 turns so the model remembers base project code through iterations
     const finalContents = cleanTurns.slice(-8);
 
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
-        temperature: 0.1,
-        topP: 0.95,
+        temperature: 0.0,
+        topP: 0.8,
         maxOutputTokens: 8192,
         thinkingConfig: {
-          thinkingLevel: 'LOW'
+          thinkingBudget: 0
         }
       }
     };
 
     const MODELS = [
-      'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-3.8-flash'
     ];
 
@@ -123,6 +121,7 @@ export default async function handler(req) {
           body: JSON.stringify(payload)
         });
 
+        // Fallback for models that reject thinkingBudget: 0
         if (!res.ok && res.status === 400) {
           const fallbackPayload = JSON.parse(JSON.stringify(payload));
           delete fallbackPayload.generationConfig.thinkingConfig;
