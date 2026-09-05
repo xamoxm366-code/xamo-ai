@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (SUB-SECOND STREAMING & AUTONOMOUS)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (PERSISTENCE & SPEED OPTIMIZED)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -692,31 +692,26 @@ function executeAutonomousAction(actionType, param) {
 function checkImmediateUserIntent(text) {
   const lower = text.toLowerCase().trim();
 
-  // 1. PDF Export Trigger
   if (lower.match(/\b(convert.*to pdf|export.*pdf|save.*as pdf|download.*pdf|print chat)\b/)) {
     executeAutonomousAction('EXPORT_PDF', 'true');
     return;
   }
 
-  // 2. Clear Chat / History Trigger
   if (lower.match(/\b(clear chat|clear history|delete this chat|wipe chat|clean screen)\b/)) {
     executeAutonomousAction('CLEAR_CHAT', 'true');
     return;
   }
 
-  // 3. New Chat Trigger
   if (lower.match(/\b(new chat|start new chat|create new chat|fresh chat)\b/)) {
     executeAutonomousAction('NEW_CHAT', 'true');
     return;
   }
 
-  // 4. Pin Note Trigger
   if (lower.match(/\b(pin this|pin note|save to pin|bookmark this)\b/)) {
     executeAutonomousAction('PIN_NOTE', '');
     return;
   }
 
-  // 5. Persona Trigger
   if (lower.match(/\b(coder mode|coder persona|switch to coder|change to coder|be a coder|set persona to coder|act as coder|switch persona to coder)\b/)) {
     executeAutonomousAction('SET_PERSONA', 'Coder');
     return;
@@ -726,7 +721,6 @@ function checkImmediateUserIntent(text) {
     return;
   }
 
-  // 6. Account Management Trigger
   const removeAccMatch = lower.match(/(?:remove|delete)\s+account\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
   if (removeAccMatch) {
     executeAutonomousAction('REMOVE_ACCOUNT', removeAccMatch[1]);
@@ -739,14 +733,12 @@ function checkImmediateUserIntent(text) {
     return;
   }
 
-  // 7. Theme Trigger
   if (lower.match(/\b(change|switch|set)\b.*\b(sky|dark|mirror|default)\b.*\b(theme|mode)?\b/)) {
     const theme = lower.includes('sky') ? 'sky' : (lower.includes('mirror') ? 'mirror' : (lower.includes('dark') ? 'dark' : 'default'));
     executeAutonomousAction('SET_THEME', theme);
     return;
   }
 
-  // 8. Nickname Trigger
   const nickMatch = lower.match(/(?:call me|change nickname to|set nickname to|my name is)\s+([a-zA-Z0-9_-]{2,15})/);
   if (nickMatch && !lower.includes('what is')) {
     executeAutonomousAction('SET_NICKNAME', nickMatch[1]);
@@ -1740,7 +1732,7 @@ if (imageInput) {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxDim = 800; // Scaled for 4x faster transmission
+        const maxDim = 800;
 
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -1756,7 +1748,7 @@ if (imageInput) {
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(img, 0, 0, width, height);
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65); // Lightweight ~70KB payload
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
         
         attachedFile = {
           category: 'image',
@@ -1907,12 +1899,29 @@ if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
 if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
 if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
 
-// --- Auth State Handshake ---
+// --- Local Sessions Storage Engine ---
+function loadLocalSessions() {
+  try {
+    const raw = localStorage.getItem(getChatStorageKey());
+    sessions = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    sessions = [];
+  }
+}
+
+function saveLocalSessions() {
+  try {
+    localStorage.setItem(getChatStorageKey(), JSON.stringify(sessions));
+  } catch (e) {}
+}
+
+// --- Auth State Handshake (Preserving Guest History) ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
     loadCurrentNickname();
-    sessions = [];
+    loadLocalSessions();
+    startNewChat();
     renderSessions();
     updatePinnedBadge();
     return;
@@ -1931,7 +1940,8 @@ async function initAuth() {
     console.warn("Auth initialization failed:", e);
     loadUserPersonas();
     loadCurrentNickname();
-    sessions = [];
+    loadLocalSessions();
+    startNewChat();
     renderSessions();
   }
   updatePinnedBadge();
@@ -1976,12 +1986,13 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
     loadUserPersonas();
     await syncCloudChats();
   } else {
+    // Guest User Mode: Load saved local chats and start on a fresh screen
     if (userLoggedInView) userLoggedInView.classList.add('hidden');
     if (guestSigninView) guestSigninView.classList.remove('hidden');
     if (adminPanelLink) adminPanelLink.classList.add('hidden');
 
     loadCurrentNickname();
-    sessions = [];
+    loadLocalSessions();
     loadUserPersonas();
     startNewChat();
     renderSessions();
@@ -2016,15 +2027,7 @@ async function syncCloudChats() {
         try { localStorage.setItem(key, JSON.stringify(sessions)); } catch(e) {}
       }
       renderSessions(searchChatsInput ? searchChatsInput.value : "");
-
-      const savedActiveId = localStorage.getItem('xamo_active_session_id');
-      if (savedActiveId && sessions.some(s => String(s.id) === String(savedActiveId))) {
-        loadSession(savedActiveId);
-      } else if (sessions.length > 0 && !activeSessionId) {
-        loadSession(sessions[0].id);
-      } else if (!activeSessionId) {
-        startNewChat();
-      }
+      startNewChat();
     }
   } catch (err) {
     console.error("Cloud fetch error:", err);
@@ -2121,7 +2124,7 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Bulletproof Session Storage ---
+// --- Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2175,13 +2178,14 @@ async function saveCurrentSession() {
   }
 
   localStorage.setItem('xamo_active_session_id', activeSessionId);
+  saveLocalSessions();
 
-  if (supabaseClient) {
+  if (supabaseClient && currentUser) {
     try {
       await supabaseClient.from('chats').upsert({
         id: activeSessionId,
-        user_id: currentUser ? currentUser.id : null,
-        user_email: currentUser ? currentUser.email : 'Guest',
+        user_id: currentUser.id,
+        user_email: currentUser.email,
         nickname: userNickname || 'Guest',
         title: title,
         history: cleanHistory,
@@ -2195,8 +2199,7 @@ async function saveCurrentSession() {
 
   try {
     if (sessions.length > 25) sessions = sessions.slice(0, 25);
-    const key = getChatStorageKey();
-    if (key) localStorage.setItem(key, JSON.stringify(sessions));
+    saveLocalSessions();
   } catch (e) {}
 
   renderSessions(searchChatsInput ? searchChatsInput.value : "");
@@ -2465,19 +2468,15 @@ async function deleteSession(id) {
   }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   sessions = sessions.filter(s => String(s.id) !== String(id));
-  
-  if (supabaseClient) {
+  saveLocalSessions();
+
+  if (supabaseClient && currentUser) {
     try {
       await supabaseClient
         .from('chats')
         .update({ is_deleted_by_user: true })
         .eq('id', id);
     } catch (err) {}
-
-    try {
-      const key = getChatStorageKey();
-      if (key) localStorage.setItem(key, JSON.stringify(sessions));
-    } catch (e) {}
   }
 
   if (String(activeSessionId) === String(id)) {
@@ -2497,6 +2496,16 @@ function startNewChat() {
   activeSessionId = null;
   localStorage.removeItem('xamo_active_session_id');
   currentChatHistory = [];
+
+  // Guarantee clean input box on new chat
+  if (input) {
+    input.value = '';
+    input.style.height = 'auto';
+  }
+  attachedFile = null;
+  if (imageInput) imageInput.value = '';
+  if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
+  updateSendButtonState();
   
   if (chatBox) {
     const welcomeName = userNickname ? `, ${userNickname}` : '';
@@ -2607,7 +2616,7 @@ function initSearchBarAndSlashMenu() {
   });
 }
 
-// --- Non-Blocking Form Dispatch Engine ---
+// --- Form Dispatch Engine ---
 if (form) {
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -2656,10 +2665,10 @@ if (form) {
     
     renderChatBox();
 
-    // Fire cloud persistence asynchronously without delaying the AI stream
+    // Fire persistence non-blockingly
     saveCurrentSession().catch(() => {});
 
-    // Stream response immediately
+    // Stream AI reply immediately
     await triggerApiCall();
   });
 }
@@ -2703,7 +2712,6 @@ async function triggerApiCall() {
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    // LATENCY OPTIMIZATION: Only active turn keeps heavy inline base64 media. Older turns carry lightweight markers.
     const payloadHistory = currentChatHistory.slice(-4).map((m, idx, arr) => {
       const isCurrentTurn = idx === arr.length - 1;
       if (isCurrentTurn) {
@@ -2764,7 +2772,6 @@ async function triggerApiCall() {
             const candidateParts = json.candidates?.[0]?.content?.parts;
             if (Array.isArray(candidateParts)) {
               for (const p of candidateParts) {
-                // Filter thought blocks so actual answer starts streaming immediately
                 if (p.text && !p.thought) {
                   if (!fullText) {
                     responseContent.classList.remove('animate-pulse');
@@ -2785,7 +2792,6 @@ async function triggerApiCall() {
       responseContent.innerHTML = `<span class="text-slate-400 text-xs italic">Response complete.</span>`;
     }
 
-    // Process autonomous action tags emitted by model
     const actionMatches = [...fullText.matchAll(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/g)];
     for (const match of actionMatches) {
       executeAutonomousAction(match[1], match[2]);
@@ -2797,7 +2803,6 @@ async function triggerApiCall() {
 
     currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
     
-    // Save state non-blockingly
     saveCurrentSession().catch(() => {});
 
     const footerDiv = document.createElement('div');
@@ -2907,3 +2912,21 @@ initSearchBarAndSlashMenu();
 initVoices();
 initAuth();
 handleUrlAuthFlags();
+
+// App Open/Reopen Lifecycle: Guarantees a fresh screen with previous history in sidebar
+window.addEventListener('DOMContentLoaded', () => {
+  // Clear any residual input text cached by the browser
+  if (input) {
+    input.value = '';
+    input.style.height = 'auto';
+  }
+  attachedFile = null;
+  if (imageInput) imageInput.value = '';
+  if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
+  updateSendButtonState();
+
+  // Load saved session index and begin in a clean, fresh conversation
+  loadLocalSessions();
+  startNewChat();
+  renderSessions();
+});
