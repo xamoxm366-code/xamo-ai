@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (SUB-SECOND STREAMING & AUTONOMOUS)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (ROBUST CODE, EXPORT FIX & FAST)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -537,7 +537,7 @@ function initCustomSelectors() {
   });
 }
 
-// --- Native PDF Conversion Engine ---
+// --- Native PDF Conversion Engine (Fix: Reads model text correctly) ---
 function exportChatToPdf() {
   if (!currentChatHistory || currentChatHistory.length === 0) {
     showXamoToast("No conversation to export to PDF.");
@@ -546,7 +546,7 @@ function exportChatToPdf() {
 
   showXamoToast("Preparing PDF print preview...");
 
-  const printWindow = window.open('', '_blank', 'width=800,height=900');
+  const printWindow = window.open('', '_blank', 'width=850,height=950');
   if (!printWindow) {
     showXamoToast("Please allow popups to export as PDF.");
     return;
@@ -554,19 +554,25 @@ function exportChatToPdf() {
 
   const title = currentChatHistory.find(m => m.role === 'user')?.rawUserText?.slice(0, 30) || "XAMO Chat Export";
 
-  let conversationHtml = currentChatHistory.map(msg => {
+  const conversationHtml = currentChatHistory.map(msg => {
     const isUser = msg.role === 'user';
     const sender = isUser ? (userNickname || "User") : "XAMO AI";
-    const bgStyle = isUser ? "background-color: #f1f5f9; border-left: 4px solid #2563eb;" : "background-color: #ffffff; border-left: 4px solid #10b981;";
-    const text = msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : "");
-    const cleanText = text.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+    const bgStyle = isUser 
+      ? "background-color: #f1f5f9; border-left: 4px solid #2563eb;" 
+      : "background-color: #ffffff; border-left: 4px solid #10b981;";
+      
+    const rawContent = isUser
+      ? (msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : "") || (msg.file ? `[Attached: ${msg.file.name}]` : ""))
+      : (msg.parts && msg.parts[0] ? msg.parts[0].text : "");
+
+    const cleanText = rawContent.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
 
     return `
-      <div style="margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; ${bgStyle} box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px; text-transform: uppercase;">
+      <div style="margin-bottom: 16px; padding: 14px 18px; border-radius: 8px; ${bgStyle} box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+        <div style="font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
           ${sender}
         </div>
-        <div style="font-size: 13.5px; line-height: 1.6; color: #0f172a; white-space: pre-wrap; word-break: break-word;">
+        <div style="font-size: 14px; line-height: 1.6; color: #0f172a; white-space: pre-wrap; word-break: break-word; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
           ${cleanText}
         </div>
       </div>
@@ -579,12 +585,12 @@ function exportChatToPdf() {
     <head>
       <title>${title} - XAMO AI</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 30px; margin: 0; color: #0f172a; background: #fff; }
-        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 20px; }
-        .logo { font-size: 18px; font-weight: bold; color: #2563eb; }
-        .date { font-size: 11px; color: #94a3b8; font-family: monospace; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 32px; margin: 0; color: #0f172a; background: #fff; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 24px; }
+        .logo { font-size: 18px; font-weight: 800; color: #2563eb; }
+        .date { font-size: 12px; color: #94a3b8; font-family: monospace; }
         @media print {
-          body { padding: 15mm; }
+          body { padding: 12mm; }
           button { display: none; }
         }
       </style>
@@ -2536,25 +2542,42 @@ if (clearBtn) clearBtn.addEventListener('click', () => {
 
 if (searchChatsInput) searchChatsInput.addEventListener('input', (e) => renderSessions(e.target.value));
 
+// --- Fix: Export to Markdown reads model parts instead of rawUserText ---
 if (exportBtn) {
   exportBtn.addEventListener('click', () => {
     if (currentChatHistory.length === 0) {
-      alert("No active conversation to export!");
+      showXamoToast("No active conversation to export!");
       return;
     }
+    
     let mdContent = "# XAMO AI Chat Export\n\n";
     currentChatHistory.forEach(m => {
-      const role = m.role === 'user' ? "### User\n" : "### XAMO\n";
-      const txt = m.rawUserText || (m.file ? `[Attached File: ${m.file.name}]` : "");
-      mdContent += role + txt + "\n\n";
+      const isUser = m.role === 'user';
+      const roleHeader = isUser ? "### User\n" : "### XAMO\n";
+      
+      let messageContent = "";
+      if (isUser) {
+        messageContent = m.rawUserText 
+          || (m.parts && m.parts[0] ? m.parts[0].text : "") 
+          || (m.file ? `[Attached File: ${m.file.name}]` : "");
+      } else {
+        const rawModelText = (m.parts && m.parts[0] ? m.parts[0].text : "");
+        messageContent = rawModelText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+      }
+
+      mdContent += `${roleHeader}${messageContent}\n\n`;
     });
-    const blob = new Blob([mdContent], { type: 'text/markdown' });
+
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `xamo-chat-${Date.now()}.md`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    showXamoToast("Chat exported as Markdown!");
   });
 }
 
