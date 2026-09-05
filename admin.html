@@ -22,19 +22,19 @@
 
   <!-- Admin Login Screen -->
   <div id="auth-lock-screen" class="fixed inset-0 bg-[#0f1012] z-50 flex flex-col items-center justify-center p-6 text-center">
-    <div class="w-full max-w-sm bg-[#16171b] border border-[#26282f] p-6 rounded-2xl shadow-2xl space-y-4">
-      <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto border border-amber-500/20">
+    <div id="login-card" class="w-full max-w-sm bg-[#16171b] border border-[#26282f] p-6 rounded-2xl shadow-2xl space-y-4">
+      <div id="login-icon-container" class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto border border-amber-500/20">
         <i class="fa-solid fa-crown"></i>
       </div>
       
       <div>
-        <h2 class="text-base font-bold text-slate-100">XAMO Command Center</h2>
-        <p class="text-xs text-slate-400 mt-1">Admin Access for <span class="font-mono text-amber-400">xamoxm366@gmail.com</span></p>
+        <h2 id="login-title" class="text-base font-bold text-slate-100">XAMO Command Center</h2>
+        <p id="login-subtitle" class="text-xs text-slate-400 mt-1">Admin Access for <span class="font-mono text-amber-400">xamoxm366@gmail.com</span></p>
       </div>
 
       <div id="status-box" class="text-xs py-2.5 px-3 rounded-xl break-words text-left hidden"></div>
 
-      <div class="space-y-3 text-left">
+      <div id="login-form-fields" class="space-y-3 text-left">
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1">Admin Email</label>
           <input type="email" id="admin-email" value="xamoxm366@gmail.com" class="w-full bg-[#0f1012] border border-[#2c2e35] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
@@ -76,7 +76,6 @@
           <i id="refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i> <span>Refresh</span>
         </button>
 
-        <!-- Purge All Conversations Button -->
         <button id="delete-all-btn" onclick="deleteAllChats()" class="text-xs bg-red-600/15 hover:bg-red-600/25 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
           <i class="fa-solid fa-trash-can text-xs"></i> <span class="hidden sm:inline">Purge All</span>
         </button>
@@ -184,14 +183,99 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZubGhjdG14bGN0c3Z5aHd5dnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3MzE0NzgsImV4cCI6MjEwMzMwNzQ3OH0.uj2A-itY_CPhZDmWgF9TCYXgR5PXMGeGXa7L58DD_3w";
     const ADMIN_EMAIL = "xamoxm366@gmail.com";
 
+    // --- 3-Strike Device Lockout Protection Configuration ---
+    const LOCKOUT_KEY = "xamo_admin_device_security";
+    const MAX_FAILED_ATTEMPTS = 3;
+    const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
     let adminToken = localStorage.getItem("xamo_admin_token") || "";
     let chatRecords = [];
     let activeChatRecord = null;
     let activeFilter = "all";
     let autoSyncTimer = null;
 
+    function getSecurityState() {
+      try {
+        const raw = localStorage.getItem(LOCKOUT_KEY);
+        return raw ? JSON.parse(raw) : { attempts: 0, lockedUntil: 0 };
+      } catch (e) {
+        return { attempts: 0, lockedUntil: 0 };
+      }
+    }
+
+    function saveSecurityState(state) {
+      try {
+        localStorage.setItem(LOCKOUT_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function isDeviceLocked() {
+      const state = getSecurityState();
+      const now = Date.now();
+      if (state.lockedUntil && now < state.lockedUntil) {
+        return true;
+      }
+      if (state.lockedUntil && now >= state.lockedUntil) {
+        saveSecurityState({ attempts: 0, lockedUntil: 0 });
+        return false;
+      }
+      return false;
+    }
+
+    function renderLockoutUI() {
+      const state = getSecurityState();
+      const remainingHours = Math.ceil((state.lockedUntil - Date.now()) / (1000 * 60 * 60));
+
+      const icon = document.getElementById("login-icon-container");
+      const title = document.getElementById("login-title");
+      const subtitle = document.getElementById("login-subtitle");
+      const formFields = document.getElementById("login-form-fields");
+      const statusBox = document.getElementById("status-box");
+
+      if (icon) {
+        icon.className = "w-14 h-14 rounded-2xl bg-red-500/15 text-red-400 flex items-center justify-center text-2xl mx-auto border border-red-500/30 animate-pulse";
+        icon.innerHTML = '<i class="fa-solid fa-ban"></i>';
+      }
+
+      if (title) {
+        title.textContent = "Device Access Locked";
+        title.className = "text-base font-bold text-red-400";
+      }
+
+      if (subtitle) {
+        subtitle.innerHTML = "3 consecutive failed attempts detected.<br>This hardware device has been locked out.";
+        subtitle.className = "text-xs text-slate-300 mt-1 leading-relaxed";
+      }
+
+      if (statusBox) {
+        statusBox.className = "text-xs text-red-300 bg-red-950/60 border border-red-500/30 py-2.5 px-3 rounded-xl block text-center font-mono";
+        statusBox.innerHTML = `<i class="fa-solid fa-shield-halved mr-1 text-red-400"></i> Locked for ~${remainingHours} hour(s)`;
+      }
+
+      if (formFields) {
+        formFields.innerHTML = `
+          <div class="p-3.5 bg-[#0f1012] border border-red-900/40 rounded-xl text-center space-y-2">
+            <p class="text-[11px] text-slate-400">All authentication requests from this client environment are rejected.</p>
+            <div class="text-[10px] font-mono text-slate-500">Device Signature ID: ${Math.abs(navigator.userAgent.split("").reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}</div>
+          </div>
+        `;
+      }
+    }
+
+    // Emergency unlock helper (open DevTools Console with F12 and run: unlockThisDevice('zaeem_override'))
+    window.unlockThisDevice = function(overrideKey) {
+      if (overrideKey === 'zaeem_override') {
+        localStorage.removeItem(LOCKOUT_KEY);
+        alert('Device lockout removed.');
+        location.reload();
+      } else {
+        console.warn('Invalid override key.');
+      }
+    };
+
     function updateStatus(message, state) {
       const box = document.getElementById("status-box");
+      if (!box) return;
       box.textContent = message;
       box.classList.remove("hidden");
 
@@ -209,6 +293,11 @@
     }
 
     async function executeLogin() {
+      if (isDeviceLocked()) {
+        renderLockoutUI();
+        return;
+      }
+
       const email = document.getElementById("admin-email").value.trim();
       const password = document.getElementById("admin-password").value.trim();
       const btn = document.getElementById("login-btn");
@@ -235,8 +324,20 @@
         const data = await response.json();
 
         if (!response.ok) {
+          const state = getSecurityState();
+          state.attempts = (state.attempts || 0) + 1;
+          const remaining = MAX_FAILED_ATTEMPTS - state.attempts;
+
+          if (state.attempts >= MAX_FAILED_ATTEMPTS) {
+            state.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+            saveSecurityState(state);
+            renderLockoutUI();
+            return;
+          }
+
+          saveSecurityState(state);
           const errMsg = data.error_description || data.msg || data.message || "Invalid credentials.";
-          updateStatus(`Login Failed: ${errMsg}`, "error");
+          updateStatus(`Login Failed: ${errMsg} (${remaining} attempt${remaining > 1 ? 's' : ''} left before device lockout)`, "error");
           btn.disabled = false;
           btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
           return;
@@ -248,6 +349,9 @@
           btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
           return;
         }
+
+        // Reset lockout attempts on successful authentication
+        saveSecurityState({ attempts: 0, lockedUntil: 0 });
 
         adminToken = data.access_token;
         localStorage.setItem("xamo_admin_token", adminToken);
@@ -275,7 +379,6 @@
       location.reload();
     }
 
-    // High-speed 2.5-second live polling
     function startAutoSync() {
       if (autoSyncTimer) clearInterval(autoSyncTimer);
       autoSyncTimer = setInterval(() => {
@@ -503,7 +606,6 @@
       box.scrollTop = 0;
     }
 
-    // Individual Chat Purge
     async function deleteSelectedChat() {
       if (!activeChatRecord || !confirm("Permanently purge this entire conversation from Supabase Cloud?")) return;
 
@@ -531,7 +633,6 @@
       }
     }
 
-    // Purge All Conversations
     async function deleteAllChats() {
       if (!chatRecords.length) {
         alert("No conversations found in the database to purge.");
@@ -574,6 +675,12 @@
     }
 
     window.addEventListener("load", async () => {
+      // First, check if the device is currently locked out
+      if (isDeviceLocked()) {
+        renderLockoutUI();
+        return;
+      }
+
       if (adminToken) {
         try {
           const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
