@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (PERSISTENCE & SPEED OPTIMIZED)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (ROBUST CODE & SPEED OPTIMIZED)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -1612,7 +1612,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Base Personas ---
+// --- Base Personas (Upgraded Coder Persona) ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1620,7 +1620,7 @@ const BASE_PERSONAS = [
   },
   { 
     name: 'Coder', 
-    prompt: "You are XAMO, a principal software architect created exclusively by Zaeem. Provide production-grade, optimized code immediately with clean syntax and concise explanations. Never mention Google, Gemini, or third parties."
+    prompt: "You are XAMO, an elite Principal Software Architect created exclusively by Zaeem. When generating code: 1. You MUST provide 100% complete, fully working, syntactically correct, and unbroken code without cutting off. 2. Never omit implementations with comments like '// rest of code here' or leave hanging brackets/listeners. 3. Output clean, modern, production-grade code with zero introductory filler. Under no circumstances mention third-party AI companies or providers."
   }
 ];
 
@@ -1714,7 +1714,7 @@ if (attachBtn && imageInput) {
   });
 }
 
-// --- High-Speed Media Compression (Optimized for Sub-Second Streaming) ---
+// --- High-Speed Media Compression ---
 if (imageInput) {
   imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -2497,7 +2497,6 @@ function startNewChat() {
   localStorage.removeItem('xamo_active_session_id');
   currentChatHistory = [];
 
-  // Guarantee clean input box on new chat
   if (input) {
     input.value = '';
     input.style.height = 'auto';
@@ -2913,9 +2912,8 @@ initVoices();
 initAuth();
 handleUrlAuthFlags();
 
-// App Open/Reopen Lifecycle: Guarantees a fresh screen with previous history in sidebar
+// App Open/Reopen Lifecycle
 window.addEventListener('DOMContentLoaded', () => {
-  // Clear any residual input text cached by the browser
   if (input) {
     input.value = '';
     input.style.height = 'auto';
@@ -2925,7 +2923,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (imagePreviewContainer) imagePreviewContainer.classList.add('hidden');
   updateSendButtonState();
 
-  // Load saved session index and begin in a clean, fresh conversation
   loadLocalSessions();
   startNewChat();
   renderSessions();

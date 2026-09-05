@@ -49,7 +49,8 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[SPEED DIRECTIVE: Output concise answers immediately. Zero preamble, zero filler. Emit token 1 on arrival.]
+[CODE DIRECTIVE: When generating code, you MUST output 100% complete, fully working, and syntactically correct implementations. NEVER cut off mid-function, leave placeholders, or omit closing tags/brackets.]
+[SPEED DIRECTIVE: Think fast and output concise, direct answers with zero introductory fluff.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -74,7 +75,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
-          cleanParts.push({ text: part.text.slice(0, 3000) });
+          cleanParts.push({ text: part.text.slice(0, 4000) });
         }
       });
 
@@ -91,19 +92,21 @@ export default async function handler(req) {
       cleanTurns.shift();
     }
 
-    const finalContents = cleanTurns.slice(-3);
+    const finalContents = cleanTurns.slice(-4);
 
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
         temperature: 0.1,
-        topP: 0.8,
-        maxOutputTokens: 2048
+        topP: 0.95,
+        maxOutputTokens: 8192,
+        thinkingConfig: {
+          thinkingBudget: 1024
+        }
       }
     };
 
-    // Resilient multi-tier failover array to automatically bypass 503 high-demand traffic spikes
     const MODELS = [
       'gemini-3.8-flash',
       'gemini-3.7-flash',
@@ -137,8 +140,8 @@ export default async function handler(req) {
     }
 
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `AI Gateway Error: All flash models are currently experiencing high demand (503). Please try again shortly. Details: ${lastErrorText}` }), {
-        status: 503,
+      return new Response(JSON.stringify({ error: `AI Gateway Error: ${lastErrorText}` }), {
+        status: response ? response.status : 503,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
