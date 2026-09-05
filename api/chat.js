@@ -49,8 +49,8 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, built exclusively by Zaeem.]
-[CODER DIRECTIVE: Output 100% complete, fully working, and syntactically flawless code. Never leave placeholders, unclosed listeners, or missing functions. Complete the entire implementation in one go.]
-[SPEED DIRECTIVE: Answer immediately with zero delay. Zero preamble, zero filler. Output token 1 on arrival.]
+[CODER DIRECTIVE: Provide 100% complete, fully working code. Never cut off or omit functions.]
+[SPEED DIRECTIVE: Output concise answers immediately. Zero preamble, zero filler. Emit token 1 on arrival.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
 - Theme: [[ACTION:SET_THEME:sky|dark|mirror|default]]
@@ -94,26 +94,26 @@ export default async function handler(req) {
 
     const finalContents = cleanTurns.slice(-4);
 
-    // Explicitly set thinkingBudget to 0 to eliminate thinking stalls
+    // Use thinkingLevel: MINIMAL for Gemini 3 and thinkingBudget: 0 for Gemini 2.5
     const payload = {
       systemInstruction: { parts: [{ text: instruction }] },
       contents: finalContents,
       generationConfig: {
         temperature: 0.1,
-        topP: 0.95,
+        topP: 0.9,
         maxOutputTokens: 8192,
         thinkingConfig: {
+          thinkingLevel: 'MINIMAL',
           thinkingBudget: 0
         }
       }
     };
 
     const MODELS = [
-      'gemini-3.8-flash',
-      'gemini-3.7-flash',
-      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
       'gemini-3.5-flash',
-      'gemini-3.5-flash-lite'
+      'gemini-3.8-flash',
+      'gemini-3.7-flash'
     ];
 
     let response = null;
@@ -129,7 +129,7 @@ export default async function handler(req) {
           body: JSON.stringify(payload)
         });
 
-        // Fallback retry without thinkingConfig if older model clusters reject thinkingBudget: 0
+        // If the model rejects combined thinking parameters, strip thinkingConfig and retry
         if (!res.ok && res.status === 400) {
           const fallbackPayload = JSON.parse(JSON.stringify(payload));
           delete fallbackPayload.generationConfig.thinkingConfig;
