@@ -1,9 +1,10 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (CLOUD SYNC, GUEST MIGRATION & FAST)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (ACTIVE SUPABASE, EXPORT & CODER FIX)
 // ============================================================================
 
-const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZubGhjdG14bGN0c3Z5aHd5dnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3MzE0NzgsImV4cCI6MjEwMzMwNzQ3OH0.uj2A-itY_CPhZDmWgF9TCYXgR5PXMGeGXa7L58DD_3w";
+const SUPABASE_URL = "https://tyybyhihgjqzntwivtcw.supabase.co";
+// IMPORTANT: Paste your 'anon' 'public' key from Supabase (Project Settings -> API) below:
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5eWJ5aGloZ2pxem50d2l2dGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NzgxMDMsImV4cCI6MjEwMzA1NDEwM30.1KgoilI1XFyo1wj9eAA82d6wwpmhjlWodWKLzwUJwMQ";
 const ADMIN_EMAIL = "xamoxm366@gmail.com";
 
 let supabaseClient = null;
@@ -22,10 +23,10 @@ let scrollVanishTimer = null;
 
 let appSettings = JSON.parse(localStorage.getItem('xamo_app_settings') || '{"language":"auto","timeFormat":"12"}');
 
-const withTimeout = (promise, ms = 7000) => 
+const withTimeout = (promise, ms = 8000) => 
   Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please try again.")), ms))
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Network request timed out. Please check your internet connection.")), ms))
   ]);
 
 // --- DOM References ---
@@ -984,7 +985,7 @@ function hideAuthError() {
   if (authErrorBanner) authErrorBanner.classList.add('hidden');
 }
 
-// --- Guest-to-User Chat Migration Engine (Syncs Guest Chats on Sign-Up / Sign-In) ---
+// --- Guest-to-User Chat Migration Engine ---
 async function migrateGuestChatsToAccount(userId, userEmail) {
   try {
     const rawGuest = localStorage.getItem('xamo_guest_sessions');
@@ -1324,32 +1325,13 @@ if (authSubmitBtn) {
           return;
         }
 
-        if (btnTextSpan) btnTextSpan.textContent = "Verifying email...";
-
-        let isVerified = null;
-        try {
-          const { data, error: rpcError } = await withTimeout(
-            supabaseClient.rpc('is_email_verified', { check_email: email }),
-            4000
-          );
-          if (!rpcError && typeof data === 'boolean') {
-            isVerified = data;
-          }
-        } catch (rpcErr) {
-          console.warn("RPC check skipped:", rpcErr);
-        }
-
-        if (isVerified === false) {
-          throw new Error("This email is not registered or has not been verified yet.");
-        }
-
         if (btnTextSpan) btnTextSpan.textContent = "Sending Link...";
         
         const { error } = await withTimeout(
           supabaseClient.auth.resetPasswordForEmail(email, { 
             redirectTo: "https://xamo-ai.vercel.app/reset-password.html" 
           }),
-          6000
+          7000
         );
 
         if (error) throw error;
@@ -1390,7 +1372,6 @@ if (authSubmitBtn) {
           throw new Error("This email is already registered and verified. Please sign in instead.");
         }
 
-        // Immediately link and upload any Guest conversations to this new signed-up user in Admin Panel
         await migrateGuestChatsToAccount(data.user?.id || null, email);
 
         showXamoToast("Verification link sent! Check your Gmail inbox.");
@@ -1433,7 +1414,13 @@ if (authSubmitBtn) {
       if (authPasswordInput) authPasswordInput.value = "";
 
     } catch (err) {
-      showAuthError(err.message || "Authentication failed.");
+      let errorText = err.message || "Authentication failed.";
+      if (errorText.toLowerCase().includes("failed to fetch")) {
+        errorText = "Unable to reach Supabase (tyybyhihgjqzntwivtcw). Ensure your project is active and your network allows .supabase.co.";
+      } else if (errorText.toLowerCase().includes("invalid api key") || errorText.toLowerCase().includes("jwt")) {
+        errorText = "API Key mismatch: Copy your 'anon' 'public' key from Supabase (Project Settings -> API) into line 6 of app.js.";
+      }
+      showAuthError(errorText);
     } finally {
       authSubmitBtn.disabled = false;
       if (btnTextSpan) {
@@ -2043,7 +2030,6 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
     loadCurrentNickname();
     loadUserPersonas();
 
-    // Migrate any Guest chats to this user's cloud account before fetching
     await migrateGuestChatsToAccount(currentUser.id, currentUser.email);
     await syncCloudChats();
   } else {
@@ -2184,7 +2170,7 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Session Storage (Uploads Both Guest & Logged-In User Chats to Admin Panel) ---
+// --- Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2240,7 +2226,6 @@ async function saveCurrentSession() {
   localStorage.setItem('xamo_active_session_id', activeSessionId);
   saveLocalSessions();
 
-  // Always sync both Guest AND User chats to Supabase for Admin Command Center visibility
   if (supabaseClient) {
     try {
       await supabaseClient.from('chats').upsert({
@@ -2531,7 +2516,6 @@ async function deleteSession(id) {
   sessions = sessions.filter(s => String(s.id) !== String(id));
   saveLocalSessions();
 
-  // Flag as deleted in Supabase for both Guests and Logged-In Users
   if (supabaseClient) {
     try {
       await supabaseClient

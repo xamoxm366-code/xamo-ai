@@ -30,7 +30,18 @@ export default async function handler(req) {
   }
 
   try {
-    const { systemInstruction, contents } = await req.json();
+    const bodyText = await req.text();
+    let requestData = {};
+    try {
+      requestData = JSON.parse(bodyText);
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON payload' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    const { systemInstruction, contents } = requestData;
 
     const rawInstruction = typeof systemInstruction === 'string'
       ? systemInstruction
@@ -40,11 +51,11 @@ export default async function handler(req) {
 [IDENTITY: You are XAMO, an elite Principal Software Architect built exclusively by Zaeem.]
 [STRICT CODING DIRECTIVES:
 1. CODE CONTINUITY: When modifying, debugging, or extending existing code, ALWAYS preserve the exact project, game, and logic established in prior turns. NEVER replace the user's project with a generic or different template.
-2. FULL COMPLETION: Output 100% complete, working code in one shot. Never truncate, omit functions, or write placeholders.
+2. FULL COMPLETION: Output 100% complete, working code in one shot. Never truncate, omit functions, or write placeholders like '// rest of code here'.
 3. KEYBOARD & LAPTOP COMPATIBILITY:
-   - Always attach listeners to 'window' for web apps.
-   - For desktop apps, call root.focus_force() and bind keys case-insensitively (.toLowerCase()).
-   - Support both Arrow keys and WASD.
+   - Always attach listeners to 'window' for web apps, and set canvas.tabIndex = 1 and canvas.focus() where needed.
+   - For Python desktop apps (Tkinter/Pygame), call root.focus_force() and bind keys case-insensitively (.lower()).
+   - Support both Arrow keys and WASD simultaneously.
 4. ZERO DELIBERATION: Emit code immediately on arrival. Do not deliberate internally or write preambles.]
 [AUTONOMOUS CONTROL: Append exact action tags when requested:
 - Persona: [[ACTION:SET_PERSONA:Coder|Default]]
@@ -70,6 +81,7 @@ export default async function handler(req) {
             }
           });
         } else if (part.text && part.text.trim().length > 0) {
+          // Retain up to 40,000 characters per turn so full scripts are never cut in half
           cleanParts.push({ text: part.text.slice(0, 40000) });
         }
       });
@@ -94,8 +106,8 @@ export default async function handler(req) {
       contents: finalContents,
       generationConfig: {
         temperature: 0.0,
-        topP: 0.8,
-        maxOutputTokens: 10000000,
+        topP: 0.85,
+        maxOutputTokens: 8192,
         thinkingConfig: {
           thinkingBudget: 0
         }
@@ -121,7 +133,7 @@ export default async function handler(req) {
           body: JSON.stringify(payload)
         });
 
-        // Fallback for models that reject thinkingBudget: 0
+        // Automatic fallback if a model rejects thinkingConfig
         if (!res.ok && res.status === 400) {
           const fallbackPayload = JSON.parse(JSON.stringify(payload));
           delete fallbackPayload.generationConfig.thinkingConfig;
