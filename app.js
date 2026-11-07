@@ -872,12 +872,54 @@ function updateGuestSessionRow() {
   if (label) label.textContent = userNickname || '';
 }
 
+// --- Styled confirm dialog (replaces the browser's plain popup) ---
+function showXamoConfirm({ title = 'Are you sure?', message = '', confirmText = 'Confirm', danger = false } = {}) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm';
+    wrap.innerHTML = `
+      <div class="w-full max-w-sm rounded-2xl p-5 shadow-2xl border" style="background-color: var(--bg-card); border-color: var(--border-main); color: var(--text-main);">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${danger ? 'bg-red-500/15 text-red-400' : 'bg-blue-500/15 text-blue-400'}">
+          <i class="fa-solid ${danger ? 'fa-right-from-bracket' : 'fa-circle-question'}"></i>
+        </div>
+        <h3 class="text-sm font-bold mb-1" data-title></h3>
+        <p class="text-xs leading-relaxed opacity-80 whitespace-pre-line" data-message></p>
+        <div class="grid grid-cols-2 gap-2 mt-5">
+          <button type="button" data-no class="py-2.5 rounded-xl text-xs font-semibold border hover:opacity-80" style="border-color: var(--border-main);">Cancel</button>
+          <button type="button" data-yes class="py-2.5 rounded-xl text-xs font-semibold text-white transition-colors ${danger ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500'}"></button>
+        </div>
+      </div>`;
+    wrap.querySelector('[data-title]').textContent = title;
+    wrap.querySelector('[data-message]').textContent = message;
+    wrap.querySelector('[data-yes]').textContent = confirmText;
+
+    const done = (value) => {
+      document.removeEventListener('keydown', onKey);
+      wrap.remove();
+      resolve(value);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+
+    wrap.querySelector('[data-no]').onclick = () => done(false);
+    wrap.querySelector('[data-yes]').onclick = () => done(true);
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) done(false); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(wrap);
+  });
+}
+
 const guestLogoutBtn = document.getElementById('guest-logout-btn');
 if (guestLogoutBtn) {
-  guestLogoutBtn.addEventListener('click', () => {
+  guestLogoutBtn.addEventListener('click', async () => {
     if (currentUser) return;
     const name = userNickname || 'Guest';
-    if (!confirm(`Log out of guest "${name}"?\n\nThe nickname and chats will be removed from this device. You will be asked for a nickname next time.`)) return;
+    const ok = await showXamoConfirm({
+      title: `Log out of "${name}"?`,
+      message: 'The nickname and chats will be removed from this device. You will be asked for a nickname next time.',
+      confirmText: 'Log out',
+      danger: true
+    });
+    if (!ok) return;
     localStorage.removeItem('xamo_guest_nickname');
     localStorage.removeItem('xamo_guest_sessions');
     localStorage.removeItem('xamo_active_session_id');
@@ -901,7 +943,7 @@ function getNicknameStorageKey() {
 }
 
 function loadCurrentNickname() {
-  const guestNick = localStorage.getItem('xamo_guest_nickname') || "";
+  const guestNick = currentUser ? "" : (localStorage.getItem('xamo_guest_nickname') || "");
   userNickname = localStorage.getItem(getNicknameStorageKey()) || guestNick || "";
   if (currentUser && userNickname && !localStorage.getItem(getNicknameStorageKey())) {
     localStorage.setItem(getNicknameStorageKey(), userNickname);
@@ -1020,44 +1062,10 @@ function hideAuthError() {
 }
 
 // --- Guest-to-User Chat Migration Engine ---
+// Guest chats are no longer copied into email accounts on login.
+// They stay saved under the guest's nickname, so the admin panel shows them as guest chats.
 async function migrateGuestChatsToAccount(userId, userEmail) {
-  try {
-    const rawGuest = localStorage.getItem('xamo_guest_sessions');
-    if (!rawGuest) return;
-    const guestSessions = JSON.parse(rawGuest);
-    if (!Array.isArray(guestSessions) || guestSessions.length === 0) return;
-
-    const nick = userNickname || localStorage.getItem('xamo_guest_nickname') || 'User';
-
-    if (supabaseClient) {
-      for (const gs of guestSessions) {
-        await supabaseClient.from('chats').upsert({
-          id: String(gs.id),
-          user_id: userId || null,
-          user_email: userEmail || 'Guest',
-          nickname: nick,
-          title: gs.title || 'New Chat',
-          history: gs.history || [],
-          is_deleted_by_user: false,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'id' });
-      }
-    }
-
-    if (userId) {
-      const userKey = `xamo_sessions_${userId}`;
-      const existingUserChats = JSON.parse(localStorage.getItem(userKey) || '[]');
-      const merged = [...guestSessions];
-      existingUserChats.forEach(uc => {
-        if (!merged.some(m => String(m.id) === String(uc.id))) {
-          merged.push(uc);
-        }
-      });
-      localStorage.setItem(userKey, JSON.stringify(merged));
-    }
-  } catch (e) {
-    console.warn("Guest chat migration warning:", e);
-  }
+  return;
 }
 
 // --- Multi-Account Registry Engine ---
