@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07080c">
   <title>XAMO - Command Center</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -25,7 +26,6 @@
       --muted: #8b91a3;
       --accent: #7c5cff;
       --accent-2: #3b82f6;
-      --gold: #f5b942;
       --ok: #34d399;
       --bad: #f87171;
       --warn: #fbbf24;
@@ -39,8 +39,10 @@
       background: var(--bg);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
       overflow: hidden;
     }
+    .app-shell { height: 100vh; height: 100dvh; }
     code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
 
     .ambient {
@@ -55,21 +57,22 @@
     .panel-2 { background: var(--panel-2); border: 1px solid var(--line); }
     .panel-3 { background: var(--panel-3); border: 1px solid var(--line); }
     .glass {
-      background: rgba(13, 15, 21, 0.78);
+      background: rgba(13, 15, 21, 0.8);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--line);
     }
 
+    /* ---------- Buttons ---------- */
     .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 12px; font-weight: 600; padding: 7px 12px;
-      border-radius: 12px; border: 1px solid var(--line);
-      background: var(--panel-3); color: var(--text);
-      transition: all .15s ease; cursor: pointer; white-space: nowrap;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 12px; font-weight: 600; min-height: 34px; padding: 7px 12px;
+      border-radius: 12px; border: 1px solid var(--line); background: var(--panel-3);
+      color: var(--text); transition: all .15s ease; cursor: pointer; white-space: nowrap; text-decoration: none;
     }
     .btn:hover { background: #1e2230; border-color: var(--line-strong); }
     .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-sm { min-height: 30px; font-size: 11px; padding: 5px 9px; border-radius: 10px; }
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), var(--accent-2));
       border-color: transparent; color: #fff;
@@ -79,9 +82,10 @@
     .btn-danger { background: rgba(248, 113, 113, .08); border-color: rgba(248, 113, 113, .25); color: var(--bad); }
     .btn-danger:hover { background: rgba(248, 113, 113, .16); }
     .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
-    .btn-ghost:hover { background: rgba(255, 255, 255, .04); color: var(--text); }
-    .btn-sm { font-size: 11px; padding: 5px 9px; border-radius: 10px; }
+    .btn-ghost:hover { background: rgba(255, 255, 255, .05); color: var(--text); }
+    .thread-back { display: none; }
 
+    /* ---------- Inputs ---------- */
     .input {
       width: 100%; background: #0a0c11; border: 1px solid var(--line);
       border-radius: 12px; padding: 9px 12px; font-size: 12.5px; color: var(--text);
@@ -89,6 +93,7 @@
     }
     .input:focus { border-color: rgba(124, 92, 255, .6); box-shadow: 0 0 0 3px rgba(124, 92, 255, .15); }
 
+    /* ---------- Navigation ---------- */
     .nav-item {
       display: flex; align-items: center; gap: 10px; width: 100%;
       padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 500;
@@ -101,17 +106,73 @@
       background: linear-gradient(135deg, rgba(124, 92, 255, .22), rgba(59, 130, 246, .14));
       border-color: rgba(124, 92, 255, .35);
     }
-    .nav-item .count {
+    .count {
       margin-left: auto; font-size: 10px; font-family: 'JetBrains Mono', monospace;
       padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, .06); color: var(--muted);
     }
-    .nav-chip {
-      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
-      color: var(--muted); background: var(--panel-3); border: 1px solid var(--line);
-      white-space: nowrap; cursor: pointer;
-    }
-    .nav-chip.active { color: #fff; background: var(--accent); border-color: transparent; }
 
+    /* Sidebar: hidden on phones, icon rail on tablets, full sidebar on laptops */
+    .sidebar { display: none; }
+    @media (min-width: 768px) {
+      .sidebar { display: flex; flex-direction: column; width: 76px; flex-shrink: 0; }
+      .sidebar .nav-item { justify-content: center; padding: 11px 0; }
+      .sidebar .brand { justify-content: center; padding-left: 0; padding-right: 0; }
+      .sidebar .nav-label, .sidebar .count, .sidebar .brand-text, .sidebar .btn-label, .sidebar .owner-card { display: none; }
+      .sidebar .btn { padding: 9px 0; }
+    }
+    @media (min-width: 1100px) {
+      .sidebar { width: 248px; }
+      .sidebar .nav-item { justify-content: flex-start; padding: 9px 12px; }
+      .sidebar .brand { justify-content: flex-start; padding: 20px 20px; }
+      .sidebar .nav-label, .sidebar .count, .sidebar .brand-text, .sidebar .btn-label { display: inline; }
+      .sidebar .btn { padding: 8px 12px; }
+      .sidebar .owner-card { display: block; }
+    }
+
+    /* Bottom tab bar for phones */
+    .bottom-nav {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+      background: rgba(13, 15, 21, .94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--line);
+    }
+    .bottom-nav .bnav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 600; color: var(--muted); padding: 7px 0; border-radius: 12px;
+      background: transparent; border: 0; min-width: 0;
+    }
+    .bottom-nav .bnav-btn i { font-size: 16px; }
+    .bottom-nav .bnav-btn.active { color: #fff; background: rgba(124, 92, 255, .22); }
+    @media (min-width: 768px) { .bottom-nav { display: none; } }
+
+    /* ---------- Layout ---------- */
+    .view { position: absolute; inset: 0; }
+    .view-col { flex-direction: column; }
+    .view-conv { flex-direction: column; }
+    @media (max-width: 767px) {
+      .view { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+    }
+    @media (min-width: 768px) {
+      .view-conv { flex-direction: row; }
+    }
+
+    /* Conversations: list and thread side by side on laptops/tablets, separate screens on phones */
+    .conv-list { display: flex; flex-direction: column; min-height: 0; width: 100%; }
+    .thread-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1; }
+    @media (min-width: 768px) {
+      .conv-list { width: 300px; flex: 0 0 300px; border-right: 1px solid var(--line); }
+    }
+    @media (min-width: 1100px) {
+      .conv-list { width: 360px; flex-basis: 360px; }
+    }
+    @media (max-width: 767px) {
+      .thread-pane { display: none; }
+      .view-conv.thread-open .conv-list { display: none; }
+      .view-conv.thread-open .thread-pane { display: flex; }
+      .view-conv.thread-open .thread-back { display: inline-flex; }
+    }
+
+    /* ---------- Chips and small pieces ---------- */
     .chip {
       font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500;
       padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap;
@@ -127,15 +188,14 @@
       color: var(--muted); background: transparent; border: 1px solid transparent;
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
-    .tab:hover { color: var(--text); }
     .tab.active { color: #fff; background: var(--accent); box-shadow: 0 4px 14px -6px rgba(124, 92, 255, .8); }
 
-    .conv { padding: 12px; border-radius: 14px; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
-    .conv:hover { background: rgba(255, 255, 255, .03); }
+    .conv { padding: 11px 12px; border-radius: 14px; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+    .conv:active { background: rgba(255, 255, 255, .04); }
     .conv.active { background: var(--panel-3); border-color: rgba(124, 92, 255, .4); }
 
     .stat-card {
-      border-radius: 18px; padding: 16px; position: relative; overflow: hidden;
+      border-radius: 18px; padding: 14px; position: relative; overflow: hidden;
       background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .01)), var(--panel);
       border: 1px solid var(--line);
     }
@@ -157,14 +217,78 @@
     .bubble-model h1, .bubble-model h2, .bubble-model h3 { font-weight: 700; margin: .8rem 0 .4rem; color: #fff; }
     .bubble-model ul { list-style: disc; padding-left: 1.2rem; }
     .bubble-model ol { list-style: decimal; padding-left: 1.2rem; }
+    .bubble-model img { max-width: 100%; border-radius: 10px; }
 
+    /* ---------- Accounts table (desktop) / cards (phones) ---------- */
+    .acc-head { display: none; }
+    .acc-row { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-top: 1px solid var(--line); }
+    .acc-row:hover { background: rgba(255, 255, 255, .015); }
+    .acc-row .cell { min-width: 0; font-size: 12.5px; }
+    .acc-row .cell[data-label]::before {
+      content: attr(data-label); display: block; font-size: 9.5px; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--dim, #5d6374); margin-bottom: 2px;
+    }
+    .acc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    @media (min-width: 900px) {
+      .acc-head, .acc-row {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, .9fr) 56px minmax(0, 1.2fr) minmax(0, 1.2fr) 190px;
+        align-items: center; gap: 12px; padding: 12px 16px;
+      }
+      .acc-head {
+        font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+        color: var(--muted); background: var(--panel-3);
+      }
+      .acc-row .cell[data-label]::before { display: none; }
+      .acc-actions { justify-content: flex-end; flex-wrap: nowrap; }
+    }
+
+    /* ---------- Media ---------- */
     .media-card {
       border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
       background: var(--panel-2); transition: transform .15s, border-color .15s; cursor: pointer;
     }
-    .media-card:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+    .media-card:active { transform: scale(.98); }
 
-    .view { position: absolute; inset: 0; }
+    /* ---------- Modal ---------- */
+    .modal-card {
+      display: flex; flex-direction: column; gap: 12px; width: 100%;
+      max-width: 56rem; max-height: 92vh; border-radius: 16px;
+    }
+    #media-modal-body {
+      flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, .4); border-radius: 12px; padding: 8px;
+    }
+    #media-modal-body img, #media-modal-body video { max-width: 100%; max-height: 100%; border-radius: 12px; }
+    #media-modal-body iframe { width: 100%; height: 100%; min-height: 60vh; border: 0; border-radius: 12px; background: #fff; }
+    #media-modal-body pre { width: 100%; max-height: 100%; overflow: auto; white-space: pre-wrap; font-size: 12px; padding: 8px; }
+    @media (max-width: 767px) {
+      .modal-card { height: 100%; max-height: 100%; max-width: 100%; border-radius: 0; }
+    }
+
+    /* ---------- Toasts ---------- */
+    #toast-root {
+      position: fixed; z-index: 70; right: 16px; bottom: 16px;
+      width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      width: 100%; font-size: 12px; padding: 10px 14px; border-radius: 12px;
+      backdrop-filter: blur(10px); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, .6);
+    }
+    @media (max-width: 767px) {
+      #toast-root { left: 12px; right: 12px; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); width: auto; }
+    }
+
+    /* ---------- Login ---------- */
+    .login-card { width: 100%; max-width: 24rem; }
+
+    /* ---------- Touch devices: bigger targets, no iOS zoom on inputs ---------- */
+    @media (pointer: coarse) {
+      .btn { min-height: 44px; font-size: 13px; }
+      .btn-sm { min-height: 38px; font-size: 12px; }
+      .nav-item { min-height: 44px; }
+      .input { font-size: 16px; }
+    }
 
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .18); border-radius: 999px; }
@@ -183,17 +307,14 @@
       100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
     }
 
-    .toast {
-      max-width: 340px; font-size: 12px; padding: 10px 14px; border-radius: 12px;
-      backdrop-filter: blur(10px); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, .6);
-    }
+    .glass h1 { min-width: 0; }
   </style>
 </head>
-<body class="ambient">
+<body class="ambient app-shell">
 
   <!-- ================= LOGIN ================= -->
-  <div id="auth-lock-screen" class="fixed inset-0 z-50 flex items-center justify-center p-6">
-    <div class="w-full max-w-sm panel rounded-3xl p-7 shadow-2xl fade-in">
+  <div id="auth-lock-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div class="login-card panel rounded-3xl p-6 sm:p-7 shadow-2xl fade-in">
       <div class="flex flex-col items-center text-center">
         <div id="login-icon-container" onclick="secretOwnerTap()" title="Admin security"
              class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-amber-500/20 cursor-pointer">
@@ -208,14 +329,14 @@
       <div id="login-form-fields" class="mt-5 space-y-3 text-left">
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1.5">Admin email</label>
-          <input type="email" id="admin-email" value="xamoxm366@gmail.com" class="input">
+          <input type="email" id="admin-email" value="xamoxm366@gmail.com" class="input" autocomplete="username">
         </div>
         <div>
           <label class="text-[11px] font-semibold text-slate-400 block mb-1.5">Password</label>
-          <input type="password" id="admin-password" placeholder="Enter password..."
+          <input type="password" id="admin-password" placeholder="Enter password..." autocomplete="current-password"
                  onkeydown="if(event.key==='Enter') executeLogin()" class="input">
         </div>
-        <button type="button" id="login-btn" onclick="executeLogin()" class="btn btn-primary w-full justify-center py-2.5">
+        <button type="button" id="login-btn" onclick="executeLogin()" class="btn btn-primary w-full py-2.5">
           <i class="fa-solid fa-lock-open"></i> <span>Unlock Dashboard</span>
         </button>
       </div>
@@ -230,74 +351,67 @@
   <div id="admin-view" class="h-full" style="display:none">
     <div class="h-full flex">
 
-      <!-- Sidebar (desktop) -->
-      <aside class="hidden md:flex w-60 shrink-0 flex-col panel-2 border-r border-[var(--line)]">
-        <div class="px-5 py-5 flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+      <!-- Sidebar: laptops full, tablets icons only, phones use the bottom bar -->
+      <aside class="sidebar panel-2 border-r border-[var(--line)]">
+        <div class="brand flex items-center gap-3 px-5 py-5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 shrink-0">
             <i class="fa-solid fa-crown text-sm"></i>
           </div>
-          <div class="min-w-0">
+          <div class="brand-text min-w-0">
             <div class="font-bold text-sm leading-tight">XAMO</div>
             <div class="text-[11px] text-slate-500">Command Center</div>
           </div>
         </div>
 
-        <nav class="px-3 space-y-1">
-          <button class="nav-item" data-nav="overview" onclick="switchView('overview')"><i class="fa-solid fa-gauge-high w-4 text-center"></i> Overview</button>
-          <button class="nav-item" data-nav="conversations" onclick="switchView('conversations')"><i class="fa-solid fa-comments w-4 text-center"></i> Conversations <span id="nav-count-conv" class="count">0</span></button>
-          <button class="nav-item" data-nav="accounts" onclick="switchView('accounts')"><i class="fa-solid fa-user-shield w-4 text-center"></i> Accounts <span id="nav-count-accounts" class="count">0</span></button>
-          <button class="nav-item" data-nav="guests" onclick="switchView('guests')"><i class="fa-solid fa-user-secret w-4 text-center"></i> Guests <span id="nav-count-guests" class="count">0</span></button>
-          <button class="nav-item" data-nav="media" onclick="switchView('media')"><i class="fa-solid fa-photo-film w-4 text-center"></i> Media library</button>
+        <nav class="px-2 lg:px-3 space-y-1">
+          <button class="nav-item" data-nav="overview" title="Overview" onclick="switchView('overview')"><i class="fa-solid fa-gauge-high w-4 text-center"></i><span class="nav-label">Overview</span></button>
+          <button class="nav-item" data-nav="conversations" title="Conversations" onclick="switchView('conversations')"><i class="fa-solid fa-comments w-4 text-center"></i><span class="nav-label">Conversations</span><span id="nav-count-conv" class="count">0</span></button>
+          <button class="nav-item" data-nav="accounts" title="Accounts" onclick="switchView('accounts')"><i class="fa-solid fa-user-shield w-4 text-center"></i><span class="nav-label">Accounts</span><span id="nav-count-accounts" class="count">0</span></button>
+          <button class="nav-item" data-nav="guests" title="Guests" onclick="switchView('guests')"><i class="fa-solid fa-user-secret w-4 text-center"></i><span class="nav-label">Guests</span><span id="nav-count-guests" class="count">0</span></button>
+          <button class="nav-item" data-nav="media" title="Media library" onclick="switchView('media')"><i class="fa-solid fa-photo-film w-4 text-center"></i><span class="nav-label">Media library</span></button>
         </nav>
 
         <div class="mt-auto p-3 space-y-2">
-          <div class="panel rounded-xl p-3">
+          <div class="owner-card panel rounded-xl p-3">
             <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Signed in as</div>
             <div class="mono text-[11px] text-amber-400 truncate mt-1">xamoxm366@gmail.com</div>
           </div>
-          <a href="/" class="btn w-full justify-center"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open XAMO</a>
-          <button onclick="logoutAdmin()" class="btn btn-danger w-full justify-center"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+          <a href="/" class="btn w-full" title="Open XAMO"><i class="fa-solid fa-arrow-up-right-from-square"></i><span class="btn-label">Open XAMO</span></a>
+          <button onclick="logoutAdmin()" class="btn btn-danger w-full" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i><span class="btn-label">Sign out</span></button>
         </div>
       </aside>
 
       <div class="flex-1 min-w-0 flex flex-col">
 
         <!-- Top bar -->
-        <header class="glass h-14 px-4 md:px-6 flex items-center justify-between gap-3 shrink-0">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="md:hidden w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm">
+        <header class="glass h-14 px-3 sm:px-5 flex items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="md:hidden w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm shrink-0">
               <i class="fa-solid fa-crown"></i>
             </div>
             <h1 id="view-title" class="text-sm font-semibold truncate">Overview</h1>
-            <span id="live-badge" class="chip chip-muted flex items-center gap-1.5">
+            <span id="live-badge" class="chip chip-muted flex items-center gap-1.5 shrink-0">
               <span id="live-dot" class="live-dot"></span><span id="live-text">Connecting</span>
             </span>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button id="refresh-btn" onclick="reloadAllData()" class="btn btn-sm">
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button id="refresh-btn" onclick="reloadAllData()" class="btn btn-sm" title="Refresh">
               <i id="refresh-icon" class="fa-solid fa-arrows-rotate"></i><span class="hidden sm:inline">Refresh</span>
             </button>
-            <button onclick="deleteAllChats()" class="btn btn-sm btn-danger">
-              <i class="fa-solid fa-trash-can"></i><span class="hidden lg:inline">Purge all chats</span>
+            <button onclick="deleteAllChats()" class="btn btn-sm btn-danger" title="Purge all chats">
+              <i class="fa-solid fa-trash-can"></i><span class="hidden lg:inline">Purge all</span>
             </button>
-            <button onclick="logoutAdmin()" class="btn btn-sm btn-danger md:hidden"><i class="fa-solid fa-right-from-bracket"></i></button>
+            <div class="md:hidden">
+              <button onclick="logoutAdmin()" class="btn btn-sm btn-danger" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
           </div>
         </header>
-
-        <!-- Mobile navigation -->
-        <nav class="md:hidden flex gap-1.5 overflow-x-auto px-3 py-2 panel-2 border-b border-[var(--line)] shrink-0">
-          <button class="nav-chip" data-nav="overview" onclick="switchView('overview')">Overview</button>
-          <button class="nav-chip" data-nav="conversations" onclick="switchView('conversations')">Chats</button>
-          <button class="nav-chip" data-nav="accounts" onclick="switchView('accounts')">Accounts</button>
-          <button class="nav-chip" data-nav="guests" onclick="switchView('guests')">Guests</button>
-          <button class="nav-chip" data-nav="media" onclick="switchView('media')">Media</button>
-        </nav>
 
         <main class="relative flex-1 min-h-0">
 
           <!-- Overview -->
-          <section id="view-overview" class="view flex-col overflow-y-auto p-4 md:p-6 gap-6" style="display:none">
-            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <section id="view-overview" class="view view-col overflow-y-auto p-3 sm:p-4 md:p-6 gap-5" style="display:none">
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3">
               <div class="stat-card">
                 <div class="glow bg-blue-500"></div>
                 <div class="text-[11px] text-slate-400 font-medium">Conversations</div>
@@ -330,15 +444,25 @@
               </div>
             </div>
 
-            <div class="grid lg:grid-cols-5 gap-4">
-              <div class="panel rounded-2xl p-4 lg:col-span-3">
+            <!-- Phone only: account info and sign out -->
+            <div class="md:hidden panel rounded-2xl p-4 space-y-3">
+              <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Signed in as</div>
+              <div class="mono text-xs text-amber-400 break-all">xamoxm366@gmail.com</div>
+              <div class="grid grid-cols-2 gap-2">
+                <a href="/" class="btn"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open XAMO</a>
+                <button onclick="logoutAdmin()" class="btn btn-danger"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+              </div>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-5">
+              <div class="panel rounded-2xl p-4 lg:col-span-3 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-sm font-semibold">Latest conversations</h3>
                   <button class="btn btn-sm btn-ghost" onclick="switchView('conversations')">View all <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
                 <div id="recent-list" class="space-y-1"></div>
               </div>
-              <div class="panel rounded-2xl p-4 lg:col-span-2">
+              <div class="panel rounded-2xl p-4 lg:col-span-2 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-sm font-semibold">Newest accounts</h3>
                   <button class="btn btn-sm btn-ghost" onclick="switchView('accounts')">View all <i class="fa-solid fa-arrow-right"></i></button>
@@ -349,11 +473,12 @@
           </section>
 
           <!-- Conversations -->
-          <section id="view-conversations" class="view flex-col md:flex-row" style="display:none">
-            <aside class="w-full md:w-96 md:shrink-0 flex flex-col min-h-0 max-h-[45%] md:max-h-none panel-2 border-b md:border-b-0 md:border-r border-[var(--line)]">
+          <section id="view-conversations" class="view view-conv" style="display:none">
+
+            <aside class="conv-list panel-2">
               <div class="p-3 space-y-2.5 border-b border-[var(--line)]">
                 <div class="relative">
-                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                   <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, username, title..." class="input pl-8">
                 </div>
                 <div class="flex gap-1 panel-3 p-1 rounded-xl">
@@ -368,112 +493,113 @@
               </div>
             </aside>
 
-            <main class="flex-1 min-h-0 min-w-0 flex flex-col">
-              <div class="h-14 px-4 md:px-6 flex items-center justify-between gap-3 panel-2 border-b border-[var(--line)] shrink-0">
-                <div class="flex items-center gap-3 min-w-0">
-                  <span id="thread-user-badge" class="chip chip-muted px-2.5 py-1 text-xs">Select a conversation</span>
-                  <span id="thread-title" class="text-xs font-semibold text-slate-300 truncate"></span>
+            <div class="thread-pane">
+              <div class="h-14 px-3 sm:px-5 flex items-center justify-between gap-2 panel-2 border-b border-[var(--line)] shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <button class="thread-back btn btn-sm btn-ghost" onclick="closeThreadMobile()" title="Back to list"><i class="fa-solid fa-arrow-left"></i></button>
+                  <span id="thread-user-badge" class="chip chip-muted px-2.5 py-1 text-xs truncate min-w-0">Select a conversation</span>
                 </div>
-                <div id="thread-actions" class="hidden">
-                  <button data-action="delete-chat" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash-can"></i> Delete chat</button>
+                <div id="thread-actions" class="hidden shrink-0">
+                  <button data-action="delete-chat" class="btn btn-sm btn-danger" title="Delete chat"><i class="fa-solid fa-trash-can"></i><span class="hidden sm:inline">Delete</span></button>
                 </div>
               </div>
-              <div id="messages-container" class="flex-1 min-h-0 overflow-y-auto p-4 md:p-6"></div>
-            </main>
+              <div id="thread-title" class="px-3 sm:px-5 py-2 text-xs font-semibold text-slate-300 truncate border-b border-[var(--line)] panel shrink-0"></div>
+              <div id="messages-container" class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6"></div>
+            </div>
+
           </section>
 
           <!-- Accounts -->
-          <section id="view-accounts" class="view flex-col" style="display:none">
-            <div class="p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
-              <div>
+          <section id="view-accounts" class="view view-col" style="display:none">
+            <div class="p-3 sm:p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
+              <div class="min-w-0">
                 <h2 class="text-base font-bold">Email accounts</h2>
-                <p class="text-xs text-slate-400 mt-1 max-w-xl">Everyone who signed up with an email. Passwords are stored by Supabase in scrambled form and can't be viewed. Use Reset link to let a user set a new one.</p>
+                <p class="text-xs text-slate-400 mt-1 max-w-xl">Everyone who signed up with an email. Passwords are stored by Supabase in scrambled form and can't be viewed. Use Reset to let a user set a new one.</p>
               </div>
-              <div class="relative w-full sm:w-72">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+              <div class="relative w-full sm:w-72 shrink-0">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                 <input type="text" id="account-search" oninput="renderAccounts()" placeholder="Search by email..." class="input pl-8">
               </div>
             </div>
-            <div class="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-6">
+            <div class="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-6 pb-6">
               <div class="panel rounded-2xl overflow-hidden">
-                <table class="w-full text-xs min-w-[860px]">
-                  <thead class="bg-[var(--panel-3)] text-slate-400 text-[11px] uppercase tracking-wider">
-                    <tr>
-                      <th class="text-left font-semibold px-4 py-3">Account</th>
-                      <th class="text-left font-semibold px-4 py-3">Username</th>
-                      <th class="text-left font-semibold px-4 py-3">Status</th>
-                      <th class="text-left font-semibold px-4 py-3">Chats</th>
-                      <th class="text-left font-semibold px-4 py-3">Signed up</th>
-                      <th class="text-left font-semibold px-4 py-3">Last sign-in</th>
-                      <th class="text-right font-semibold px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="accounts-body"></tbody>
-                </table>
+                <div class="acc-head">
+                  <div>Account</div><div>Username</div><div>Status</div><div>Chats</div><div>Signed up</div><div>Last sign-in</div><div class="text-right">Actions</div>
+                </div>
+                <div id="accounts-body"></div>
               </div>
             </div>
           </section>
 
           <!-- Guests -->
-          <section id="view-guests" class="view flex-col" style="display:none">
-            <div class="p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
-              <div>
+          <section id="view-guests" class="view view-col" style="display:none">
+            <div class="p-3 sm:p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
+              <div class="min-w-0">
                 <h2 class="text-base font-bold">Guest accounts</h2>
-                <p class="text-xs text-slate-400 mt-1 max-w-xl">Guests are saved by their username. Open any guest to see every chat they have started.</p>
+                <p class="text-xs text-slate-400 mt-1 max-w-xl">Guests are saved by the nickname they typed. Open a guest to see every chat they have started.</p>
               </div>
-              <div class="relative w-full sm:w-72">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
-                <input type="text" id="guest-search" oninput="renderGuests()" placeholder="Search by username..." class="input pl-8">
+              <div class="relative w-full sm:w-72 shrink-0">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="guest-search" oninput="renderGuests()" placeholder="Search by nickname..." class="input pl-8">
               </div>
             </div>
-            <div class="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
-              <div id="guests-grid" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-6 pb-6">
+              <div id="guests-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
             </div>
           </section>
 
           <!-- Media -->
-          <section id="view-media" class="view flex-col" style="display:none">
-            <div class="p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-              <div>
+          <section id="view-media" class="view view-col" style="display:none">
+            <div class="p-3 sm:p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div class="min-w-0">
                 <h2 class="text-base font-bold">Media library</h2>
                 <p class="text-xs text-slate-400 mt-1">Every photo, video and PDF uploaded in any conversation.</p>
               </div>
-              <div class="flex gap-1 panel-3 p-1 rounded-xl">
+              <div class="flex gap-1 panel-3 p-1 rounded-xl w-full sm:w-auto">
                 <button class="tab active media-filter" data-media="all" onclick="setMediaFilter('all')">All</button>
                 <button class="tab media-filter" data-media="image" onclick="setMediaFilter('image')">Photos</button>
                 <button class="tab media-filter" data-media="video" onclick="setMediaFilter('video')">Videos</button>
                 <button class="tab media-filter" data-media="pdf" onclick="setMediaFilter('pdf')">PDFs</button>
               </div>
             </div>
-            <div class="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
-              <div id="media-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3"></div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-6 pb-6">
+              <div id="media-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3"></div>
             </div>
           </section>
 
         </main>
       </div>
     </div>
+
+    <!-- Bottom tab bar (phones only) -->
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="bnav-btn" data-nav="overview" onclick="switchView('overview')"><i class="fa-solid fa-gauge-high"></i><span>Home</span></button>
+      <button class="bnav-btn" data-nav="conversations" onclick="switchView('conversations')"><i class="fa-solid fa-comments"></i><span>Chats</span></button>
+      <button class="bnav-btn" data-nav="accounts" onclick="switchView('accounts')"><i class="fa-solid fa-user-shield"></i><span>Accounts</span></button>
+      <button class="bnav-btn" data-nav="guests" onclick="switchView('guests')"><i class="fa-solid fa-user-secret"></i><span>Guests</span></button>
+      <button class="bnav-btn" data-nav="media" onclick="switchView('media')"><i class="fa-solid fa-photo-film"></i><span>Media</span></button>
+    </nav>
   </div>
 
   <!-- Media viewer -->
-  <div id="media-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+  <div id="media-modal" class="fixed inset-0 z-[60] hidden items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
        onclick="if(event.target===this) closeMediaViewer()">
-    <div class="w-full max-w-4xl panel rounded-2xl p-4 shadow-2xl fade-in">
-      <div class="flex items-center justify-between gap-3 mb-3">
+    <div class="modal-card panel p-3 sm:p-4 shadow-2xl fade-in">
+      <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
           <div id="media-modal-title" class="text-sm font-semibold truncate"></div>
           <div id="media-modal-meta" class="text-[11px] text-slate-500 truncate mt-0.5"></div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <a id="media-modal-download" class="btn btn-sm btn-primary"><i class="fa-solid fa-download"></i> Download</a>
-          <button class="btn btn-sm" onclick="closeMediaViewer()"><i class="fa-solid fa-xmark"></i></button>
+          <a id="media-modal-download" class="btn btn-sm btn-primary"><i class="fa-solid fa-download"></i><span class="hidden sm:inline">Download</span></a>
+          <button class="btn btn-sm" onclick="closeMediaViewer()" title="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
-      <div id="media-modal-body" class="flex items-center justify-center max-h-[70vh] overflow-auto rounded-xl bg-black/40 p-2"></div>
+      <div id="media-modal-body"></div>
     </div>
   </div>
 
-  <div id="toast-root" class="fixed bottom-4 right-4 z-[70] space-y-2"></div>
+  <div id="toast-root"></div>
 
   <script>
     // ================= CONFIG =================
@@ -490,7 +616,7 @@
     localStorage.removeItem("xamo_admin_device_security");
     localStorage.removeItem("xamo_admin_token");
 
-    // ================= DEVICE LOCKOUT (kept from previous version) =================
+    // ================= DEVICE LOCKOUT (kept) =================
     const LOCKOUT_KEY = "xamo_admin_lock_v2";
     const MAX_FAILED_ATTEMPTS = 3;
     const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -659,7 +785,7 @@
       chatRecords.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
     }
 
-    // Media: only data URLs for images, videos and PDFs, or https/blob links, are allowed
+    // Media: only data URLs for images, videos and PDFs, plus https/blob links, are allowed
     const SAFE_DATA_URL = /^data:(image\/(png|jpe?g|gif|webp|heic|bmp)|video\/[\w.+-]+|application\/pdf);/i;
 
     function mediaSrc(file) {
@@ -676,7 +802,7 @@
       return "";
     }
 
-    // Stores media items so clicks can look them up without putting big data into attributes
+    // Media items are stored here so clicks look them up without putting big data into attributes
     let mediaStore = new Map();
     let mediaSeq = 0;
 
@@ -767,7 +893,7 @@
 
         const check = await checkAdminAccess();
         if (!check.ok) {
-          await supabaseClient.auth.signOut();
+          await supabaseClient.auth.signOut({ scope: "local" });
           updateStatus(check.reason, "error");
           setLoginBusy(false);
           return;
@@ -794,7 +920,16 @@
     async function logoutAdmin() {
       try {
         if (realtimeChannel && supabaseClient) await supabaseClient.removeChannel(realtimeChannel);
-        if (supabaseClient) await supabaseClient.auth.signOut();
+        if (supabaseClient) {
+          try { await supabaseClient.auth.signOut({ scope: "local" }); } catch (e) {}
+          try { supabaseClient.auth.stopAutoRefresh(); } catch (e) {}
+        }
+      } catch (e) {}
+      // Remove the saved login from this browser even if the server call failed
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith("sb-") && key.includes("auth-token")) localStorage.removeItem(key);
+        });
       } catch (e) {}
       location.reload();
     }
@@ -808,7 +943,7 @@
       };
       const info = map[state] || map.connecting;
       const badge = document.getElementById("live-badge");
-      if (badge) badge.className = `chip ${info.cls} flex items-center gap-1.5`;
+      if (badge) badge.className = `chip ${info.cls} flex items-center gap-1.5 shrink-0`;
       setText("live-text", info.label);
       const dot = document.getElementById("live-dot");
       if (dot) dot.style.display = info.pulse ? "inline-block" : "none";
@@ -930,6 +1065,9 @@
     // ================= NAVIGATION =================
     function switchView(name) {
       activeView = name;
+      if (name !== "conversations") {
+        document.getElementById("view-conversations").classList.remove("thread-open");
+      }
       Object.keys(VIEW_TITLES).forEach(key => {
         const el = document.getElementById("view-" + key);
         if (el) el.style.display = key === name ? "flex" : "none";
@@ -955,6 +1093,7 @@
       if (input) input.value = search;
       activeFilter = filter;
       document.querySelectorAll(".chat-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
+      document.getElementById("view-conversations").classList.remove("thread-open");
       switchView("conversations");
     }
 
@@ -965,6 +1104,11 @@
       if (activeView !== "conversations") switchView("conversations");
       else renderChatList();
       renderThread(chat, { keepScroll: false });
+      document.getElementById("view-conversations").classList.add("thread-open");
+    }
+
+    function closeThreadMobile() {
+      document.getElementById("view-conversations").classList.remove("thread-open");
     }
 
     // ================= STATS =================
@@ -1001,7 +1145,7 @@
                 <div class="text-xs text-slate-100 truncate">${esc(p.email || "—")}</div>
                 <div class="text-[10px] text-slate-500">${esc(fmtDate(p.created_at))}</div>
               </div>
-              ${p.email_confirmed ? '<span class="chip chip-user">Verified</span>' : '<span class="chip chip-warn">Unverified</span>'}
+              ${p.email_confirmed ? '<span class="chip chip-user shrink-0">Verified</span>' : '<span class="chip chip-warn shrink-0">Unverified</span>'}
             </div>`).join("")
         : emptyState("No accounts yet.");
     }
@@ -1065,7 +1209,7 @@
 
       if (item.kind === "image" && item.src) {
         return `
-          <div class="mb-2 p-2 panel-2 rounded-2xl max-w-xs">
+          <div class="mb-2 p-2 panel-2 rounded-2xl max-w-[85%] sm:max-w-xs">
             <img src="${esc(item.src)}" alt="${name}" loading="lazy" data-action="view-media" data-key="${key}"
                  class="rounded-xl max-h-72 w-auto mx-auto cursor-zoom-in">
             <div class="mono text-[10px] text-slate-500 mt-1.5 truncate text-center">${name}</div>
@@ -1074,11 +1218,11 @@
 
       if (item.kind === "video" && item.src) {
         return `
-          <div class="mb-2 p-2.5 panel-2 rounded-2xl max-w-md w-full">
+          <div class="mb-2 p-2.5 panel-2 rounded-2xl max-w-[92%] sm:max-w-md w-full">
             <video controls playsinline preload="metadata" src="${esc(item.src)}" class="rounded-xl max-h-72 w-full bg-black"></video>
             <div class="flex items-center justify-between gap-3 mt-2 px-1">
               <span class="mono text-[11px] text-purple-300 truncate"><i class="fa-solid fa-film mr-1"></i>${name}</span>
-              <button data-action="view-media" data-key="${key}" class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold">
+              <button data-action="view-media" data-key="${key}" class="text-[11px] text-blue-400 font-semibold shrink-0">
                 <i class="fa-solid fa-expand mr-1"></i>Open
               </button>
             </div>
@@ -1091,7 +1235,7 @@
 
       return `
         <button data-action="view-media" data-key="${key}"
-                class="mb-2 flex items-center gap-3 panel-2 hover:border-[var(--line-strong)] px-3.5 py-2.5 rounded-xl text-left max-w-xs transition">
+                class="mb-2 flex items-center gap-3 panel-2 px-3.5 py-2.5 rounded-xl text-left max-w-[85%] sm:max-w-xs transition">
           <i class="fa-solid ${icon} text-lg"></i>
           <span class="min-w-0">
             <span class="block text-xs font-medium text-slate-200 truncate">${name}</span>
@@ -1109,7 +1253,7 @@
         return `
           <div class="flex flex-col items-end my-4 fade-in">
             ${media}
-            ${text ? `<div class="bubble-user text-slate-100 px-4 py-2.5 rounded-2xl rounded-br-md max-w-[85%] text-[14px] leading-relaxed whitespace-pre-wrap break-words">${esc(text)}</div>` : ""}
+            ${text ? `<div class="bubble-user text-slate-100 px-4 py-2.5 rounded-2xl rounded-br-md max-w-[88%] sm:max-w-[85%] text-[14px] leading-relaxed whitespace-pre-wrap break-words">${esc(text)}</div>` : ""}
           </div>`;
       }
 
@@ -1122,7 +1266,7 @@
       return `
         <div class="flex flex-col items-start my-4 fade-in">
           ${media}
-          ${html ? `<div class="bubble-model text-[14px] leading-relaxed max-w-[92%] break-words">${html}</div>` : ""}
+          ${html ? `<div class="bubble-model text-[14px] leading-relaxed max-w-full sm:max-w-[92%] break-words">${html}</div>` : ""}
         </div>`;
     }
 
@@ -1133,7 +1277,7 @@
 
       const badge = document.getElementById("thread-user-badge");
       const guest = isGuestChat(chat);
-      badge.className = "chip px-2.5 py-1 text-xs " + (guest ? "chip-guest" : "chip-user");
+      badge.className = "chip px-2.5 py-1 text-xs truncate min-w-0 " + (guest ? "chip-guest" : "chip-user");
       badge.textContent = guest
         ? `Guest: ${guestNameOf(chat)}`
         : `${chat.user_email || "User"} · ${String(chat.nickname || "User")}`;
@@ -1153,12 +1297,13 @@
 
     function clearThread() {
       const badge = document.getElementById("thread-user-badge");
-      badge.className = "chip chip-muted px-2.5 py-1 text-xs";
+      badge.className = "chip chip-muted px-2.5 py-1 text-xs truncate min-w-0";
       badge.textContent = "Select a conversation";
       setText("thread-title", "");
       document.getElementById("thread-actions").classList.add("hidden");
+      document.getElementById("view-conversations").classList.remove("thread-open");
       document.getElementById("messages-container").innerHTML =
-        emptyState("Select any chat on the left to read the full thread and open its attachments.");
+        emptyState("Select any chat to read the full thread and open its attachments.");
     }
 
     async function deleteSelectedChat() {
@@ -1211,9 +1356,9 @@
       const rows = profileRecords.filter(p => !q || String(p.email || "").toLowerCase().includes(q));
 
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="7">${emptyState(profileRecords.length
+        body.innerHTML = emptyState(profileRecords.length
           ? "No accounts match your search."
-          : "No email accounts yet.")}</td></tr>`;
+          : "No email accounts yet.");
         return;
       }
 
@@ -1221,23 +1366,21 @@
         const s = stats[String(p.id)] || { count: 0, nick: "" };
         const email = p.email || "";
         return `
-          <tr class="border-t border-[var(--line)] hover:bg-white/[0.02] transition">
-            <td class="px-4 py-3">
+          <div class="acc-row">
+            <div class="cell" data-label="Account">
               <div class="font-medium text-slate-100 break-all">${esc(email || "—")}</div>
               <div class="mono text-[10px] text-slate-500 mt-0.5">${esc(String(p.id).slice(0, 8))}…</div>
-            </td>
-            <td class="px-4 py-3 text-slate-300">${s.nick ? esc(s.nick) : '<span class="text-slate-600">—</span>'}</td>
-            <td class="px-4 py-3">${p.email_confirmed ? '<span class="chip chip-user">Verified</span>' : '<span class="chip chip-warn">Unverified</span>'}</td>
-            <td class="px-4 py-3 mono text-slate-200">${s.count}</td>
-            <td class="px-4 py-3 text-slate-400">${esc(fmtDate(p.created_at))}</td>
-            <td class="px-4 py-3 text-slate-400">${esc(fmtDate(p.last_sign_in_at))}</td>
-            <td class="px-4 py-3">
-              <div class="flex justify-end gap-1.5">
-                <button class="btn btn-sm" data-action="chats-for-email" data-email="${esc(email)}"><i class="fa-solid fa-comments"></i> Chats</button>
-                <button class="btn btn-sm" data-action="reset-link" data-email="${esc(email)}"><i class="fa-solid fa-key"></i> Reset link</button>
-              </div>
-            </td>
-          </tr>`;
+            </div>
+            <div class="cell text-slate-300 truncate" data-label="Username">${s.nick ? esc(s.nick) : '<span class="text-slate-600">—</span>'}</div>
+            <div class="cell" data-label="Status">${p.email_confirmed ? '<span class="chip chip-user">Verified</span>' : '<span class="chip chip-warn">Unverified</span>'}</div>
+            <div class="cell mono text-slate-200" data-label="Chats">${s.count}</div>
+            <div class="cell text-slate-400 text-xs" data-label="Signed up">${esc(fmtDate(p.created_at))}</div>
+            <div class="cell text-slate-400 text-xs" data-label="Last sign-in">${esc(fmtDate(p.last_sign_in_at))}</div>
+            <div class="cell acc-actions">
+              <button class="btn btn-sm" data-action="chats-for-email" data-email="${esc(email)}"><i class="fa-solid fa-comments"></i> Chats</button>
+              <button class="btn btn-sm" data-action="reset-link" data-email="${esc(email)}"><i class="fa-solid fa-key"></i> Reset</button>
+            </div>
+          </div>`;
       }).join("");
     }
 
@@ -1274,7 +1417,7 @@
       grid.innerHTML = rows.map(g => {
         const n = counts[g.username] || 0;
         return `
-          <div class="panel rounded-2xl p-4 hover:border-[var(--line-strong)] transition">
+          <div class="panel rounded-2xl p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
@@ -1285,13 +1428,13 @@
                   <div class="text-[10px] text-slate-500">Guest account</div>
                 </div>
               </div>
-              <span class="chip chip-guest">${n} chat${n === 1 ? "" : "s"}</span>
+              <span class="chip chip-guest shrink-0">${n} chat${n === 1 ? "" : "s"}</span>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-4 text-[11px]">
-              <div class="panel-3 rounded-xl p-2.5"><div class="text-slate-500">First seen</div><div class="text-slate-200 mt-0.5">${esc(fmtDate(g.first_seen))}</div></div>
-              <div class="panel-3 rounded-xl p-2.5"><div class="text-slate-500">Last seen</div><div class="text-slate-200 mt-0.5">${esc(fmtDate(g.last_seen))}</div></div>
+              <div class="panel-3 rounded-xl p-2.5 min-w-0"><div class="text-slate-500">First seen</div><div class="text-slate-200 mt-0.5 truncate">${esc(fmtDate(g.first_seen))}</div></div>
+              <div class="panel-3 rounded-xl p-2.5 min-w-0"><div class="text-slate-500">Last seen</div><div class="text-slate-200 mt-0.5 truncate">${esc(fmtDate(g.last_seen))}</div></div>
             </div>
-            <button class="btn btn-sm w-full justify-center mt-3" data-action="chats-for-guest" data-username="${esc(g.username)}">
+            <button class="btn btn-sm w-full mt-3" data-action="chats-for-guest" data-username="${esc(g.username)}">
               <i class="fa-solid fa-comments"></i> View chats
             </button>
           </div>`;
@@ -1368,22 +1511,18 @@
       let el = null;
       if (item.kind === "image" && item.src) {
         el = document.createElement("img");
-        el.className = "max-h-[68vh] max-w-full rounded-xl";
         el.alt = item.name;
         el.src = item.src;
       } else if (item.kind === "video" && item.src) {
         el = document.createElement("video");
-        el.className = "max-h-[68vh] max-w-full rounded-xl bg-black";
         el.controls = true;
         el.playsInline = true;
         el.src = item.src;
       } else if (item.kind === "pdf" && item.src) {
         el = document.createElement("iframe");
-        el.className = "w-full h-[68vh] rounded-xl bg-white";
         el.src = item.src;
       } else if (item.kind === "text" && item.text) {
         el = document.createElement("pre");
-        el.className = "w-full text-xs text-slate-200 whitespace-pre-wrap break-words p-3";
         el.textContent = item.text;
       }
 

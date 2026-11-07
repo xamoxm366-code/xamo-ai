@@ -862,6 +862,39 @@ function attachLongPressCopy(element, rawText) {
   element.addEventListener('touchmove', move, { passive: true });
 }
 
+// --- Guest session row + guest logout ---
+function updateGuestSessionRow() {
+  const row = document.getElementById('guest-session-row');
+  const label = document.getElementById('guest-nickname-label');
+  if (!row) return;
+  const showGuest = !currentUser && !!userNickname;
+  row.classList.toggle('hidden', !showGuest);
+  if (label) label.textContent = userNickname || '';
+}
+
+const guestLogoutBtn = document.getElementById('guest-logout-btn');
+if (guestLogoutBtn) {
+  guestLogoutBtn.addEventListener('click', () => {
+    if (currentUser) return;
+    const name = userNickname || 'Guest';
+    if (!confirm(`Log out of guest "${name}"?\n\nThe nickname and chats will be removed from this device. You will be asked for a nickname next time.`)) return;
+    localStorage.removeItem('xamo_guest_nickname');
+    localStorage.removeItem('xamo_guest_sessions');
+    localStorage.removeItem('xamo_active_session_id');
+    localStorage.removeItem('xamo_pinned_notes');
+    location.reload();
+  });
+}
+
+// Removes the saved Supabase login from this browser
+function clearSupabaseSessionStorage() {
+  try {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-') && key.includes('auth-token')) localStorage.removeItem(key);
+    });
+  } catch (e) {}
+}
+
 // --- Nickname Engine ---
 function getNicknameStorageKey() {
   return currentUser ? `xamo_nickname_${currentUser.id}` : 'xamo_guest_nickname';
@@ -890,6 +923,7 @@ function saveCurrentNickname(name) {
 }
 
 function updateWelcomeText() {
+  updateGuestSessionRow();
   if (welcomeHeading) {
     welcomeHeading.textContent = userNickname 
       ? `What can I help you with today, ${userNickname}?` 
@@ -1127,22 +1161,29 @@ if (guestSigninBtn) {
 if (signoutCurrentAccountBtn) {
   signoutCurrentAccountBtn.addEventListener('click', async () => {
     if (accountSwitcherMenu) accountSwitcherMenu.classList.add('hidden');
-    if (currentUser) {
-      const leavingId = currentUser.id;
-      removeAccountFromStorage(leavingId);
-      
-      const remaining = getStoredAccounts();
-      if (remaining.length > 0) {
-        showXamoToast(`Switching to ${remaining[0].user.email}...`);
-        await supabaseClient.auth.setSession({
-          access_token: remaining[0].access_token,
-          refresh_token: remaining[0].refresh_token
-        });
-      } else {
-        await supabaseClient.auth.signOut();
-        showXamoToast("Signed out. Guest session active.");
+    if (!currentUser) return;
+
+    const leavingId = currentUser.id;
+    showXamoToast("Signing out...");
+
+    // Forget this account on this device. Never switch to another saved account here.
+    removeAccountFromStorage(leavingId);
+
+    if (supabaseClient) {
+      try {
+        // scope 'local' ends only this session, so the same account stays signed in on other devices
+        const { error } = await supabaseClient.auth.signOut({ scope: 'local' });
+        if (error) console.warn("Server sign-out failed, signing out on this device:", error.message);
+      } catch (err) {
+        console.warn("Sign-out request failed, signing out on this device:", err);
       }
+      try { supabaseClient.auth.stopAutoRefresh(); } catch (e) {}
+      clearSupabaseSessionStorage();
     }
+
+    showXamoToast("Signed out.");
+    // Reload so the page starts clean as a guest
+    setTimeout(() => location.reload(), 400);
   });
 }
 
@@ -2137,36 +2178,79 @@ function enhanceMarkdownOutput(container) {
   });
 }
 
+// --- Sidebar history: grouped by date, Gemini / Claude style ---
+function getSessionTimestamp(session) {
+  const n = Number(session.id);
+  return Number.isFinite(n) && n > 1000000000000 ? n : Date.now();
+}
+
+function getSessionGroupLabel(ts) {
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (ts >= startToday) return 'Today';
+  if (ts >= startToday - 86400000) return 'Yesterday';
+  if (ts >= startToday - 7 * 86400000) return 'Previous 7 days';
+  return new Date(ts).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
 function renderSessions(filterText = "") {
   if (!chatList) return;
   chatList.innerHTML = "";
-  const filtered = sessions.filter(s => s.title && s.title.toLowerCase().includes(filterText.toLowerCase()));
+  const query = String(filterText || "").toLowerCase();
+  const filtered = sessions
+    .filter(s => s.title && s.title.toLowerCase().includes(query))
+    .sort((a, b) => getSessionTimestamp(b) - getSessionTimestamp(a));
+
   if (filtered.length === 0) {
-    chatList.innerHTML = '<p class="text-xs text-slate-400 px-3 py-2">No conversations found</p>';
+    chatList.innerHTML = '<div class="px-3 py-8 text-center text-xs text-slate-500"><i class="fa-regular fa-comments text-xl mb-2 block opacity-60"></i>No conversations found</div>';
     return;
   }
+
+  let lastLabel = null;
   filtered.forEach(session => {
-    const div = document.createElement('div');
+    const ts = getSessionTimestamp(session);
+    const label = getSessionGroupLabel(ts);
+    if (label !== lastLabel) {
+      const header = document.createElement('div');
+      header.className = "px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500";
+      header.textContent = label;
+      chatList.appendChild(header);
+      lastLabel = label;
+    }
+
     const isActive = String(session.id) === String(activeSessionId);
-    div.className = "group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all duration-200 " + 
-                    (isActive ? "bg-blue-600/10 text-blue-400 font-semibold border border-blue-500/20 shadow-sm" : "text-slate-400 hover:bg-slate-500/10 hover:text-slate-200");
+    const row = document.createElement('div');
+    row.className = "group relative flex items-center gap-2 pl-3.5 pr-1.5 py-2 rounded-xl cursor-pointer text-[13px] transition-colors duration-150 " +
+      (isActive ? "bg-blue-500/10 text-slate-100 font-medium" : "text-slate-400 hover:bg-slate-500/10 hover:text-slate-200");
+
+    if (isActive) {
+      const bar = document.createElement('span');
+      bar.className = "absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-blue-500";
+      row.appendChild(bar);
+    }
+
     const titleSpan = document.createElement('span');
-    titleSpan.className = "truncate flex-1 pr-2";
+    titleSpan.className = "truncate flex-1";
     titleSpan.textContent = session.title;
-    titleSpan.onclick = () => {
-      loadSession(session.id);
-      if (window.innerWidth < 768) toggleSidebar();
-    };
+    titleSpan.title = session.title;
+
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = "opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 p-1 transition-opacity";
-    deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+    deleteBtn.className = "flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all";
+    deleteBtn.title = "Delete conversation";
+    deleteBtn.setAttribute('aria-label', 'Delete conversation');
+    deleteBtn.innerHTML = '<i class="fa-regular fa-trash-can text-[11px]"></i>';
     deleteBtn.onclick = (e) => {
       e.stopPropagation();
       deleteSession(session.id);
     };
-    div.appendChild(titleSpan);
-    div.appendChild(deleteBtn);
-    chatList.appendChild(div);
+
+    row.appendChild(titleSpan);
+    row.appendChild(deleteBtn);
+    row.onclick = () => {
+      loadSession(session.id);
+      if (window.innerWidth < 768) toggleSidebar();
+    };
+    chatList.appendChild(row);
   });
 }
 

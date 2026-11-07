@@ -277,6 +277,14 @@
           </div>
           <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i>
         </button>
+      <!-- Guest session: nickname + log out -->
+        <div id="guest-session-row" class="hidden mt-1.5 flex items-center justify-between gap-2 px-3 py-2 border rounded-xl text-xs" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
+          <div class="flex items-center gap-2 min-w-0">
+            <i class="fa-solid fa-user-secret text-purple-400 text-sm flex-shrink-0"></i>
+            <span class="truncate">Guest: <span id="guest-nickname-label" class="font-semibold"></span></span>
+          </div>
+          <button id="guest-logout-btn" class="flex-shrink-0 text-[11px] font-semibold text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors cursor-pointer">Log out</button>
+        </div>
       </div>
 
       <!-- Action Buttons Row: [ Pinned | Clear | Export ] -->
