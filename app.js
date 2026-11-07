@@ -1,5 +1,5 @@
 // ============================================================================
-// XAMO AI - FULL PRODUCTION CLIENT ENGINE (ROBUST CODE, EXPORT FIX & FAST)
+// XAMO AI - FULL PRODUCTION CLIENT ENGINE (CLOUD SYNC, GUEST MIGRATION & FAST)
 // ============================================================================
 
 const SUPABASE_URL = "https://vnlhctmxlctsvyhwyvrl.supabase.co";
@@ -537,7 +537,7 @@ function initCustomSelectors() {
   });
 }
 
-// --- Native PDF Conversion Engine (Fix: Reads model text correctly) ---
+// --- Native PDF Conversion Engine ---
 function exportChatToPdf() {
   if (!currentChatHistory || currentChatHistory.length === 0) {
     showXamoToast("No conversation to export to PDF.");
@@ -867,7 +867,11 @@ function getNicknameStorageKey() {
 }
 
 function loadCurrentNickname() {
-  userNickname = localStorage.getItem(getNicknameStorageKey()) || "";
+  const guestNick = localStorage.getItem('xamo_guest_nickname') || "";
+  userNickname = localStorage.getItem(getNicknameStorageKey()) || guestNick || "";
+  if (currentUser && userNickname && !localStorage.getItem(getNicknameStorageKey())) {
+    localStorage.setItem(getNicknameStorageKey(), userNickname);
+  }
   updateWelcomeText();
 
   if (!userNickname) {
@@ -978,6 +982,47 @@ function showAuthError(msg) {
 
 function hideAuthError() {
   if (authErrorBanner) authErrorBanner.classList.add('hidden');
+}
+
+// --- Guest-to-User Chat Migration Engine (Syncs Guest Chats on Sign-Up / Sign-In) ---
+async function migrateGuestChatsToAccount(userId, userEmail) {
+  try {
+    const rawGuest = localStorage.getItem('xamo_guest_sessions');
+    if (!rawGuest) return;
+    const guestSessions = JSON.parse(rawGuest);
+    if (!Array.isArray(guestSessions) || guestSessions.length === 0) return;
+
+    const nick = userNickname || localStorage.getItem('xamo_guest_nickname') || 'User';
+
+    if (supabaseClient) {
+      for (const gs of guestSessions) {
+        await supabaseClient.from('chats').upsert({
+          id: String(gs.id),
+          user_id: userId || null,
+          user_email: userEmail || 'Guest',
+          nickname: nick,
+          title: gs.title || 'New Chat',
+          history: gs.history || [],
+          is_deleted_by_user: false,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+      }
+    }
+
+    if (userId) {
+      const userKey = `xamo_sessions_${userId}`;
+      const existingUserChats = JSON.parse(localStorage.getItem(userKey) || '[]');
+      const merged = [...guestSessions];
+      existingUserChats.forEach(uc => {
+        if (!merged.some(m => String(m.id) === String(uc.id))) {
+          merged.push(uc);
+        }
+      });
+      localStorage.setItem(userKey, JSON.stringify(merged));
+    }
+  } catch (e) {
+    console.warn("Guest chat migration warning:", e);
+  }
 }
 
 // --- Multi-Account Registry Engine ---
@@ -1345,6 +1390,9 @@ if (authSubmitBtn) {
           throw new Error("This email is already registered and verified. Please sign in instead.");
         }
 
+        // Immediately link and upload any Guest conversations to this new signed-up user in Admin Panel
+        await migrateGuestChatsToAccount(data.user?.id || null, email);
+
         showXamoToast("Verification link sent! Check your Gmail inbox.");
         if (authModal) authModal.classList.add('hidden');
 
@@ -1370,6 +1418,10 @@ if (authSubmitBtn) {
           } else {
             throw error;
           }
+        }
+
+        if (data.user) {
+          await migrateGuestChatsToAccount(data.user.id, data.user.email);
         }
 
         if (data.session) storeCurrentAccount(data.session);
@@ -1618,7 +1670,7 @@ if (saveSettings && settingsModal) {
   });
 }
 
-// --- Base Personas (Upgraded Coder Persona for Continuity & Precision) ---
+// --- Base Personas ---
 const BASE_PERSONAS = [
   { 
     name: 'Default', 
@@ -1921,7 +1973,7 @@ function saveLocalSessions() {
   } catch (e) {}
 }
 
-// --- Auth State Handshake (Preserving Guest History) ---
+// --- Auth State Handshake ---
 async function initAuth() {
   if (!supabaseClient) {
     loadUserPersonas();
@@ -1990,9 +2042,11 @@ async function handleAuthStateChange(user, isAuthEvent = false) {
     renderAccountSwitcher();
     loadCurrentNickname();
     loadUserPersonas();
+
+    // Migrate any Guest chats to this user's cloud account before fetching
+    await migrateGuestChatsToAccount(currentUser.id, currentUser.email);
     await syncCloudChats();
   } else {
-    // Guest User Mode: Load saved local chats and start on a fresh screen
     if (userLoggedInView) userLoggedInView.classList.add('hidden');
     if (guestSigninView) guestSigninView.classList.remove('hidden');
     if (adminPanelLink) adminPanelLink.classList.add('hidden');
@@ -2130,7 +2184,7 @@ function renderSessions(filterText = "") {
   });
 }
 
-// --- Session Storage ---
+// --- Session Storage (Uploads Both Guest & Logged-In User Chats to Admin Panel) ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
@@ -2186,12 +2240,13 @@ async function saveCurrentSession() {
   localStorage.setItem('xamo_active_session_id', activeSessionId);
   saveLocalSessions();
 
-  if (supabaseClient && currentUser) {
+  // Always sync both Guest AND User chats to Supabase for Admin Command Center visibility
+  if (supabaseClient) {
     try {
       await supabaseClient.from('chats').upsert({
         id: activeSessionId,
-        user_id: currentUser.id,
-        user_email: currentUser.email,
+        user_id: currentUser ? currentUser.id : null,
+        user_email: currentUser ? currentUser.email : 'Guest',
         nickname: userNickname || 'Guest',
         title: title,
         history: cleanHistory,
@@ -2476,7 +2531,8 @@ async function deleteSession(id) {
   sessions = sessions.filter(s => String(s.id) !== String(id));
   saveLocalSessions();
 
-  if (supabaseClient && currentUser) {
+  // Flag as deleted in Supabase for both Guests and Logged-In Users
+  if (supabaseClient) {
     try {
       await supabaseClient
         .from('chats')
@@ -2542,7 +2598,6 @@ if (clearBtn) clearBtn.addEventListener('click', () => {
 
 if (searchChatsInput) searchChatsInput.addEventListener('input', (e) => renderSessions(e.target.value));
 
-// --- Fix: Export to Markdown reads model parts instead of rawUserText ---
 if (exportBtn) {
   exportBtn.addEventListener('click', () => {
     if (currentChatHistory.length === 0) {
@@ -2687,10 +2742,8 @@ if (form) {
     
     renderChatBox();
 
-    // Fire persistence non-blockingly
     saveCurrentSession().catch(() => {});
 
-    // Stream AI reply immediately
     await triggerApiCall();
   });
 }
@@ -2734,7 +2787,6 @@ async function triggerApiCall() {
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
 
-    // Retain up to 8 conversation turns so code modifications never lose historical context
     const payloadHistory = currentChatHistory.slice(-8).map((m, idx, arr) => {
       const isCurrentTurn = idx === arr.length - 1;
       if (isCurrentTurn) {
@@ -2940,7 +2992,6 @@ initVoices();
 initAuth();
 handleUrlAuthFlags();
 
-// App Open/Reopen Lifecycle: Fresh chat display with persistent history preserved
 window.addEventListener('DOMContentLoaded', () => {
   if (input) {
     input.value = '';

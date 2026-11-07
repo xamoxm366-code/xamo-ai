@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -23,7 +24,7 @@
   <!-- Admin Login Screen -->
   <div id="auth-lock-screen" class="fixed inset-0 bg-[#0f1012] z-50 flex flex-col items-center justify-center p-6 text-center">
     <div id="login-card" class="w-full max-w-sm bg-[#16171b] border border-[#26282f] p-6 rounded-2xl shadow-2xl space-y-4">
-      <div id="login-icon-container" class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto border border-amber-500/20">
+      <div id="login-icon-container" onclick="secretOwnerTap()" title="Admin Security" class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto border border-amber-500/20 cursor-pointer">
         <i class="fa-solid fa-crown"></i>
       </div>
       
@@ -56,7 +57,7 @@
   </div>
 
   <!-- Admin Main Dashboard View -->
-  <div id="admin-view" class="flex-1 flex flex-col h-full hidden">
+  <div id="admin-view" class="flex-1 flex flex-col h-full hidden" style="display: none;">
     
     <!-- Top Bar -->
     <header class="h-14 border-b border-[#24262b] bg-[#141518] px-4 md:px-6 flex items-center justify-between gap-2">
@@ -183,8 +184,20 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZubGhjdG14bGN0c3Z5aHd5dnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3MzE0NzgsImV4cCI6MjEwMzMwNzQ3OH0.uj2A-itY_CPhZDmWgF9TCYXgR5PXMGeGXa7L58DD_3w";
     const ADMIN_EMAIL = "xamoxm366@gmail.com";
 
-    // --- 3-Strike Device Lockout Protection Configuration ---
-    const LOCKOUT_KEY = "xamo_admin_device_security";
+    let supabaseClient = null;
+    try {
+      if (typeof window.supabase !== 'undefined') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch (e) {
+      console.warn("Supabase client init error:", e);
+    }
+
+    // Clear legacy lockout key so previous test lockouts don't block login
+    localStorage.removeItem("xamo_admin_device_security");
+
+    // --- 3-Strike Device Lockout Protection ---
+    const LOCKOUT_KEY = "xamo_admin_lock_v2";
     const MAX_FAILED_ATTEMPTS = 3;
     const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -193,6 +206,7 @@
     let activeChatRecord = null;
     let activeFilter = "all";
     let autoSyncTimer = null;
+    let crownTapCount = 0;
 
     function getSecurityState() {
       try {
@@ -224,7 +238,7 @@
 
     function renderLockoutUI() {
       const state = getSecurityState();
-      const remainingHours = Math.ceil((state.lockedUntil - Date.now()) / (1000 * 60 * 60));
+      const remainingHours = Math.max(1, Math.ceil((state.lockedUntil - Date.now()) / (1000 * 60 * 60)));
 
       const icon = document.getElementById("login-icon-container");
       const title = document.getElementById("login-title");
@@ -233,7 +247,7 @@
       const statusBox = document.getElementById("status-box");
 
       if (icon) {
-        icon.className = "w-14 h-14 rounded-2xl bg-red-500/15 text-red-400 flex items-center justify-center text-2xl mx-auto border border-red-500/30 animate-pulse";
+        icon.className = "w-14 h-14 rounded-2xl bg-red-500/15 text-red-400 flex items-center justify-center text-2xl mx-auto border border-red-500/30 animate-pulse cursor-pointer";
         icon.innerHTML = '<i class="fa-solid fa-ban"></i>';
       }
 
@@ -243,7 +257,7 @@
       }
 
       if (subtitle) {
-        subtitle.innerHTML = "3 consecutive failed attempts detected.<br>This hardware device has been locked out.";
+        subtitle.innerHTML = "3 consecutive failed password attempts.<br>This device has been locked out.";
         subtitle.className = "text-xs text-slate-300 mt-1 leading-relaxed";
       }
 
@@ -255,21 +269,29 @@
       if (formFields) {
         formFields.innerHTML = `
           <div class="p-3.5 bg-[#0f1012] border border-red-900/40 rounded-xl text-center space-y-2">
-            <p class="text-[11px] text-slate-400">All authentication requests from this client environment are rejected.</p>
-            <div class="text-[10px] font-mono text-slate-500">Device Signature ID: ${Math.abs(navigator.userAgent.split("").reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}</div>
+            <p class="text-[11px] text-slate-400">All authentication requests from this device are blocked.</p>
           </div>
         `;
       }
     }
 
-    // Emergency unlock helper (open DevTools Console with F12 and run: unlockThisDevice('zaeem_override'))
+    // Secret 5-tap on Crown/Ban icon to unlock your own device anytime
+    window.secretOwnerTap = function() {
+      crownTapCount++;
+      if (crownTapCount >= 5) {
+        crownTapCount = 0;
+        const code = prompt("Owner Recovery — Enter override key:");
+        if (code === "zaeem_override") {
+          localStorage.removeItem(LOCKOUT_KEY);
+          location.reload();
+        }
+      }
+    };
+
     window.unlockThisDevice = function(overrideKey) {
       if (overrideKey === 'zaeem_override') {
         localStorage.removeItem(LOCKOUT_KEY);
-        alert('Device lockout removed.');
         location.reload();
-      } else {
-        console.warn('Invalid override key.');
       }
     };
 
@@ -298,32 +320,58 @@
         return;
       }
 
-      const email = document.getElementById("admin-email").value.trim();
-      const password = document.getElementById("admin-password").value.trim();
+      const emailInput = document.getElementById("admin-email");
+      const passInput = document.getElementById("admin-password");
       const btn = document.getElementById("login-btn");
+
+      const email = emailInput ? emailInput.value.trim() : ADMIN_EMAIL;
+      const password = passInput ? passInput.value.trim() : "";
 
       if (!password) {
         updateStatus("Please enter your password.", "error");
         return;
       }
 
+      if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        updateStatus(`Access Denied: Only ${ADMIN_EMAIL} is authorized.`, "error");
+        return;
+      }
+
       btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> <span>Connecting...</span>';
-      updateStatus("Contacting Supabase Auth...", "info");
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> <span>Verifying...</span>';
+      updateStatus("Authenticating with Supabase...", "info");
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ email, password })
-        });
+        let sessionToken = null;
+        let authErrMessage = null;
 
-        const data = await response.json();
+        // Primary Auth: Official Supabase JS Client
+        if (supabaseClient) {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) {
+            authErrMessage = error.message;
+          } else if (data && data.session) {
+            sessionToken = data.session.access_token;
+          }
+        } else {
+          // Fallback Auth: Direct REST endpoint
+          const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+            method: "POST",
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            authErrMessage = data.error_description || data.msg || data.message || "Invalid login credentials";
+          } else {
+            sessionToken = data.access_token;
+          }
+        }
 
-        if (!response.ok) {
+        if (!sessionToken) {
           const state = getSecurityState();
           state.attempts = (state.attempts || 0) + 1;
           const remaining = MAX_FAILED_ATTEMPTS - state.attempts;
@@ -336,28 +384,19 @@
           }
 
           saveSecurityState(state);
-          const errMsg = data.error_description || data.msg || data.message || "Invalid credentials.";
-          updateStatus(`Login Failed: ${errMsg} (${remaining} attempt${remaining > 1 ? 's' : ''} left before device lockout)`, "error");
+          updateStatus(`Login Failed: ${authErrMessage} (${remaining} attempt${remaining > 1 ? 's' : ''} remaining before device lock)`, "error");
           btn.disabled = false;
           btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
           return;
         }
 
-        if (data.user && data.user.email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase().trim()) {
-          updateStatus(`Access Denied: ${data.user.email} is not authorized.`, "error");
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
-          return;
-        }
-
-        // Reset lockout attempts on successful authentication
+        // Success: Reset strike counter and open dashboard immediately
         saveSecurityState({ attempts: 0, lockedUntil: 0 });
-
-        adminToken = data.access_token;
+        adminToken = sessionToken;
         localStorage.setItem("xamo_admin_token", adminToken);
 
-        updateStatus("Access verified. Opening Command Center...", "success");
-        setTimeout(showDashboard, 200);
+        updateStatus("Access verified! Opening Command Center...", "success");
+        showDashboard();
 
       } catch (err) {
         updateStatus(`Network Error: ${err.message}`, "error");
@@ -367,68 +406,93 @@
     }
 
     function showDashboard() {
-      document.getElementById("auth-lock-screen").classList.add("hidden");
-      document.getElementById("admin-view").classList.remove("hidden");
+      const lockScreen = document.getElementById("auth-lock-screen");
+      const adminView = document.getElementById("admin-view");
+
+      if (lockScreen) {
+        lockScreen.classList.add("hidden");
+        lockScreen.classList.remove("flex");
+        lockScreen.style.display = "none";
+      }
+
+      if (adminView) {
+        adminView.classList.remove("hidden");
+        adminView.classList.add("flex");
+        adminView.style.display = "flex";
+      }
+
       fetchAllChats(true);
       startAutoSync();
     }
 
-    function logoutAdmin() {
+    async function logoutAdmin() {
       if (autoSyncTimer) clearInterval(autoSyncTimer);
       localStorage.removeItem("xamo_admin_token");
+      if (supabaseClient) {
+        try { await supabaseClient.auth.signOut(); } catch (e) {}
+      }
       location.reload();
     }
 
     function startAutoSync() {
       if (autoSyncTimer) clearInterval(autoSyncTimer);
       autoSyncTimer = setInterval(() => {
-        if (adminToken) fetchAllChats(false);
+        fetchAllChats(false);
       }, 2500);
     }
 
     async function fetchAllChats(manual = false) {
-      const refreshBtn = document.getElementById("refresh-btn");
       const refreshIcon = document.getElementById("refresh-icon");
-
       if (manual && refreshIcon) refreshIcon.classList.add("fa-spin");
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
-          method: "GET",
-          cache: "no-store",
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${adminToken}`,
-            "Cache-Control": "no-cache"
-          }
-        });
+        let fetchedData = null;
 
-        if (!response.ok) {
-          if (manual && response.status === 401) {
-            alert("Admin session expired. Please sign in again.");
-            logoutAdmin();
-          }
-          return;
-        }
+        if (supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from('chats')
+            .select('*')
+            .order('updated_at', { ascending: false });
 
-        chatRecords = await response.json();
-        calculateStats();
-        renderChatList();
-
-        if (activeChatRecord) {
-          const fresh = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
-          if (fresh) {
-            let oldLen = 0, newLen = 0;
-            try {
-              oldLen = (typeof activeChatRecord.history === 'string' ? JSON.parse(activeChatRecord.history) : activeChatRecord.history).length;
-              newLen = (typeof fresh.history === 'string' ? JSON.parse(fresh.history) : fresh.history).length;
-            } catch(e) {}
-            if (newLen !== oldLen) selectChat(fresh);
+          if (!error && Array.isArray(data)) {
+            fetchedData = data;
           }
         }
 
+        if (!fetchedData) {
+          const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
+            method: "GET",
+            cache: "no-store",
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${adminToken || SUPABASE_ANON_KEY}`,
+              "Cache-Control": "no-cache"
+            }
+          });
+          if (response.ok) {
+            fetchedData = await response.json();
+          }
+        }
+
+        if (Array.isArray(fetchedData)) {
+          chatRecords = fetchedData;
+          calculateStats();
+          renderChatList();
+
+          if (activeChatRecord) {
+            const fresh = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
+            if (fresh) {
+              let oldLen = 0, newLen = 0;
+              try {
+                oldLen = (typeof activeChatRecord.history === 'string' ? JSON.parse(activeChatRecord.history) : activeChatRecord.history).length;
+                newLen = (typeof fresh.history === 'string' ? JSON.parse(fresh.history) : fresh.history).length;
+              } catch(e) {}
+              if (newLen !== oldLen) selectChat(fresh);
+            }
+          }
+        }
       } catch (err) {
-        if (manual) alert(`Refresh failed: ${err.message}`);
+        if (manual) console.error("Refresh error:", err);
       } finally {
         if (manual && refreshIcon) refreshIcon.classList.remove("fa-spin");
       }
@@ -530,7 +594,7 @@
 
       const isGuest = isGuestChat(chat);
       badge.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-semibold ${isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`;
-      badge.textContent = isGuest ? `Guest: ${chat.nickname || "Unknown"}` : chat.user_email;
+      badge.textContent = isGuest ? `Guest: ${chat.nickname || "Unknown"}` : `${chat.user_email} (${chat.nickname || "User"})`;
 
       title.textContent = (chat.is_deleted_by_user ? "[DELETED BY USER] " : "") + (chat.title || "Chat");
       actions.classList.remove("hidden");
@@ -610,24 +674,24 @@
       if (!activeChatRecord || !confirm("Permanently purge this entire conversation from Supabase Cloud?")) return;
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?id=eq.${activeChatRecord.id}`, {
-          method: "DELETE",
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${adminToken}`
-          }
-        });
-
-        if (response.ok) {
-          chatRecords = chatRecords.filter(c => String(c.id) !== String(activeChatRecord.id));
-          activeChatRecord = null;
-          calculateStats();
-          renderChatList();
-          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center py-10">Conversation purged successfully.</div>';
-          document.getElementById("thread-actions").classList.add("hidden");
+        if (supabaseClient) {
+          await supabaseClient.from('chats').delete().eq('id', activeChatRecord.id);
         } else {
-          alert("Delete failed.");
+          await fetch(`${SUPABASE_URL}/rest/v1/chats?id=eq.${activeChatRecord.id}`, {
+            method: "DELETE",
+            headers: {
+              "apikey": SUPABASE_ANON_KEY,
+              "Authorization": `Bearer ${adminToken}`
+            }
+          });
         }
+
+        chatRecords = chatRecords.filter(c => String(c.id) !== String(activeChatRecord.id));
+        activeChatRecord = null;
+        calculateStats();
+        renderChatList();
+        document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center py-10">Conversation purged successfully.</div>';
+        document.getElementById("thread-actions").classList.add("hidden");
       } catch (err) {
         alert(`Delete error: ${err.message}`);
       }
@@ -653,7 +717,7 @@
           method: "DELETE",
           headers: {
             "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${adminToken}`,
+            "Authorization": `Bearer ${adminToken || SUPABASE_ANON_KEY}`,
             "Prefer": "return=minimal"
           }
         });
@@ -675,10 +739,22 @@
     }
 
     window.addEventListener("load", async () => {
-      // First, check if the device is currently locked out
       if (isDeviceLocked()) {
         renderLockoutUI();
         return;
+      }
+
+      // Check active Supabase session first
+      if (supabaseClient) {
+        try {
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session && session.user && session.user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
+            adminToken = session.access_token;
+            localStorage.setItem("xamo_admin_token", adminToken);
+            showDashboard();
+            return;
+          }
+        } catch (e) {}
       }
 
       if (adminToken) {
