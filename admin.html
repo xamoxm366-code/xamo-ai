@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XAMO - Admin Dashboard</title>
-  
+  <title>XAMO - Command Center</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
@@ -12,200 +12,488 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f1012; color: #e3e3e3; }
-    code, pre { font-family: 'JetBrains Mono', monospace; }
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 9999px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg: #07080c;
+      --panel: #0d0f15;
+      --panel-2: #12141c;
+      --panel-3: #181b25;
+      --line: rgba(255, 255, 255, 0.07);
+      --line-strong: rgba(255, 255, 255, 0.14);
+      --text: #e7e9f0;
+      --muted: #8b91a3;
+      --accent: #7c5cff;
+      --accent-2: #3b82f6;
+      --gold: #f5b942;
+      --ok: #34d399;
+      --bad: #f87171;
+      --warn: #fbbf24;
+      --guest: #c084fc;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+    .ambient {
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(124, 92, 255, 0.18), transparent 60%),
+        radial-gradient(800px 500px at 110% 10%, rgba(59, 130, 246, 0.14), transparent 60%),
+        radial-gradient(700px 500px at 50% 120%, rgba(245, 185, 66, 0.08), transparent 60%),
+        var(--bg);
+    }
+
+    .panel { background: var(--panel); border: 1px solid var(--line); }
+    .panel-2 { background: var(--panel-2); border: 1px solid var(--line); }
+    .panel-3 { background: var(--panel-3); border: 1px solid var(--line); }
+    .glass {
+      background: rgba(13, 15, 21, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600; padding: 7px 12px;
+      border-radius: 12px; border: 1px solid var(--line);
+      background: var(--panel-3); color: var(--text);
+      transition: all .15s ease; cursor: pointer; white-space: nowrap;
+    }
+    .btn:hover { background: #1e2230; border-color: var(--line-strong); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-color: transparent; color: #fff;
+      box-shadow: 0 6px 20px -8px rgba(124, 92, 255, .7);
+    }
+    .btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+    .btn-danger { background: rgba(248, 113, 113, .08); border-color: rgba(248, 113, 113, .25); color: var(--bad); }
+    .btn-danger:hover { background: rgba(248, 113, 113, .16); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+    .btn-ghost:hover { background: rgba(255, 255, 255, .04); color: var(--text); }
+    .btn-sm { font-size: 11px; padding: 5px 9px; border-radius: 10px; }
+
+    .input {
+      width: 100%; background: #0a0c11; border: 1px solid var(--line);
+      border-radius: 12px; padding: 9px 12px; font-size: 12.5px; color: var(--text);
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .input:focus { border-color: rgba(124, 92, 255, .6); box-shadow: 0 0 0 3px rgba(124, 92, 255, .15); }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 500;
+      color: var(--muted); background: transparent; border: 1px solid transparent;
+      transition: all .15s; cursor: pointer; text-align: left;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
+    .nav-item.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(124, 92, 255, .22), rgba(59, 130, 246, .14));
+      border-color: rgba(124, 92, 255, .35);
+    }
+    .nav-item .count {
+      margin-left: auto; font-size: 10px; font-family: 'JetBrains Mono', monospace;
+      padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, .06); color: var(--muted);
+    }
+    .nav-chip {
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+      color: var(--muted); background: var(--panel-3); border: 1px solid var(--line);
+      white-space: nowrap; cursor: pointer;
+    }
+    .nav-chip.active { color: #fff; background: var(--accent); border-color: transparent; }
+
+    .chip {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500;
+      padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap;
+    }
+    .chip-user { color: var(--ok); background: rgba(52, 211, 153, .08); border-color: rgba(52, 211, 153, .25); }
+    .chip-guest { color: var(--guest); background: rgba(192, 132, 252, .08); border-color: rgba(192, 132, 252, .25); }
+    .chip-del { color: var(--bad); background: rgba(248, 113, 113, .08); border-color: rgba(248, 113, 113, .25); }
+    .chip-warn { color: var(--warn); background: rgba(251, 191, 36, .08); border-color: rgba(251, 191, 36, .25); }
+    .chip-muted { color: var(--muted); background: rgba(255, 255, 255, .04); border-color: var(--line); }
+
+    .tab {
+      flex: 1; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 10px;
+      color: var(--muted); background: transparent; border: 1px solid transparent;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: #fff; background: var(--accent); box-shadow: 0 4px 14px -6px rgba(124, 92, 255, .8); }
+
+    .conv { padding: 12px; border-radius: 14px; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+    .conv:hover { background: rgba(255, 255, 255, .03); }
+    .conv.active { background: var(--panel-3); border-color: rgba(124, 92, 255, .4); }
+
+    .stat-card {
+      border-radius: 18px; padding: 16px; position: relative; overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .01)), var(--panel);
+      border: 1px solid var(--line);
+    }
+    .stat-card .glow {
+      position: absolute; right: -20px; top: -20px; width: 90px; height: 90px;
+      border-radius: 999px; filter: blur(30px); opacity: .35;
+    }
+
+    .bubble-user { background: linear-gradient(180deg, #1f2331, #191c27); border: 1px solid var(--line-strong); }
+    .bubble-model { color: #dfe2ea; }
+    .bubble-model code:not(pre code) {
+      background: #1a1d28; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: .85em;
+    }
+    .bubble-model pre {
+      background: #0a0c11 !important; border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px; overflow-x: auto; margin: .6rem 0;
+    }
+    .bubble-model p { margin: .4rem 0; }
+    .bubble-model h1, .bubble-model h2, .bubble-model h3 { font-weight: 700; margin: .8rem 0 .4rem; color: #fff; }
+    .bubble-model ul { list-style: disc; padding-left: 1.2rem; }
+    .bubble-model ol { list-style: decimal; padding-left: 1.2rem; }
+
+    .media-card {
+      border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
+      background: var(--panel-2); transition: transform .15s, border-color .15s; cursor: pointer;
+    }
+    .media-card:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+
+    .view { position: absolute; inset: 0; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .18); border-radius: 999px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    .fade-in { animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 999px; background: var(--ok);
+      animation: pulseDot 1.8s infinite; display: inline-block;
+    }
+    @keyframes pulseDot {
+      0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, .55); }
+      70% { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    }
+
+    .toast {
+      max-width: 340px; font-size: 12px; padding: 10px 14px; border-radius: 12px;
+      backdrop-filter: blur(10px); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, .6);
+    }
   </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden select-none">
+<body class="ambient">
 
-  <!-- Admin Login Screen -->
-  <div id="auth-lock-screen" class="fixed inset-0 bg-[#0f1012] z-50 flex flex-col items-center justify-center p-6 text-center">
-    <div id="login-card" class="w-full max-w-sm bg-[#16171b] border border-[#26282f] p-6 rounded-2xl shadow-2xl space-y-4">
-      <div id="login-icon-container" onclick="secretOwnerTap()" title="Admin Security" class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mx-auto border border-amber-500/20 cursor-pointer">
-        <i class="fa-solid fa-crown"></i>
-      </div>
-      
-      <div>
-        <h2 id="login-title" class="text-base font-bold text-slate-100">XAMO Command Center</h2>
-        <p id="login-subtitle" class="text-xs text-slate-400 mt-1">Admin Access for <span class="font-mono text-amber-400">xamoxm366@gmail.com</span></p>
-      </div>
-
-      <div id="status-box" class="text-xs py-2.5 px-3 rounded-xl break-words text-left hidden"></div>
-
-      <div id="login-form-fields" class="space-y-3 text-left">
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Admin Email</label>
-          <input type="email" id="admin-email" value="xamoxm366@gmail.com" class="w-full bg-[#0f1012] border border-[#2c2e35] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
-        </div>
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 block mb-1">Password</label>
-          <input type="password" id="admin-password" placeholder="Enter password..." onkeydown="if(event.key==='Enter') executeLogin()" class="w-full bg-[#0f1012] border border-[#2c2e35] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
-        </div>
-        <button type="button" id="login-btn" onclick="executeLogin()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs py-2.5 rounded-xl transition-all shadow-md shadow-amber-600/20 flex items-center justify-center gap-2 cursor-pointer">
-          <i class="fa-solid fa-lock-open text-xs"></i>
-          <span>Unlock Dashboard</span>
-        </button>
-      </div>
-
-      <div class="pt-2 border-t border-[#26282f]">
-        <a href="/" class="text-xs text-slate-400 hover:text-slate-200"><i class="fa-solid fa-arrow-left mr-1"></i> Back to Main Chat</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Admin Main Dashboard View -->
-  <div id="admin-view" class="flex-1 flex flex-col h-full hidden" style="display: none;">
-    
-    <!-- Top Bar -->
-    <header class="h-14 border-b border-[#24262b] bg-[#141518] px-4 md:px-6 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-md text-sm font-bold">
+  <!-- ================= LOGIN ================= -->
+  <div id="auth-lock-screen" class="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div class="w-full max-w-sm panel rounded-3xl p-7 shadow-2xl fade-in">
+      <div class="flex flex-col items-center text-center">
+        <div id="login-icon-container" onclick="secretOwnerTap()" title="Admin security"
+             class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-amber-500/20 cursor-pointer">
           <i class="fa-solid fa-crown"></i>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-sm text-slate-100 hidden sm:inline">XAMO Command Center</span>
-          <span class="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">Owner</span>
-          <span id="auto-sync-badge" class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 font-mono"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live</span>
-        </div>
+        <h2 id="login-title" class="mt-4 text-lg font-bold tracking-tight">XAMO Command Center</h2>
+        <p id="login-subtitle" class="text-xs text-slate-400 mt-1">Admin access for <span class="mono text-amber-400">xamoxm366@gmail.com</span></p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button id="refresh-btn" onclick="fetchAllChats(true)" class="text-xs bg-[#1e2024] hover:bg-[#282a30] text-slate-300 border border-[#2e3138] px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
-          <i id="refresh-icon" class="fa-solid fa-arrows-rotate text-xs"></i> <span>Refresh</span>
+      <div id="status-box" class="mt-5 text-xs py-2.5 px-3 rounded-xl break-words text-left hidden"></div>
+
+      <div id="login-form-fields" class="mt-5 space-y-3 text-left">
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1.5">Admin email</label>
+          <input type="email" id="admin-email" value="xamoxm366@gmail.com" class="input">
+        </div>
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 block mb-1.5">Password</label>
+          <input type="password" id="admin-password" placeholder="Enter password..."
+                 onkeydown="if(event.key==='Enter') executeLogin()" class="input">
+        </div>
+        <button type="button" id="login-btn" onclick="executeLogin()" class="btn btn-primary w-full justify-center py-2.5">
+          <i class="fa-solid fa-lock-open"></i> <span>Unlock Dashboard</span>
         </button>
-
-        <button id="delete-all-btn" onclick="deleteAllChats()" class="text-xs bg-red-600/15 hover:bg-red-600/25 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer">
-          <i class="fa-solid fa-trash-can text-xs"></i> <span class="hidden sm:inline">Purge All</span>
-        </button>
-
-        <button onclick="logoutAdmin()" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
-          Sign Out
-        </button>
-        <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold px-3 py-1.5 rounded-xl transition-colors hidden md:inline">
-          Open XAMO
-        </a>
-      </div>
-    </header>
-
-    <!-- Stats Bar -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 border-b border-[#24262b] bg-[#111215]">
-      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
-        <div>
-          <div class="text-[11px] text-slate-400 font-medium">Total Conversations</div>
-          <div id="stat-total" class="text-lg font-bold text-slate-100 mt-0.5">0</div>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm"><i class="fa-solid fa-comments"></i></div>
       </div>
 
-      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
-        <div>
-          <div class="text-[11px] text-slate-400 font-medium">Logged-In Users</div>
-          <div id="stat-users" class="text-lg font-bold text-emerald-400 mt-0.5">0</div>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm"><i class="fa-solid fa-users"></i></div>
+      <div class="pt-4 mt-5 border-t border-[var(--line)] text-center">
+        <a href="/" class="text-xs text-slate-400 hover:text-slate-200"><i class="fa-solid fa-arrow-left mr-1"></i> Back to main chat</a>
       </div>
-
-      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
-        <div>
-          <div class="text-[11px] text-slate-400 font-medium">Guest Chats</div>
-          <div id="stat-guests" class="text-lg font-bold text-purple-400 mt-0.5">0</div>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm"><i class="fa-solid fa-user-secret"></i></div>
-      </div>
-
-      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
-        <div>
-          <div class="text-[11px] text-slate-400 font-medium">Deleted by Users</div>
-          <div id="stat-deleted" class="text-lg font-bold text-red-400 mt-0.5">0</div>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center text-sm"><i class="fa-solid fa-trash-can"></i></div>
-      </div>
-
-      <div class="bg-[#18191d] border border-[#26282e] p-3.5 rounded-xl flex items-center justify-between">
-        <div>
-          <div class="text-[11px] text-slate-400 font-medium">Uploaded Files</div>
-          <div id="stat-media" class="text-lg font-bold text-amber-400 mt-0.5">0</div>
-        </div>
-        <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm"><i class="fa-solid fa-photo-film"></i></div>
-      </div>
-    </div>
-
-    <!-- Main Workspace -->
-    <div class="flex-1 flex min-h-0">
-      
-      <!-- Left Panel: Chat List -->
-      <aside class="w-80 md:w-96 border-r border-[#24262b] bg-[#141518] flex flex-col min-h-0">
-        <div class="p-3 border-b border-[#24262b] space-y-2">
-          <div class="relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-            <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, nickname, topic..." class="w-full bg-[#1c1d22] border border-[#2c2e35] rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
-          </div>
-          
-          <div class="flex gap-1">
-            <button class="filter-tab active flex-1 py-1 text-[10px] font-medium rounded-lg bg-blue-600 text-white" onclick="changeFilter('all', this)">All</button>
-            <button class="filter-tab flex-1 py-1 text-[10px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('users', this)">Users</button>
-            <button class="filter-tab flex-1 py-1 text-[10px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('guests', this)">Guests</button>
-            <button class="filter-tab flex-1 py-1 text-[10px] font-medium rounded-lg bg-[#1c1d22] text-slate-400 hover:text-slate-200" onclick="changeFilter('deleted', this)">Deleted</button>
-          </div>
-        </div>
-
-        <div id="chats-container" class="flex-1 overflow-y-auto divide-y divide-[#22242a] p-1"></div>
-      </aside>
-
-      <!-- Right Panel: Message Feed -->
-      <main class="flex-1 flex flex-col bg-[#0f1012] min-h-0">
-        <div id="thread-header" class="h-14 border-b border-[#24262b] px-6 flex items-center justify-between bg-[#141518]">
-          <div class="flex items-center gap-3 truncate">
-            <div id="thread-user-badge" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-slate-800 text-slate-300">Select a conversation</div>
-            <span id="thread-title" class="text-xs font-semibold text-slate-200 truncate"></span>
-          </div>
-          <div id="thread-actions" class="hidden flex items-center gap-2">
-            <button onclick="deleteSelectedChat()" class="text-xs text-red-400 hover:bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl transition-colors cursor-pointer">
-              <i class="fa-solid fa-trash-can mr-1"></i> Purge from Cloud
-            </button>
-          </div>
-        </div>
-
-        <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4">
-          <div class="flex flex-col items-center justify-center h-full text-slate-500 text-xs text-center">
-            <i class="fa-solid fa-comments text-3xl mb-2 text-slate-600"></i>
-            Select any chat from the left panel to inspect full question threads and attachments.
-          </div>
-        </div>
-      </main>
     </div>
   </div>
 
+  <!-- ================= DASHBOARD ================= -->
+  <div id="admin-view" class="h-full" style="display:none">
+    <div class="h-full flex">
+
+      <!-- Sidebar (desktop) -->
+      <aside class="hidden md:flex w-60 shrink-0 flex-col panel-2 border-r border-[var(--line)]">
+        <div class="px-5 py-5 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+            <i class="fa-solid fa-crown text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="font-bold text-sm leading-tight">XAMO</div>
+            <div class="text-[11px] text-slate-500">Command Center</div>
+          </div>
+        </div>
+
+        <nav class="px-3 space-y-1">
+          <button class="nav-item" data-nav="overview" onclick="switchView('overview')"><i class="fa-solid fa-gauge-high w-4 text-center"></i> Overview</button>
+          <button class="nav-item" data-nav="conversations" onclick="switchView('conversations')"><i class="fa-solid fa-comments w-4 text-center"></i> Conversations <span id="nav-count-conv" class="count">0</span></button>
+          <button class="nav-item" data-nav="accounts" onclick="switchView('accounts')"><i class="fa-solid fa-user-shield w-4 text-center"></i> Accounts <span id="nav-count-accounts" class="count">0</span></button>
+          <button class="nav-item" data-nav="guests" onclick="switchView('guests')"><i class="fa-solid fa-user-secret w-4 text-center"></i> Guests <span id="nav-count-guests" class="count">0</span></button>
+          <button class="nav-item" data-nav="media" onclick="switchView('media')"><i class="fa-solid fa-photo-film w-4 text-center"></i> Media library</button>
+        </nav>
+
+        <div class="mt-auto p-3 space-y-2">
+          <div class="panel rounded-xl p-3">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Signed in as</div>
+            <div class="mono text-[11px] text-amber-400 truncate mt-1">xamoxm366@gmail.com</div>
+          </div>
+          <a href="/" class="btn w-full justify-center"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open XAMO</a>
+          <button onclick="logoutAdmin()" class="btn btn-danger w-full justify-center"><i class="fa-solid fa-right-from-bracket"></i> Sign out</button>
+        </div>
+      </aside>
+
+      <div class="flex-1 min-w-0 flex flex-col">
+
+        <!-- Top bar -->
+        <header class="glass h-14 px-4 md:px-6 flex items-center justify-between gap-3 shrink-0">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="md:hidden w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm">
+              <i class="fa-solid fa-crown"></i>
+            </div>
+            <h1 id="view-title" class="text-sm font-semibold truncate">Overview</h1>
+            <span id="live-badge" class="chip chip-muted flex items-center gap-1.5">
+              <span id="live-dot" class="live-dot"></span><span id="live-text">Connecting</span>
+            </span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button id="refresh-btn" onclick="reloadAllData()" class="btn btn-sm">
+              <i id="refresh-icon" class="fa-solid fa-arrows-rotate"></i><span class="hidden sm:inline">Refresh</span>
+            </button>
+            <button onclick="deleteAllChats()" class="btn btn-sm btn-danger">
+              <i class="fa-solid fa-trash-can"></i><span class="hidden lg:inline">Purge all chats</span>
+            </button>
+            <button onclick="logoutAdmin()" class="btn btn-sm btn-danger md:hidden"><i class="fa-solid fa-right-from-bracket"></i></button>
+          </div>
+        </header>
+
+        <!-- Mobile navigation -->
+        <nav class="md:hidden flex gap-1.5 overflow-x-auto px-3 py-2 panel-2 border-b border-[var(--line)] shrink-0">
+          <button class="nav-chip" data-nav="overview" onclick="switchView('overview')">Overview</button>
+          <button class="nav-chip" data-nav="conversations" onclick="switchView('conversations')">Chats</button>
+          <button class="nav-chip" data-nav="accounts" onclick="switchView('accounts')">Accounts</button>
+          <button class="nav-chip" data-nav="guests" onclick="switchView('guests')">Guests</button>
+          <button class="nav-chip" data-nav="media" onclick="switchView('media')">Media</button>
+        </nav>
+
+        <main class="relative flex-1 min-h-0">
+
+          <!-- Overview -->
+          <section id="view-overview" class="view flex-col overflow-y-auto p-4 md:p-6 gap-6" style="display:none">
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <div class="stat-card">
+                <div class="glow bg-blue-500"></div>
+                <div class="text-[11px] text-slate-400 font-medium">Conversations</div>
+                <div class="flex items-end justify-between mt-3"><span id="stat-total" class="text-2xl font-bold">0</span><i class="fa-solid fa-comments text-blue-400"></i></div>
+              </div>
+              <div class="stat-card">
+                <div class="glow bg-emerald-500"></div>
+                <div class="text-[11px] text-slate-400 font-medium">Email accounts</div>
+                <div class="flex items-end justify-between mt-3"><span id="stat-accounts" class="text-2xl font-bold text-emerald-400">0</span><i class="fa-solid fa-user-shield text-emerald-400"></i></div>
+              </div>
+              <div class="stat-card">
+                <div class="glow bg-purple-500"></div>
+                <div class="text-[11px] text-slate-400 font-medium">Guest accounts</div>
+                <div class="flex items-end justify-between mt-3"><span id="stat-guests" class="text-2xl font-bold text-purple-400">0</span><i class="fa-solid fa-user-secret text-purple-400"></i></div>
+              </div>
+              <div class="stat-card">
+                <div class="glow bg-sky-500"></div>
+                <div class="text-[11px] text-slate-400 font-medium">Messages</div>
+                <div class="flex items-end justify-between mt-3"><span id="stat-messages" class="text-2xl font-bold text-sky-400">0</span><i class="fa-solid fa-message text-sky-400"></i></div>
+              </div>
+              <div class="stat-card">
+                <div class="glow bg-amber-500"></div>
+                <div class="text-[11px] text-slate-400 font-medium">Uploaded files</div>
+                <div class="flex items-end justify-between mt-3"><span id="stat-media" class="text-2xl font-bold text-amber-400">0</span><i class="fa-solid fa-photo-film text-amber-400"></i></div>
+              </div>
+              <div class="stat-card">
+                <div class="glow bg-red-500"></div>
+                <div class="text-[11px] text-slate-400 font-medium">Deleted by users</div>
+                <div class="flex items-end justify-between mt-3"><span id="stat-deleted" class="text-2xl font-bold text-red-400">0</span><i class="fa-solid fa-trash-can text-red-400"></i></div>
+              </div>
+            </div>
+
+            <div class="grid lg:grid-cols-5 gap-4">
+              <div class="panel rounded-2xl p-4 lg:col-span-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold">Latest conversations</h3>
+                  <button class="btn btn-sm btn-ghost" onclick="switchView('conversations')">View all <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <div id="recent-list" class="space-y-1"></div>
+              </div>
+              <div class="panel rounded-2xl p-4 lg:col-span-2">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold">Newest accounts</h3>
+                  <button class="btn btn-sm btn-ghost" onclick="switchView('accounts')">View all <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <div id="recent-signups"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Conversations -->
+          <section id="view-conversations" class="view flex-col md:flex-row" style="display:none">
+            <aside class="w-full md:w-96 md:shrink-0 flex flex-col min-h-0 max-h-[45%] md:max-h-none panel-2 border-b md:border-b-0 md:border-r border-[var(--line)]">
+              <div class="p-3 space-y-2.5 border-b border-[var(--line)]">
+                <div class="relative">
+                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                  <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, username, title..." class="input pl-8">
+                </div>
+                <div class="flex gap-1 panel-3 p-1 rounded-xl">
+                  <button class="tab active chat-filter" data-filter="all" onclick="setChatFilter('all')">All</button>
+                  <button class="tab chat-filter" data-filter="users" onclick="setChatFilter('users')">Accounts</button>
+                  <button class="tab chat-filter" data-filter="guests" onclick="setChatFilter('guests')">Guests</button>
+                  <button class="tab chat-filter" data-filter="deleted" onclick="setChatFilter('deleted')">Deleted</button>
+                </div>
+              </div>
+              <div id="chats-container" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+                <div class="p-6 text-center text-xs text-slate-500"><i class="fa-solid fa-circle-notch fa-spin mb-2"></i><div>Loading conversations...</div></div>
+              </div>
+            </aside>
+
+            <main class="flex-1 min-h-0 min-w-0 flex flex-col">
+              <div class="h-14 px-4 md:px-6 flex items-center justify-between gap-3 panel-2 border-b border-[var(--line)] shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span id="thread-user-badge" class="chip chip-muted px-2.5 py-1 text-xs">Select a conversation</span>
+                  <span id="thread-title" class="text-xs font-semibold text-slate-300 truncate"></span>
+                </div>
+                <div id="thread-actions" class="hidden">
+                  <button data-action="delete-chat" class="btn btn-sm btn-danger"><i class="fa-solid fa-trash-can"></i> Delete chat</button>
+                </div>
+              </div>
+              <div id="messages-container" class="flex-1 min-h-0 overflow-y-auto p-4 md:p-6"></div>
+            </main>
+          </section>
+
+          <!-- Accounts -->
+          <section id="view-accounts" class="view flex-col" style="display:none">
+            <div class="p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
+              <div>
+                <h2 class="text-base font-bold">Email accounts</h2>
+                <p class="text-xs text-slate-400 mt-1 max-w-xl">Everyone who signed up with an email. Passwords are stored by Supabase in scrambled form and can't be viewed. Use Reset link to let a user set a new one.</p>
+              </div>
+              <div class="relative w-full sm:w-72">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                <input type="text" id="account-search" oninput="renderAccounts()" placeholder="Search by email..." class="input pl-8">
+              </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-6">
+              <div class="panel rounded-2xl overflow-hidden">
+                <table class="w-full text-xs min-w-[860px]">
+                  <thead class="bg-[var(--panel-3)] text-slate-400 text-[11px] uppercase tracking-wider">
+                    <tr>
+                      <th class="text-left font-semibold px-4 py-3">Account</th>
+                      <th class="text-left font-semibold px-4 py-3">Username</th>
+                      <th class="text-left font-semibold px-4 py-3">Status</th>
+                      <th class="text-left font-semibold px-4 py-3">Chats</th>
+                      <th class="text-left font-semibold px-4 py-3">Signed up</th>
+                      <th class="text-left font-semibold px-4 py-3">Last sign-in</th>
+                      <th class="text-right font-semibold px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="accounts-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- Guests -->
+          <section id="view-guests" class="view flex-col" style="display:none">
+            <div class="p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
+              <div>
+                <h2 class="text-base font-bold">Guest accounts</h2>
+                <p class="text-xs text-slate-400 mt-1 max-w-xl">Guests are saved by their username. Open any guest to see every chat they have started.</p>
+              </div>
+              <div class="relative w-full sm:w-72">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                <input type="text" id="guest-search" oninput="renderGuests()" placeholder="Search by username..." class="input pl-8">
+              </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
+              <div id="guests-grid" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+            </div>
+          </section>
+
+          <!-- Media -->
+          <section id="view-media" class="view flex-col" style="display:none">
+            <div class="p-4 md:p-6 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div>
+                <h2 class="text-base font-bold">Media library</h2>
+                <p class="text-xs text-slate-400 mt-1">Every photo, video and PDF uploaded in any conversation.</p>
+              </div>
+              <div class="flex gap-1 panel-3 p-1 rounded-xl">
+                <button class="tab active media-filter" data-media="all" onclick="setMediaFilter('all')">All</button>
+                <button class="tab media-filter" data-media="image" onclick="setMediaFilter('image')">Photos</button>
+                <button class="tab media-filter" data-media="video" onclick="setMediaFilter('video')">Videos</button>
+                <button class="tab media-filter" data-media="pdf" onclick="setMediaFilter('pdf')">PDFs</button>
+              </div>
+            </div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 pb-6">
+              <div id="media-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3"></div>
+            </div>
+          </section>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media viewer -->
+  <div id="media-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+       onclick="if(event.target===this) closeMediaViewer()">
+    <div class="w-full max-w-4xl panel rounded-2xl p-4 shadow-2xl fade-in">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <div class="min-w-0">
+          <div id="media-modal-title" class="text-sm font-semibold truncate"></div>
+          <div id="media-modal-meta" class="text-[11px] text-slate-500 truncate mt-0.5"></div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a id="media-modal-download" class="btn btn-sm btn-primary"><i class="fa-solid fa-download"></i> Download</a>
+          <button class="btn btn-sm" onclick="closeMediaViewer()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div id="media-modal-body" class="flex items-center justify-center max-h-[70vh] overflow-auto rounded-xl bg-black/40 p-2"></div>
+    </div>
+  </div>
+
+  <div id="toast-root" class="fixed bottom-4 right-4 z-[70] space-y-2"></div>
+
   <script>
+    // ================= CONFIG =================
     const SUPABASE_URL = "https://tyybyhihgjqzntwivtcw.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5eWJ5aGloZ2pxem50d2l2dGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NzgxMDMsImV4cCI6MjEwMzA1NDEwM30.1KgoilI1XFyo1wj9eAA82d6wwpmhjlWodWKLzwUJwMQ";
     const ADMIN_EMAIL = "xamoxm366@gmail.com";
+    const RESET_REDIRECT = "https://xamo-ai.vercel.app/reset-password.html";
 
-    let supabaseClient = null;
-    try {
-      if (typeof window.supabase !== 'undefined') {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      }
-    } catch (e) {
-      console.warn("Supabase client init error:", e);
-    }
+    const supabaseClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
 
-    // Clear legacy lockout key so previous test lockouts don't block login
+    // Old keys from the previous version
     localStorage.removeItem("xamo_admin_device_security");
+    localStorage.removeItem("xamo_admin_token");
 
-    // --- 3-Strike Device Lockout Protection ---
+    // ================= DEVICE LOCKOUT (kept from previous version) =================
     const LOCKOUT_KEY = "xamo_admin_lock_v2";
     const MAX_FAILED_ATTEMPTS = 3;
-    const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-    let adminToken = localStorage.getItem("xamo_admin_token") || "";
-    let chatRecords = [];
-    let activeChatRecord = null;
-    let activeFilter = "all";
-    let autoSyncTimer = null;
+    const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000;
     let crownTapCount = 0;
 
     function getSecurityState() {
@@ -218,69 +506,55 @@
     }
 
     function saveSecurityState(state) {
-      try {
-        localStorage.setItem(LOCKOUT_KEY, JSON.stringify(state));
-      } catch (e) {}
+      try { localStorage.setItem(LOCKOUT_KEY, JSON.stringify(state)); } catch (e) {}
     }
 
     function isDeviceLocked() {
       const state = getSecurityState();
-      const now = Date.now();
-      if (state.lockedUntil && now < state.lockedUntil) {
-        return true;
-      }
-      if (state.lockedUntil && now >= state.lockedUntil) {
-        saveSecurityState({ attempts: 0, lockedUntil: 0 });
-        return false;
-      }
+      if (state.lockedUntil && Date.now() < state.lockedUntil) return true;
+      if (state.lockedUntil) saveSecurityState({ attempts: 0, lockedUntil: 0 });
       return false;
     }
 
     function renderLockoutUI() {
       const state = getSecurityState();
-      const remainingHours = Math.max(1, Math.ceil((state.lockedUntil - Date.now()) / (1000 * 60 * 60)));
-
+      const hours = Math.max(1, Math.ceil((state.lockedUntil - Date.now()) / (1000 * 60 * 60)));
       const icon = document.getElementById("login-icon-container");
       const title = document.getElementById("login-title");
       const subtitle = document.getElementById("login-subtitle");
-      const formFields = document.getElementById("login-form-fields");
+      const fields = document.getElementById("login-form-fields");
       const statusBox = document.getElementById("status-box");
 
       if (icon) {
-        icon.className = "w-14 h-14 rounded-2xl bg-red-500/15 text-red-400 flex items-center justify-center text-2xl mx-auto border border-red-500/30 animate-pulse cursor-pointer";
+        icon.className = "w-16 h-16 rounded-2xl bg-red-500/15 text-red-400 border border-red-500/30 flex items-center justify-center text-2xl cursor-pointer animate-pulse";
         icon.innerHTML = '<i class="fa-solid fa-ban"></i>';
       }
-
       if (title) {
-        title.textContent = "Device Access Locked";
-        title.className = "text-base font-bold text-red-400";
+        title.textContent = "Device access locked";
+        title.className = "mt-4 text-lg font-bold text-red-400";
       }
-
       if (subtitle) {
         subtitle.innerHTML = "3 consecutive failed password attempts.<br>This device has been locked out.";
         subtitle.className = "text-xs text-slate-300 mt-1 leading-relaxed";
       }
-
       if (statusBox) {
-        statusBox.className = "text-xs text-red-300 bg-red-950/60 border border-red-500/30 py-2.5 px-3 rounded-xl block text-center font-mono";
-        statusBox.innerHTML = `<i class="fa-solid fa-shield-halved mr-1 text-red-400"></i> Locked for ~${remainingHours} hour(s)`;
+        statusBox.className = "mt-5 text-xs text-red-300 bg-red-950/60 border border-red-500/30 py-2.5 px-3 rounded-xl block text-center mono";
+        statusBox.innerHTML = `<i class="fa-solid fa-shield-halved mr-1 text-red-400"></i> Locked for ~${hours} hour(s)`;
       }
-
-      if (formFields) {
-        formFields.innerHTML = `
-          <div class="p-3.5 bg-[#0f1012] border border-red-900/40 rounded-xl text-center space-y-2">
-            <p class="text-[11px] text-slate-400">All authentication requests from this device are blocked.</p>
-          </div>
-        `;
+      if (fields) {
+        fields.innerHTML = `
+          <div class="p-3.5 bg-[#0a0c11] border border-red-900/40 rounded-xl text-center">
+            <p class="text-[11px] text-slate-400">All sign-in attempts from this device are blocked.</p>
+          </div>`;
       }
     }
 
-    // Secret 5-tap on Crown/Ban icon to unlock your own device anytime
-    window.secretOwnerTap = function() {
+    // Tap the crown 5 times to open the owner recovery prompt
+    window.secretOwnerTap = function () {
       crownTapCount++;
       if (crownTapCount >= 5) {
         crownTapCount = 0;
-        const code = prompt("Owner Recovery — Enter override key:");
+        const code = prompt("Owner recovery: enter override key:");
         if (code === "zaeem_override") {
           localStorage.removeItem(LOCKOUT_KEY);
           location.reload();
@@ -288,8 +562,8 @@
       }
     };
 
-    window.unlockThisDevice = function(overrideKey) {
-      if (overrideKey === 'zaeem_override') {
+    window.unlockThisDevice = function (overrideKey) {
+      if (overrideKey === "zaeem_override") {
         localStorage.removeItem(LOCKOUT_KEY);
         location.reload();
       }
@@ -298,478 +572,888 @@
     function updateStatus(message, state) {
       const box = document.getElementById("status-box");
       if (!box) return;
+      const tones = {
+        error: "text-red-400 bg-red-500/10 border-red-500/20",
+        success: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+        info: "text-amber-300 bg-amber-500/10 border-amber-500/20"
+      };
       box.textContent = message;
-      box.classList.remove("hidden");
+      box.className = "mt-5 text-xs py-2.5 px-3 rounded-xl break-words text-left block border " + (tones[state] || tones.info);
+    }
 
-      if (state === "error") {
-        box.className = "text-xs text-red-400 bg-red-500/10 border border-red-500/20 py-2.5 px-3 rounded-xl break-words text-left block";
-      } else if (state === "success") {
-        box.className = "text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-2.5 px-3 rounded-xl break-words text-left block";
-      } else {
-        box.className = "text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 py-2.5 px-3 rounded-xl break-words text-left block";
+    function setLoginBusy(busy) {
+      const btn = document.getElementById("login-btn");
+      if (!btn) return;
+      btn.disabled = busy;
+      btn.innerHTML = busy
+        ? '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Verifying...</span>'
+        : '<i class="fa-solid fa-lock-open"></i> <span>Unlock Dashboard</span>';
+    }
+
+    // ================= HELPERS =================
+    // Escapes anything from the database before it goes into HTML
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[ch]);
+    }
+
+    function fmtDate(value) {
+      if (!value) return "—";
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleString("en-US", {
+        month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
+      });
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function emptyState(text) {
+      return `<div class="flex flex-col items-center justify-center text-center text-slate-500 text-xs py-10 px-4">
+        <i class="fa-solid fa-inbox text-2xl mb-2 text-slate-600"></i>${esc(text)}
+      </div>`;
+    }
+
+    function toast(message, type = "info") {
+      const root = document.getElementById("toast-root");
+      if (!root) return;
+      const tones = {
+        error: "bg-red-950/95 text-red-300 border-red-500/30",
+        success: "bg-emerald-950/95 text-emerald-300 border-emerald-500/30",
+        info: "bg-[#141722]/95 text-slate-200 border-white/15"
+      };
+      const el = document.createElement("div");
+      el.className = "toast fade-in border " + (tones[type] || tones.info);
+      el.textContent = message;
+      root.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    function getHistory(chat) {
+      let history = chat ? chat.history : null;
+      if (typeof history === "string") {
+        try { history = JSON.parse(history); } catch (e) { history = []; }
       }
+      return Array.isArray(history) ? history : [];
+    }
+
+    function messageText(msg) {
+      if (typeof msg.rawUserText === "string" && msg.rawUserText) return msg.rawUserText;
+      if (Array.isArray(msg.parts) && msg.parts[0] && typeof msg.parts[0].text === "string") return msg.parts[0].text;
+      return "";
     }
 
     function isGuestChat(chat) {
-      return !chat.user_id || chat.user_email === 'Guest' || chat.user_email === null || chat.user_email === '';
+      return !chat.user_id || !chat.user_email || chat.user_email === "Guest";
+    }
+
+    function guestNameOf(chat) {
+      return String(chat.nickname || "").trim() || "Guest";
+    }
+
+    function sortChats() {
+      chatRecords.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+    }
+
+    // Media: only data URLs for images, videos and PDFs, or https/blob links, are allowed
+    const SAFE_DATA_URL = /^data:(image\/(png|jpe?g|gif|webp|heic|bmp)|video\/[\w.+-]+|application\/pdf);/i;
+
+    function mediaSrc(file) {
+      if (!file) return "";
+      if (typeof file.uri === "string" && file.uri) {
+        if (SAFE_DATA_URL.test(file.uri) || /^https:\/\//i.test(file.uri) || /^blob:/i.test(file.uri)) {
+          return file.uri;
+        }
+      }
+      if (file.base64 && file.mimeType && /^(image\/|video\/|application\/pdf)/i.test(file.mimeType)) {
+        const candidate = `data:${file.mimeType};base64,${file.base64}`;
+        if (SAFE_DATA_URL.test(candidate)) return candidate;
+      }
+      return "";
+    }
+
+    // Stores media items so clicks can look them up without putting big data into attributes
+    let mediaStore = new Map();
+    let mediaSeq = 0;
+
+    function registerMedia(item) {
+      const key = String(++mediaSeq);
+      mediaStore.set(key, item);
+      return key;
+    }
+
+    function fileToItem(file, chat) {
+      return {
+        kind: file.category || "file",
+        name: file.name || "File",
+        src: mediaSrc(file),
+        text: typeof file.content === "string" ? file.content : "",
+        owner: chat ? (isGuestChat(chat) ? `Guest: ${guestNameOf(chat)}` : (chat.user_email || "User")) : "",
+        chat: chat ? (chat.title || "Conversation") : "",
+        date: chat ? chat.updated_at : null
+      };
+    }
+
+    // ================= STATE =================
+    let chatRecords = [];
+    let profileRecords = [];
+    let guestRecords = [];
+    let activeChatRecord = null;
+    let activeView = "overview";
+    let activeFilter = "all";
+    let activeMediaFilter = "all";
+    let realtimeChannel = null;
+
+    const VIEW_TITLES = {
+      overview: "Overview",
+      conversations: "Conversations",
+      accounts: "Accounts",
+      guests: "Guests",
+      media: "Media library"
+    };
+
+    // ================= AUTH =================
+    async function checkAdminAccess() {
+      const { data, error } = await supabaseClient.rpc("is_admin");
+      if (error) return { ok: false, reason: `Admin check failed: ${error.message}` };
+      if (data !== true) return { ok: false, reason: "This account does not have admin access." };
+      return { ok: true };
     }
 
     async function executeLogin() {
-      if (isDeviceLocked()) {
-        renderLockoutUI();
+      if (isDeviceLocked()) { renderLockoutUI(); return; }
+      if (!supabaseClient) {
+        updateStatus("Supabase did not load. Check your connection and refresh the page.", "error");
         return;
       }
 
-      const emailInput = document.getElementById("admin-email");
-      const passInput = document.getElementById("admin-password");
-      const btn = document.getElementById("login-btn");
+      const email = document.getElementById("admin-email").value.trim();
+      const password = document.getElementById("admin-password").value.trim();
 
-      const email = emailInput ? emailInput.value.trim() : ADMIN_EMAIL;
-      const password = passInput ? passInput.value.trim() : "";
-
-      if (!password) {
-        updateStatus("Please enter your password.", "error");
-        return;
-      }
-
+      if (!password) { updateStatus("Please enter your password.", "error"); return; }
       if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        updateStatus(`Access Denied: Only ${ADMIN_EMAIL} is authorized.`, "error");
+        updateStatus(`Access denied: only ${ADMIN_EMAIL} is authorized.`, "error");
         return;
       }
 
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> <span>Verifying...</span>';
+      setLoginBusy(true);
       updateStatus("Authenticating with Supabase...", "info");
 
       try {
-        let sessionToken = null;
-        let authErrMessage = null;
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-        // Primary Auth: Official Supabase JS Client
-        if (supabaseClient) {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-          if (error) {
-            authErrMessage = error.message;
-          } else if (data && data.session) {
-            sessionToken = data.session.access_token;
-          }
-        } else {
-          // Fallback Auth: Direct REST endpoint
-          const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-            method: "POST",
-            headers: {
-              "apikey": SUPABASE_ANON_KEY,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ email, password })
-          });
-          const data = await response.json();
-          if (!response.ok) {
-            authErrMessage = data.error_description || data.msg || data.message || "Invalid login credentials";
-          } else {
-            sessionToken = data.access_token;
-          }
-        }
-
-        if (!sessionToken) {
+        if (error || !data.session) {
           const state = getSecurityState();
           state.attempts = (state.attempts || 0) + 1;
-          const remaining = MAX_FAILED_ATTEMPTS - state.attempts;
-
           if (state.attempts >= MAX_FAILED_ATTEMPTS) {
             state.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
             saveSecurityState(state);
             renderLockoutUI();
             return;
           }
-
           saveSecurityState(state);
-          updateStatus(`Login Failed: ${authErrMessage} (${remaining} attempt${remaining > 1 ? 's' : ''} remaining before device lock)`, "error");
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
+          const remaining = MAX_FAILED_ATTEMPTS - state.attempts;
+          updateStatus(
+            `Login failed: ${error ? error.message : "no session returned"} (${remaining} attempt${remaining > 1 ? "s" : ""} left before device lock)`,
+            "error"
+          );
+          setLoginBusy(false);
           return;
         }
 
-        // Success: Reset strike counter and open dashboard immediately
+        const check = await checkAdminAccess();
+        if (!check.ok) {
+          await supabaseClient.auth.signOut();
+          updateStatus(check.reason, "error");
+          setLoginBusy(false);
+          return;
+        }
+
         saveSecurityState({ attempts: 0, lockedUntil: 0 });
-        adminToken = sessionToken;
-        localStorage.setItem("xamo_admin_token", adminToken);
-
-        updateStatus("Access verified! Opening Command Center...", "success");
+        updateStatus("Access verified. Opening Command Center...", "success");
         showDashboard();
-
       } catch (err) {
-        updateStatus(`Network Error: ${err.message}`, "error");
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i> <span>Unlock Dashboard</span>';
+        updateStatus(`Network error: ${err.message}`, "error");
+        setLoginBusy(false);
       }
     }
 
     function showDashboard() {
-      const lockScreen = document.getElementById("auth-lock-screen");
-      const adminView = document.getElementById("admin-view");
-
-      if (lockScreen) {
-        lockScreen.classList.add("hidden");
-        lockScreen.classList.remove("flex");
-        lockScreen.style.display = "none";
-      }
-
-      if (adminView) {
-        adminView.classList.remove("hidden");
-        adminView.classList.add("flex");
-        adminView.style.display = "flex";
-      }
-
-      fetchAllChats(true);
-      startAutoSync();
+      document.getElementById("auth-lock-screen").style.display = "none";
+      document.getElementById("admin-view").style.display = "block";
+      switchView(activeView);
+      clearThread();
+      reloadAllData();
+      startRealtime();
     }
 
     async function logoutAdmin() {
-      if (autoSyncTimer) clearInterval(autoSyncTimer);
-      localStorage.removeItem("xamo_admin_token");
-      if (supabaseClient) {
-        try { await supabaseClient.auth.signOut(); } catch (e) {}
-      }
+      try {
+        if (realtimeChannel && supabaseClient) await supabaseClient.removeChannel(realtimeChannel);
+        if (supabaseClient) await supabaseClient.auth.signOut();
+      } catch (e) {}
       location.reload();
     }
 
-    function startAutoSync() {
-      if (autoSyncTimer) clearInterval(autoSyncTimer);
-      autoSyncTimer = setInterval(() => {
-        fetchAllChats(false);
-      }, 2500);
+    // ================= LIVE CONNECTION =================
+    function setLiveStatus(state) {
+      const map = {
+        live: { label: "Live", cls: "chip-user", pulse: true },
+        connecting: { label: "Connecting", cls: "chip-warn", pulse: false },
+        offline: { label: "Offline", cls: "chip-del", pulse: false }
+      };
+      const info = map[state] || map.connecting;
+      const badge = document.getElementById("live-badge");
+      if (badge) badge.className = `chip ${info.cls} flex items-center gap-1.5`;
+      setText("live-text", info.label);
+      const dot = document.getElementById("live-dot");
+      if (dot) dot.style.display = info.pulse ? "inline-block" : "none";
     }
 
-    async function fetchAllChats(manual = false) {
-      const refreshIcon = document.getElementById("refresh-icon");
-      if (manual && refreshIcon) refreshIcon.classList.add("fa-spin");
+    function startRealtime() {
+      if (!supabaseClient || realtimeChannel) return;
+      setLiveStatus("connecting");
+      realtimeChannel = supabaseClient
+        .channel("xamo-command-center")
+        .on("postgres_changes", { event: "*", schema: "public", table: "chats" }, handleChatEvent)
+        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, handleProfileEvent)
+        .on("postgres_changes", { event: "*", schema: "public", table: "guest_accounts" }, handleGuestEvent)
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") setLiveStatus("live");
+          else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setLiveStatus("offline");
+        });
+    }
 
-      try {
-        let fetchedData = null;
-
-        if (supabaseClient) {
-          const { data, error } = await supabaseClient
-            .from('chats')
-            .select('*')
-            .order('updated_at', { ascending: false });
-
-          if (!error && Array.isArray(data)) {
-            fetchedData = data;
-          }
+    function handleChatEvent(payload) {
+      if (payload.eventType === "DELETE") {
+        const id = String(payload.old.id);
+        chatRecords = chatRecords.filter(c => String(c.id) !== id);
+        if (activeChatRecord && String(activeChatRecord.id) === id) {
+          activeChatRecord = null;
+          clearThread();
         }
-
-        if (!fetchedData) {
-          const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?select=*&order=updated_at.desc`, {
-            method: "GET",
-            cache: "no-store",
-            headers: {
-              "apikey": SUPABASE_ANON_KEY,
-              "Authorization": `Bearer ${adminToken || SUPABASE_ANON_KEY}`,
-              "Cache-Control": "no-cache"
-            }
-          });
-          if (response.ok) {
-            fetchedData = await response.json();
-          }
+      } else {
+        const row = payload.new;
+        const idx = chatRecords.findIndex(c => String(c.id) === String(row.id));
+        if (idx >= 0) {
+          chatRecords[idx] = row;
+        } else {
+          chatRecords.unshift(row);
+          toast(`New conversation: ${row.title || "Untitled"} (${isGuestChat(row) ? "Guest: " + guestNameOf(row) : row.user_email})`);
         }
-
-        if (Array.isArray(fetchedData)) {
-          chatRecords = fetchedData;
-          calculateStats();
-          renderChatList();
-
-          if (activeChatRecord) {
-            const fresh = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
-            if (fresh) {
-              let oldLen = 0, newLen = 0;
-              try {
-                oldLen = (typeof activeChatRecord.history === 'string' ? JSON.parse(activeChatRecord.history) : activeChatRecord.history).length;
-                newLen = (typeof fresh.history === 'string' ? JSON.parse(fresh.history) : fresh.history).length;
-              } catch(e) {}
-              if (newLen !== oldLen) selectChat(fresh);
-            }
-          }
+        if (activeChatRecord && String(activeChatRecord.id) === String(row.id)) {
+          const changed = activeChatRecord.updated_at !== row.updated_at;
+          activeChatRecord = row;
+          if (changed) renderThread(row, { keepScroll: true });
         }
-      } catch (err) {
-        if (manual) console.error("Refresh error:", err);
-      } finally {
-        if (manual && refreshIcon) refreshIcon.classList.remove("fa-spin");
+      }
+      sortChats();
+      renderCurrentView();
+    }
+
+    function handleProfileEvent(payload) {
+      if (payload.eventType === "DELETE") {
+        const id = String(payload.old.id);
+        profileRecords = profileRecords.filter(p => String(p.id) !== id);
+      } else {
+        const row = payload.new;
+        const idx = profileRecords.findIndex(p => String(p.id) === String(row.id));
+        if (idx >= 0) {
+          profileRecords[idx] = row;
+        } else {
+          profileRecords.unshift(row);
+          toast(`New account: ${row.email || "unknown"}`, "success");
+        }
+      }
+      renderCurrentView();
+    }
+
+    function handleGuestEvent(payload) {
+      if (payload.eventType === "DELETE") {
+        const name = String(payload.old.username);
+        guestRecords = guestRecords.filter(g => g.username !== name);
+      } else {
+        const row = payload.new;
+        const idx = guestRecords.findIndex(g => g.username === row.username);
+        if (idx >= 0) {
+          guestRecords[idx] = row;
+        } else {
+          guestRecords.unshift(row);
+          toast(`New guest: ${row.username}`);
+        }
+      }
+      renderCurrentView();
+    }
+
+    // ================= LOAD DATA (once, then live) =================
+    async function reloadAllData() {
+      if (!supabaseClient) return;
+      const icon = document.getElementById("refresh-icon");
+      if (icon) icon.classList.add("fa-spin");
+
+      const [chats, profiles, guests] = await Promise.all([
+        supabaseClient.from("chats").select("*").order("updated_at", { ascending: false }),
+        supabaseClient.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabaseClient.from("guest_accounts").select("*").order("last_seen", { ascending: false })
+      ]);
+
+      if (icon) icon.classList.remove("fa-spin");
+
+      if (chats.error) toast(`Could not load chats: ${chats.error.message}`, "error");
+      else chatRecords = chats.data || [];
+
+      if (profiles.error) toast(`Could not load accounts: ${profiles.error.message}`, "error");
+      else profileRecords = profiles.data || [];
+
+      if (guests.error) toast(`Could not load guests: ${guests.error.message}`, "error");
+      else guestRecords = guests.data || [];
+
+      sortChats();
+      renderCurrentView();
+
+      if (activeChatRecord) {
+        const fresh = chatRecords.find(c => String(c.id) === String(activeChatRecord.id));
+        if (fresh) {
+          activeChatRecord = fresh;
+          renderThread(fresh, { keepScroll: true });
+        } else {
+          activeChatRecord = null;
+          clearThread();
+        }
       }
     }
 
-    function calculateStats() {
-      document.getElementById("stat-total").textContent = chatRecords.length;
-      document.getElementById("stat-users").textContent = chatRecords.filter(c => !isGuestChat(c)).length;
-      document.getElementById("stat-guests").textContent = chatRecords.filter(c => isGuestChat(c)).length;
-      document.getElementById("stat-deleted").textContent = chatRecords.filter(c => c.is_deleted_by_user === true).length;
-
-      let fileCount = 0;
-      chatRecords.forEach(c => {
-        let history = typeof c.history === 'string' ? JSON.parse(c.history) : c.history;
-        if (Array.isArray(history)) {
-          history.forEach(msg => { if (msg.file) fileCount++; });
-        }
+    // ================= NAVIGATION =================
+    function switchView(name) {
+      activeView = name;
+      Object.keys(VIEW_TITLES).forEach(key => {
+        const el = document.getElementById("view-" + key);
+        if (el) el.style.display = key === name ? "flex" : "none";
       });
-      document.getElementById("stat-media").textContent = fileCount;
+      document.querySelectorAll("[data-nav]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.nav === name);
+      });
+      setText("view-title", VIEW_TITLES[name] || "");
+      renderCurrentView();
     }
 
-    function changeFilter(type, button) {
-      activeFilter = type;
-      document.querySelectorAll(".filter-tab").forEach(tab => {
-        tab.classList.remove("bg-blue-600", "text-white");
-        tab.classList.add("bg-[#1c1d22]", "text-slate-400");
+    function renderCurrentView() {
+      renderStats();
+      if (activeView === "overview") renderOverview();
+      if (activeView === "conversations") renderChatList();
+      if (activeView === "accounts") renderAccounts();
+      if (activeView === "guests") renderGuests();
+      if (activeView === "media") renderMedia();
+    }
+
+    function goToConversations({ search = "", filter = "all" } = {}) {
+      const input = document.getElementById("chat-search");
+      if (input) input.value = search;
+      activeFilter = filter;
+      document.querySelectorAll(".chat-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
+      switchView("conversations");
+    }
+
+    function openConversation(id) {
+      const chat = chatRecords.find(c => String(c.id) === String(id));
+      if (!chat) return;
+      activeChatRecord = chat;
+      if (activeView !== "conversations") switchView("conversations");
+      else renderChatList();
+      renderThread(chat, { keepScroll: false });
+    }
+
+    // ================= STATS =================
+    function renderStats() {
+      let messages = 0, media = 0;
+      chatRecords.forEach(chat => {
+        const history = getHistory(chat);
+        messages += history.length;
+        media += history.filter(m => m.file).length;
       });
-      button.classList.add("bg-blue-600", "text-white");
-      button.classList.remove("bg-[#1c1d22]", "text-slate-400");
-      renderChatList();
+      setText("stat-total", chatRecords.length);
+      setText("stat-accounts", profileRecords.length);
+      setText("stat-guests", guestRecords.length);
+      setText("stat-messages", messages);
+      setText("stat-media", media);
+      setText("stat-deleted", chatRecords.filter(c => c.is_deleted_by_user).length);
+      setText("nav-count-conv", chatRecords.length);
+      setText("nav-count-accounts", profileRecords.length);
+      setText("nav-count-guests", guestRecords.length);
+    }
+
+    // ================= OVERVIEW =================
+    function renderOverview() {
+      const recent = chatRecords.slice(0, 8);
+      document.getElementById("recent-list").innerHTML = recent.length
+        ? recent.map(chatRowHtml).join("")
+        : emptyState("No conversations yet.");
+
+      const signups = profileRecords.slice(0, 6);
+      document.getElementById("recent-signups").innerHTML = signups.length
+        ? signups.map(p => `
+            <div class="flex items-center justify-between gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
+              <div class="min-w-0">
+                <div class="text-xs text-slate-100 truncate">${esc(p.email || "—")}</div>
+                <div class="text-[10px] text-slate-500">${esc(fmtDate(p.created_at))}</div>
+              </div>
+              ${p.email_confirmed ? '<span class="chip chip-user">Verified</span>' : '<span class="chip chip-warn">Unverified</span>'}
+            </div>`).join("")
+        : emptyState("No accounts yet.");
+    }
+
+    // ================= CONVERSATIONS =================
+    function chatRowHtml(chat) {
+      const guest = isGuestChat(chat);
+      const who = guest ? `Guest: ${guestNameOf(chat)}` : (chat.user_email || "User");
+      const history = getHistory(chat);
+      const hasMedia = history.some(m => m.file);
+      const isActive = activeChatRecord && String(activeChatRecord.id) === String(chat.id);
+
+      return `
+        <div class="conv ${isActive ? "active" : ""}" data-action="open-chat" data-id="${esc(chat.id)}">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <span class="chip ${guest ? "chip-guest" : "chip-user"} truncate max-w-[70%]">${esc(who)}</span>
+            <span class="text-[10px] text-slate-500 shrink-0">${esc(fmtDate(chat.updated_at))}</span>
+          </div>
+          <div class="text-[13px] font-medium text-slate-100 truncate">${esc(chat.title || "Conversation")}</div>
+          <div class="flex items-center gap-2 mt-1.5 text-[10px] flex-wrap">
+            ${chat.is_deleted_by_user ? '<span class="chip chip-del">Deleted by user</span>' : ""}
+            ${hasMedia ? '<span class="chip chip-warn"><i class="fa-solid fa-paperclip mr-1"></i>Media</span>' : ""}
+            <span class="text-slate-500">${history.length} messages</span>
+          </div>
+        </div>`;
     }
 
     function renderChatList() {
       const list = document.getElementById("chats-container");
-      const search = (document.getElementById("chat-search").value || "").toLowerCase();
-      list.innerHTML = "";
+      const q = (document.getElementById("chat-search")?.value || "").trim().toLowerCase();
 
-      const filtered = chatRecords.filter(chat => {
-        const isGuest = isGuestChat(chat);
-        if (activeFilter === "users" && isGuest) return false;
-        if (activeFilter === "guests" && !isGuest) return false;
+      const rows = chatRecords.filter(chat => {
+        const guest = isGuestChat(chat);
+        if (activeFilter === "users" && guest) return false;
+        if (activeFilter === "guests" && !guest) return false;
         if (activeFilter === "deleted" && !chat.is_deleted_by_user) return false;
-
-        const email = (chat.user_email || "").toLowerCase();
-        const nick = (chat.nickname || "").toLowerCase();
-        const title = (chat.title || "").toLowerCase();
-        return email.includes(search) || nick.includes(search) || title.includes(search);
+        if (!q) return true;
+        return [chat.user_email, chat.nickname, chat.title]
+          .some(v => String(v || "").toLowerCase().includes(q));
       });
 
-      if (filtered.length === 0) {
-        list.innerHTML = '<div class="p-4 text-xs text-slate-500 text-center">No conversations found</div>';
+      if (!rows.length) {
+        list.innerHTML = emptyState(chatRecords.length
+          ? "No conversations match this filter."
+          : "No conversations yet. They appear here as soon as someone chats.");
         return;
       }
-
-      filtered.forEach(chat => {
-        const isGuest = isGuestChat(chat);
-        const item = document.createElement("div");
-        const isSelected = activeChatRecord && String(activeChatRecord.id) === String(chat.id);
-
-        item.className = `p-3 rounded-xl cursor-pointer transition-all mb-1 ${isSelected ? "bg-[#22242a] border border-blue-500/40" : "hover:bg-[#1b1c21]"}`;
-
-        let containsMedia = false;
-        let history = typeof chat.history === 'string' ? JSON.parse(chat.history) : chat.history;
-        if (Array.isArray(history)) {
-          containsMedia = history.some(msg => !!msg.file);
-        }
-
-        const date = new Date(chat.updated_at || Date.now()).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-        const badgeColor = isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-        const badgeText = isGuest ? `Guest: ${chat.nickname || "Guest"}` : (chat.user_email || "User");
-        
-        const deletedBadge = chat.is_deleted_by_user ? '<span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] px-1.5 py-0.2 rounded ml-1 font-semibold">User Deleted</span>' : '';
-
-        item.innerHTML = `
-          <div class="flex items-center justify-between mb-1">
-            <div class="flex items-center gap-1 truncate flex-1 mr-2">
-              <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md ${badgeColor} truncate">${badgeText}</span>
-              ${deletedBadge}
-            </div>
-            <span class="text-[10px] text-slate-500 flex-shrink-0">${date}</span>
-          </div>
-          <div class="text-xs font-medium text-slate-200 truncate">${chat.title || "Conversation"}</div>
-          ${containsMedia ? '<div class="mt-1 flex items-center gap-1 text-[10px] text-amber-400"><i class="fa-solid fa-paperclip"></i> Contains Uploaded Media</div>' : ""}
-        `;
-
-        item.onclick = () => selectChat(chat);
-        list.appendChild(item);
-      });
+      list.innerHTML = rows.map(chatRowHtml).join("");
     }
 
-    function selectChat(chat) {
-      activeChatRecord = chat;
+    function setChatFilter(filter) {
+      activeFilter = filter;
+      document.querySelectorAll(".chat-filter").forEach(b => b.classList.toggle("active", b.dataset.filter === filter));
       renderChatList();
+    }
+
+    function mediaInlineHtml(file, chat) {
+      const item = fileToItem(file, chat);
+      const key = registerMedia(item);
+      const name = esc(item.name);
+
+      if (item.kind === "image" && item.src) {
+        return `
+          <div class="mb-2 p-2 panel-2 rounded-2xl max-w-xs">
+            <img src="${esc(item.src)}" alt="${name}" loading="lazy" data-action="view-media" data-key="${key}"
+                 class="rounded-xl max-h-72 w-auto mx-auto cursor-zoom-in">
+            <div class="mono text-[10px] text-slate-500 mt-1.5 truncate text-center">${name}</div>
+          </div>`;
+      }
+
+      if (item.kind === "video" && item.src) {
+        return `
+          <div class="mb-2 p-2.5 panel-2 rounded-2xl max-w-md w-full">
+            <video controls playsinline preload="metadata" src="${esc(item.src)}" class="rounded-xl max-h-72 w-full bg-black"></video>
+            <div class="flex items-center justify-between gap-3 mt-2 px-1">
+              <span class="mono text-[11px] text-purple-300 truncate"><i class="fa-solid fa-film mr-1"></i>${name}</span>
+              <button data-action="view-media" data-key="${key}" class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold">
+                <i class="fa-solid fa-expand mr-1"></i>Open
+              </button>
+            </div>
+          </div>`;
+      }
+
+      const icon = item.kind === "pdf" ? "fa-file-pdf text-red-400"
+        : item.kind === "text" ? "fa-file-lines text-slate-300"
+        : "fa-file text-slate-400";
+
+      return `
+        <button data-action="view-media" data-key="${key}"
+                class="mb-2 flex items-center gap-3 panel-2 hover:border-[var(--line-strong)] px-3.5 py-2.5 rounded-xl text-left max-w-xs transition">
+          <i class="fa-solid ${icon} text-lg"></i>
+          <span class="min-w-0">
+            <span class="block text-xs font-medium text-slate-200 truncate">${name}</span>
+            <span class="block text-[10px] text-slate-500 uppercase">${esc(item.kind)}</span>
+          </span>
+        </button>`;
+    }
+
+    function renderMessageHtml(msg, chat) {
+      const isUser = msg.role === "user";
+      const media = msg.file ? mediaInlineHtml(msg.file, chat) : "";
+      const text = messageText(msg);
+
+      if (isUser) {
+        return `
+          <div class="flex flex-col items-end my-4 fade-in">
+            ${media}
+            ${text ? `<div class="bubble-user text-slate-100 px-4 py-2.5 rounded-2xl rounded-br-md max-w-[85%] text-[14px] leading-relaxed whitespace-pre-wrap break-words">${esc(text)}</div>` : ""}
+          </div>`;
+      }
+
+      let html = "";
+      if (text) {
+        html = (window.marked && window.DOMPurify)
+          ? DOMPurify.sanitize(marked.parse(text))
+          : esc(text).replace(/\n/g, "<br>");
+      }
+      return `
+        <div class="flex flex-col items-start my-4 fade-in">
+          ${media}
+          ${html ? `<div class="bubble-model text-[14px] leading-relaxed max-w-[92%] break-words">${html}</div>` : ""}
+        </div>`;
+    }
+
+    function renderThread(chat, { keepScroll = false } = {}) {
+      const box = document.getElementById("messages-container");
+      const previousScroll = box.scrollTop;
+      mediaStore.clear();
 
       const badge = document.getElementById("thread-user-badge");
-      const title = document.getElementById("thread-title");
-      const box = document.getElementById("messages-container");
-      const actions = document.getElementById("thread-actions");
+      const guest = isGuestChat(chat);
+      badge.className = "chip px-2.5 py-1 text-xs " + (guest ? "chip-guest" : "chip-user");
+      badge.textContent = guest
+        ? `Guest: ${guestNameOf(chat)}`
+        : `${chat.user_email || "User"} · ${String(chat.nickname || "User")}`;
 
-      const isGuest = isGuestChat(chat);
-      badge.className = `px-2.5 py-1 rounded-lg text-xs font-mono font-semibold ${isGuest ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`;
-      badge.textContent = isGuest ? `Guest: ${chat.nickname || "Unknown"}` : `${chat.user_email} (${chat.nickname || "User"})`;
+      setText("thread-title", (chat.is_deleted_by_user ? "[Deleted by user] " : "") + (chat.title || "Chat"));
+      document.getElementById("thread-actions").classList.remove("hidden");
 
-      title.textContent = (chat.is_deleted_by_user ? "[DELETED BY USER] " : "") + (chat.title || "Chat");
-      actions.classList.remove("hidden");
-      box.innerHTML = "";
-
-      let history = typeof chat.history === 'string' ? JSON.parse(chat.history) : chat.history;
-
-      if (!Array.isArray(history) || history.length === 0) {
-        box.innerHTML = '<div class="text-xs text-slate-500 text-center">Empty conversation thread.</div>';
+      const history = getHistory(chat);
+      if (!history.length) {
+        box.innerHTML = emptyState("This conversation has no messages.");
         return;
       }
 
-      history.forEach(msg => {
-        const isUser = msg.role === "user";
-        const row = document.createElement("div");
-        row.className = isUser ? "flex flex-col items-end my-3 w-full" : "flex flex-col items-start my-3 w-full";
+      box.innerHTML = history.map(msg => renderMessageHtml(msg, chat)).join("");
+      box.scrollTop = keepScroll ? previousScroll : 0;
+    }
 
-        let mediaBlock = "";
-        if (msg.file) {
-          const src = msg.file.uri || (msg.file.base64 ? `data:${msg.file.mimeType};base64,${msg.file.base64}` : "");
-          const fileName = msg.file.name || "File";
-
-          if (msg.file.category === "image" && src) {
-            mediaBlock = `
-              <div class="mb-2.5 p-2 bg-slate-900 border border-slate-700 rounded-xl max-w-sm">
-                <a href="${src}" target="_blank"><img src="${src}" class="rounded-lg max-h-64 object-contain mx-auto" /></a>
-                <div class="text-[10px] font-mono text-slate-400 mt-1 text-center truncate">${fileName}</div>
-              </div>
-            `;
-          } else if (msg.file.category === "video" && src) {
-            mediaBlock = `
-              <div class="mb-2.5 p-2.5 bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full">
-                <video controls playsinline preload="metadata" src="${src}" class="rounded-lg max-h-72 w-full bg-black shadow-inner"></video>
-                <div class="flex items-center justify-between mt-2 px-1">
-                  <span class="text-[11px] font-mono text-purple-400 truncate"><i class="fa-solid fa-file-video mr-1"></i> ${fileName}</span>
-                  <a href="${src}" download="${fileName}" class="text-[11px] text-blue-400 hover:text-blue-300 font-semibold"><i class="fa-solid fa-download mr-1"></i> Download</a>
-                </div>
-              </div>
-            `;
-          } else if (msg.file.category === "pdf") {
-            mediaBlock = `
-              <div class="mb-2.5 p-3 bg-slate-900 border border-slate-700 rounded-xl text-xs max-w-sm">
-                <div class="flex items-center justify-between gap-3">
-                  <div class="flex items-center gap-2 truncate">
-                    <i class="fa-solid fa-file-pdf text-red-400 text-base"></i>
-                    <span class="font-mono text-slate-200 truncate font-semibold">${fileName}</span>
-                  </div>
-                  ${src ? `<a href="${src}" download="${fileName}" target="_blank" class="px-2.5 py-1 bg-red-500/20 text-red-300 rounded-lg text-[11px] font-semibold"><i class="fa-solid fa-download mr-1"></i> Download</a>` : ''}
-                </div>
-              </div>
-            `;
-          }
-        }
-
-        let body = msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : "");
-
-        if (isUser) {
-          row.innerHTML = `
-            ${mediaBlock}
-            ${body ? `<div class="bg-[#282a2c] border border-slate-700/60 text-slate-100 px-4 py-2.5 rounded-2xl max-w-[85%] text-[14.5px] leading-relaxed whitespace-pre-wrap font-sans">${DOMPurify.sanitize(body)}</div>` : ''}
-          `;
-        } else {
-          row.innerHTML = `
-            <div class="gemini-response-container text-slate-200 px-2 py-2 max-w-[92%] leading-relaxed break-words">
-              ${DOMPurify.sanitize(marked.parse(body))}
-            </div>
-          `;
-        }
-
-        box.appendChild(row);
-      });
-
-      box.scrollTop = 0;
+    function clearThread() {
+      const badge = document.getElementById("thread-user-badge");
+      badge.className = "chip chip-muted px-2.5 py-1 text-xs";
+      badge.textContent = "Select a conversation";
+      setText("thread-title", "");
+      document.getElementById("thread-actions").classList.add("hidden");
+      document.getElementById("messages-container").innerHTML =
+        emptyState("Select any chat on the left to read the full thread and open its attachments.");
     }
 
     async function deleteSelectedChat() {
-      if (!activeChatRecord || !confirm("Permanently purge this entire conversation from Supabase Cloud?")) return;
+      if (!activeChatRecord || !supabaseClient) return;
+      if (!confirm("Permanently delete this conversation from the database?")) return;
 
-      try {
-        if (supabaseClient) {
-          await supabaseClient.from('chats').delete().eq('id', activeChatRecord.id);
-        } else {
-          await fetch(`${SUPABASE_URL}/rest/v1/chats?id=eq.${activeChatRecord.id}`, {
-            method: "DELETE",
-            headers: {
-              "apikey": SUPABASE_ANON_KEY,
-              "Authorization": `Bearer ${adminToken}`
-            }
-          });
-        }
+      const id = activeChatRecord.id;
+      const { error } = await supabaseClient.from("chats").delete().eq("id", id);
+      if (error) { toast(`Delete failed: ${error.message}`, "error"); return; }
 
-        chatRecords = chatRecords.filter(c => String(c.id) !== String(activeChatRecord.id));
-        activeChatRecord = null;
-        calculateStats();
-        renderChatList();
-        document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center py-10">Conversation purged successfully.</div>';
-        document.getElementById("thread-actions").classList.add("hidden");
-      } catch (err) {
-        alert(`Delete error: ${err.message}`);
-      }
+      chatRecords = chatRecords.filter(c => String(c.id) !== String(id));
+      activeChatRecord = null;
+      clearThread();
+      renderCurrentView();
+      toast("Conversation deleted.", "success");
     }
 
     async function deleteAllChats() {
-      if (!chatRecords.length) {
-        alert("No conversations found in the database to purge.");
+      if (!supabaseClient) return;
+      if (!chatRecords.length) { toast("There are no conversations to delete."); return; }
+      if (!confirm(`Permanently delete ALL ${chatRecords.length} conversations? This cannot be undone.`)) return;
+      if (prompt("Type DELETE ALL to confirm:") !== "DELETE ALL") { toast("Purge cancelled."); return; }
+
+      const { error } = await supabaseClient.from("chats").delete().not("id", "is", null);
+      if (error) { toast(`Purge failed: ${error.message}`, "error"); return; }
+
+      chatRecords = [];
+      activeChatRecord = null;
+      clearThread();
+      renderCurrentView();
+      toast("All conversations deleted.", "success");
+    }
+
+    // ================= ACCOUNTS =================
+    function userChatStats() {
+      const stats = {};
+      chatRecords.forEach(chat => {
+        if (!chat.user_id) return;
+        const key = String(chat.user_id);
+        if (!stats[key]) stats[key] = { count: 0, nick: chat.nickname || "" };
+        stats[key].count++;
+      });
+      return stats;
+    }
+
+    function renderAccounts() {
+      const body = document.getElementById("accounts-body");
+      const q = (document.getElementById("account-search")?.value || "").trim().toLowerCase();
+      const stats = userChatStats();
+      const rows = profileRecords.filter(p => !q || String(p.email || "").toLowerCase().includes(q));
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="7">${emptyState(profileRecords.length
+          ? "No accounts match your search."
+          : "No email accounts yet.")}</td></tr>`;
         return;
       }
 
-      const confirmed = confirm(`CRITICAL: Are you sure you want to permanently delete ALL ${chatRecords.length} conversations? This cannot be undone.`);
-      if (!confirmed) return;
+      body.innerHTML = rows.map(p => {
+        const s = stats[String(p.id)] || { count: 0, nick: "" };
+        const email = p.email || "";
+        return `
+          <tr class="border-t border-[var(--line)] hover:bg-white/[0.02] transition">
+            <td class="px-4 py-3">
+              <div class="font-medium text-slate-100 break-all">${esc(email || "—")}</div>
+              <div class="mono text-[10px] text-slate-500 mt-0.5">${esc(String(p.id).slice(0, 8))}…</div>
+            </td>
+            <td class="px-4 py-3 text-slate-300">${s.nick ? esc(s.nick) : '<span class="text-slate-600">—</span>'}</td>
+            <td class="px-4 py-3">${p.email_confirmed ? '<span class="chip chip-user">Verified</span>' : '<span class="chip chip-warn">Unverified</span>'}</td>
+            <td class="px-4 py-3 mono text-slate-200">${s.count}</td>
+            <td class="px-4 py-3 text-slate-400">${esc(fmtDate(p.created_at))}</td>
+            <td class="px-4 py-3 text-slate-400">${esc(fmtDate(p.last_sign_in_at))}</td>
+            <td class="px-4 py-3">
+              <div class="flex justify-end gap-1.5">
+                <button class="btn btn-sm" data-action="chats-for-email" data-email="${esc(email)}"><i class="fa-solid fa-comments"></i> Chats</button>
+                <button class="btn btn-sm" data-action="reset-link" data-email="${esc(email)}"><i class="fa-solid fa-key"></i> Reset link</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join("");
+    }
 
-      const confirmPrompt = prompt("Type 'DELETE ALL' to execute complete purge:");
-      if (confirmPrompt !== "DELETE ALL") {
-        alert("Purge cancelled.");
+    async function sendResetLink(email) {
+      if (!email || !supabaseClient) return;
+      if (!confirm(`Send a password reset link to ${email}?\n\nThe user sets a new password themselves. You won't see it.`)) return;
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: RESET_REDIRECT });
+      if (error) toast(`Could not send: ${error.message}`, "error");
+      else toast(`Reset link sent to ${email}`, "success");
+    }
+
+    // ================= GUESTS =================
+    function guestChatCounts() {
+      const counts = {};
+      chatRecords.forEach(chat => {
+        if (!isGuestChat(chat)) return;
+        const name = guestNameOf(chat);
+        counts[name] = (counts[name] || 0) + 1;
+      });
+      return counts;
+    }
+
+    function renderGuests() {
+      const grid = document.getElementById("guests-grid");
+      const q = (document.getElementById("guest-search")?.value || "").trim().toLowerCase();
+      const counts = guestChatCounts();
+      const rows = guestRecords.filter(g => !q || String(g.username || "").toLowerCase().includes(q));
+
+      if (!rows.length) {
+        grid.innerHTML = emptyState(guestRecords.length ? "No guests match your search." : "No guest accounts yet.");
+        return;
+      }
+
+      grid.innerHTML = rows.map(g => {
+        const n = counts[g.username] || 0;
+        return `
+          <div class="panel rounded-2xl p-4 hover:border-[var(--line-strong)] transition">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
+                  <i class="fa-solid fa-user-secret"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-semibold text-slate-100 truncate">${esc(g.username)}</div>
+                  <div class="text-[10px] text-slate-500">Guest account</div>
+                </div>
+              </div>
+              <span class="chip chip-guest">${n} chat${n === 1 ? "" : "s"}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-4 text-[11px]">
+              <div class="panel-3 rounded-xl p-2.5"><div class="text-slate-500">First seen</div><div class="text-slate-200 mt-0.5">${esc(fmtDate(g.first_seen))}</div></div>
+              <div class="panel-3 rounded-xl p-2.5"><div class="text-slate-500">Last seen</div><div class="text-slate-200 mt-0.5">${esc(fmtDate(g.last_seen))}</div></div>
+            </div>
+            <button class="btn btn-sm w-full justify-center mt-3" data-action="chats-for-guest" data-username="${esc(g.username)}">
+              <i class="fa-solid fa-comments"></i> View chats
+            </button>
+          </div>`;
+      }).join("");
+    }
+
+    // ================= MEDIA =================
+    function setMediaFilter(kind) {
+      activeMediaFilter = kind;
+      document.querySelectorAll(".media-filter").forEach(b => b.classList.toggle("active", b.dataset.media === kind));
+      renderMedia();
+    }
+
+    function renderMedia() {
+      const grid = document.getElementById("media-grid");
+      mediaStore.clear();
+
+      const items = [];
+      chatRecords.forEach(chat => {
+        getHistory(chat).forEach(msg => {
+          if (!msg.file) return;
+          const item = fileToItem(msg.file, chat);
+          if (activeMediaFilter !== "all" && item.kind !== activeMediaFilter) return;
+          items.push(item);
+        });
+      });
+      items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+      if (!items.length) {
+        grid.innerHTML = emptyState("No uploaded files match this filter.");
+        return;
+      }
+
+      grid.innerHTML = items.map(item => {
+        const key = registerMedia(item);
+        let thumb;
+        if (item.kind === "image" && item.src) {
+          thumb = `<img src="${esc(item.src)}" alt="" loading="lazy" class="w-full h-full object-cover">`;
+        } else {
+          const icon = item.kind === "video" ? "fa-film text-purple-400"
+            : item.kind === "pdf" ? "fa-file-pdf text-red-400"
+            : "fa-file-lines text-slate-400";
+          thumb = `<div class="w-full h-full flex items-center justify-center text-3xl"><i class="fa-solid ${icon}"></i></div>`;
+        }
+        return `
+          <div class="media-card" data-action="view-media" data-key="${key}">
+            <div class="aspect-square bg-black/40 overflow-hidden">${thumb}</div>
+            <div class="p-2.5">
+              <div class="text-[11px] font-medium text-slate-200 truncate">${esc(item.name)}</div>
+              <div class="text-[10px] text-slate-500 truncate">${esc(item.owner)} · ${esc(fmtDate(item.date))}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function openMediaViewer(item) {
+      if (!item) return;
+      const modal = document.getElementById("media-modal");
+      const body = document.getElementById("media-modal-body");
+      const download = document.getElementById("media-modal-download");
+      body.innerHTML = "";
+
+      setText("media-modal-title", item.name);
+      setText("media-modal-meta", [item.owner, item.chat, fmtDate(item.date)].filter(Boolean).join(" · "));
+
+      if (item.src) {
+        download.href = item.src;
+        download.download = item.name;
+        download.style.display = "inline-flex";
+      } else {
+        download.style.display = "none";
+      }
+
+      let el = null;
+      if (item.kind === "image" && item.src) {
+        el = document.createElement("img");
+        el.className = "max-h-[68vh] max-w-full rounded-xl";
+        el.alt = item.name;
+        el.src = item.src;
+      } else if (item.kind === "video" && item.src) {
+        el = document.createElement("video");
+        el.className = "max-h-[68vh] max-w-full rounded-xl bg-black";
+        el.controls = true;
+        el.playsInline = true;
+        el.src = item.src;
+      } else if (item.kind === "pdf" && item.src) {
+        el = document.createElement("iframe");
+        el.className = "w-full h-[68vh] rounded-xl bg-white";
+        el.src = item.src;
+      } else if (item.kind === "text" && item.text) {
+        el = document.createElement("pre");
+        el.className = "w-full text-xs text-slate-200 whitespace-pre-wrap break-words p-3";
+        el.textContent = item.text;
+      }
+
+      if (el) {
+        body.appendChild(el);
+      } else {
+        body.innerHTML = '<p class="text-xs text-slate-400 p-6 text-center">No preview for this file.</p>';
+      }
+
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeMediaViewer() {
+      const modal = document.getElementById("media-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      document.getElementById("media-modal-body").innerHTML = "";
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeMediaViewer();
+    });
+
+    // ================= CLICK HANDLING =================
+    // One listener handles every button and row, so no user data is ever put into onclick code
+    document.addEventListener("click", (event) => {
+      const el = event.target.closest("[data-action]");
+      if (!el) return;
+
+      switch (el.dataset.action) {
+        case "open-chat":
+          openConversation(el.dataset.id);
+          break;
+        case "view-media":
+          openMediaViewer(mediaStore.get(el.dataset.key));
+          break;
+        case "chats-for-email":
+          goToConversations({ search: el.dataset.email || "", filter: "users" });
+          break;
+        case "chats-for-guest":
+          goToConversations({ search: el.dataset.username || "", filter: "guests" });
+          break;
+        case "reset-link":
+          sendResetLink(el.dataset.email || "");
+          break;
+        case "delete-chat":
+          deleteSelectedChat();
+          break;
+      }
+    });
+
+    // ================= PAGE LOAD =================
+    window.addEventListener("load", async () => {
+      if (isDeviceLocked()) { renderLockoutUI(); return; }
+      if (!supabaseClient) {
+        updateStatus("Supabase did not load. Check your connection and refresh the page.", "error");
         return;
       }
 
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/chats?id=not.is.null`, {
-          method: "DELETE",
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${adminToken || SUPABASE_ANON_KEY}`,
-            "Prefer": "return=minimal"
-          }
-        });
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const email = (session && session.user && session.user.email) || "";
+        if (!session || email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return;
 
-        if (response.ok) {
-          chatRecords = [];
-          activeChatRecord = null;
-          calculateStats();
-          renderChatList();
-          document.getElementById("messages-container").innerHTML = '<div class="text-xs text-emerald-400 text-center py-12">All conversations permanently deleted from cloud.</div>';
-          document.getElementById("thread-actions").classList.add("hidden");
-          alert("All conversations have been deleted.");
-        } else {
-          alert("Failed to delete all chats from database.");
-        }
+        const check = await checkAdminAccess();
+        if (check.ok) showDashboard();
+        else updateStatus(check.reason, "error");
       } catch (err) {
-        alert(`Purge all error: ${err.message}`);
-      }
-    }
-
-    window.addEventListener("load", async () => {
-      if (isDeviceLocked()) {
-        renderLockoutUI();
-        return;
-      }
-
-      // Check active Supabase session first
-      if (supabaseClient) {
-        try {
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          if (session && session.user && session.user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
-            adminToken = session.access_token;
-            localStorage.setItem("xamo_admin_token", adminToken);
-            showDashboard();
-            return;
-          }
-        } catch (e) {}
-      }
-
-      if (adminToken) {
-        try {
-          const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-            headers: {
-              "apikey": SUPABASE_ANON_KEY,
-              "Authorization": `Bearer ${adminToken}`
-            }
-          });
-          const user = await res.json();
-          if (res.ok && user.email && user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
-            showDashboard();
-          }
-        } catch (e) {}
+        updateStatus(`Could not restore session: ${err.message}`, "error");
       }
     });
   </script>
