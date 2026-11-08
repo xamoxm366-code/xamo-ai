@@ -2,6 +2,25 @@ export const config = {
   runtime: 'edge',
 };
 
+const STREAM_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache, no-transform',
+  'Connection': 'keep-alive',
+  'Access-Control-Allow-Origin': '*'
+};
+
+// Pulls the answer text out of a non-streaming Gemini reply (thinking parts are skipped)
+function textFromGemini(data) {
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts.filter(p => p && p.text && !p.thought).map(p => p.text).join('');
+}
+
+// Wraps a full answer in the same event format the app already reads while streaming
+function sseFromText(text) {
+  const event = { candidates: [{ content: { role: 'model', parts: [{ text }] } }] };
+  return `data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`;
+}
+
 export default async function handler(req) {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -110,35 +129,22 @@ export default async function handler(req) {
     };
     const searchTools = [{ google_search: {} }];
 
-    // Tried in this order for each model. If one fails, the next is tried,
-    // so a search problem or a daily search limit still returns an answer.
+    const buildBody = (attempt) => {
+      const body = { systemInstruction: systemParts, contents: finalContents };
+      body.generationConfig = attempt.thinking
+        ? { ...generation, thinkingConfig: { thinkingBudget: 0 } }
+        : { ...generation };
+      if (attempt.tools) body.tools = searchTools;
+      return body;
+    };
+
+    // Tried in this order for each model. Search answers are checked for text before
+    // they are sent, so an empty answer moves on to the next option instead of
+    // showing a blank reply.
     const attempts = [
-      {
-        label: 'search',
-        body: {
-          systemInstruction: systemParts,
-          contents: finalContents,
-          generationConfig: { ...generation, thinkingConfig: { thinkingBudget: 0 } },
-          tools: searchTools
-        }
-      },
-      {
-        label: 'search-no-thinking',
-        body: {
-          systemInstruction: systemParts,
-          contents: finalContents,
-          generationConfig: generation,
-          tools: searchTools
-        }
-      },
-      {
-        label: 'plain',
-        body: {
-          systemInstruction: systemParts,
-          contents: finalContents,
-          generationConfig: generation
-        }
-      }
+      { label: 'search', tools: true, thinking: true, stream: false },
+      { label: 'search-no-thinking', tools: true, thinking: false, stream: false },
+      { label: 'plain', tools: false, thinking: false, stream: true }
     ];
 
     const MODELS = [
@@ -152,24 +158,43 @@ export default async function handler(req) {
 
     modelLoop:
     for (const model of MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+      const base = `https://generativelanguage.googleapis.com/v1beta/models/${model}`;
 
       for (const attempt of attempts) {
+        const url = attempt.stream
+          ? `${base}:streamGenerateContent?alt=sse&key=${apiKey}`
+          : `${base}:generateContent?key=${apiKey}`;
+
         try {
           const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(attempt.body)
+            body: JSON.stringify(buildBody(attempt))
           });
 
-          if (res.ok) {
-            console.log(`Gemini answered: model=${model}, mode=${attempt.label}`);
-            response = res;
+          if (!res.ok) {
+            lastErrorText = await res.text();
+            console.log(`Gemini attempt failed: model=${model}, mode=${attempt.label}, status=${res.status}`);
+            continue;
+          }
+
+          if (attempt.stream) {
+            console.log(`Gemini answered (stream): model=${model}, mode=${attempt.label}`);
+            response = new Response(res.body, { headers: STREAM_HEADERS });
             break modelLoop;
           }
 
-          lastErrorText = await res.text();
-          console.log(`Gemini attempt failed: model=${model}, mode=${attempt.label}, status=${res.status}`);
+          const data = await res.json();
+          const text = textFromGemini(data);
+          if (text.trim()) {
+            console.log(`Gemini answered: model=${model}, mode=${attempt.label}`);
+            response = new Response(sseFromText(text), { headers: STREAM_HEADERS });
+            break modelLoop;
+          }
+
+          const reason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || 'none';
+          lastErrorText = `Empty answer (reason: ${reason})`;
+          console.log(`Gemini gave an empty answer: model=${model}, mode=${attempt.label}, reason=${reason}`);
         } catch (err) {
           lastErrorText = err.message;
         }
@@ -183,14 +208,7 @@ export default async function handler(req) {
       });
     }
 
-    return new Response(response.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
+    return new Response(response.body, { headers: STREAM_HEADERS });
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), {
