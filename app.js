@@ -873,38 +873,55 @@ function updateGuestSessionRow() {
 }
 
 // --- Styled confirm dialog (replaces the browser's plain popup) ---
-function showXamoConfirm({ title = 'Are you sure?', message = '', confirmText = 'Confirm', danger = false } = {}) {
+function showXamoConfirm({ title = 'Are you sure?', message = '', confirmText = 'Confirm', danger = false, requireText = '' } = {}) {
   return new Promise(resolve => {
     const wrap = document.createElement('div');
     wrap.className = 'fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm';
     wrap.innerHTML = `
       <div class="w-full max-w-sm rounded-2xl p-5 shadow-2xl border" style="background-color: var(--bg-card); border-color: var(--border-main); color: var(--text-main);">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${danger ? 'bg-red-500/15 text-red-400' : 'bg-blue-500/15 text-blue-400'}">
-          <i class="fa-solid ${danger ? 'fa-right-from-bracket' : 'fa-circle-question'}"></i>
+          <i class="fa-solid ${danger ? 'fa-triangle-exclamation' : 'fa-circle-question'}"></i>
         </div>
         <h3 class="text-sm font-bold mb-1" data-title></h3>
         <p class="text-xs leading-relaxed opacity-80 whitespace-pre-line" data-message></p>
+        <input type="text" data-input autocomplete="off" class="${requireText ? '' : 'hidden'} w-full mt-4 border rounded-xl px-3 py-2 text-xs text-center focus:outline-none focus:border-red-500" style="background-color: var(--bg-app); border-color: var(--border-main); color: var(--text-main);">
         <div class="grid grid-cols-2 gap-2 mt-5">
           <button type="button" data-no class="py-2.5 rounded-xl text-xs font-semibold border hover:opacity-80" style="border-color: var(--border-main);">Cancel</button>
           <button type="button" data-yes class="py-2.5 rounded-xl text-xs font-semibold text-white transition-colors ${danger ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500'}"></button>
         </div>
       </div>`;
+
+    const input = wrap.querySelector('[data-input]');
+    const yesBtn = wrap.querySelector('[data-yes]');
     wrap.querySelector('[data-title]').textContent = title;
     wrap.querySelector('[data-message]').textContent = message;
-    wrap.querySelector('[data-yes]').textContent = confirmText;
+    yesBtn.textContent = confirmText;
+    if (requireText) input.placeholder = `Type ${requireText} to confirm`;
 
     const done = (value) => {
       document.removeEventListener('keydown', onKey);
       wrap.remove();
       resolve(value);
     };
-    const onKey = (e) => { if (e.key === 'Escape') done(false); };
+    const tryYes = () => {
+      if (requireText && input.value.trim() !== requireText) {
+        input.style.borderColor = '#f87171';
+        input.focus();
+        return;
+      }
+      done(true);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') done(false);
+      if (e.key === 'Enter') tryYes();
+    };
 
     wrap.querySelector('[data-no]').onclick = () => done(false);
-    wrap.querySelector('[data-yes]').onclick = () => done(true);
+    yesBtn.onclick = tryYes;
     wrap.addEventListener('click', (e) => { if (e.target === wrap) done(false); });
     document.addEventListener('keydown', onKey);
     document.body.appendChild(wrap);
+    if (requireText) input.focus();
   });
 }
 
@@ -1193,6 +1210,50 @@ if (signoutCurrentAccountBtn) {
     // Reload so the page starts clean as a guest
     setTimeout(() => location.reload(), 400);
   });
+}
+
+// --- Permanent account deletion (email and Google users) ---
+async function deleteMyAccount() {
+  if (!currentUser || !supabaseClient) return;
+  const uid = currentUser.id;
+  const email = currentUser.email || 'this account';
+
+  const ok = await showXamoConfirm({
+    title: 'Delete your account permanently?',
+    message: `This erases ${email}, all of its chats, notes and settings. It cannot be undone.\n\nYou can sign up again later with the same email, but it will be a brand-new account with no previous chats, and you will need to verify the email again.`,
+    confirmText: 'Delete my account',
+    danger: true,
+    requireText: 'DELETE'
+  });
+  if (!ok) return;
+
+  showXamoToast('Deleting your account...');
+  try {
+    const { error } = await supabaseClient.rpc('delete_my_account');
+    if (error) throw error;
+  } catch (err) {
+    showXamoToast(`Could not delete the account: ${err.message}`);
+    return;
+  }
+
+  // Forget this account on this device, including its saved login and local chats
+  removeAccountFromStorage(uid);
+  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) {}
+  try { supabaseClient.auth.stopAutoRefresh(); } catch (e) {}
+  clearSupabaseSessionStorage();
+  Object.keys(localStorage).forEach(key => {
+    if (key.includes(uid)) localStorage.removeItem(key);
+  });
+  localStorage.removeItem('xamo_pinned_notes');
+  localStorage.removeItem('xamo_active_session_id');
+
+  showXamoToast('Your account has been deleted.');
+  setTimeout(() => location.reload(), 800);
+}
+
+const deleteAccountBtn = document.getElementById('delete-account-btn');
+if (deleteAccountBtn) {
+  deleteAccountBtn.addEventListener('click', () => deleteMyAccount());
 }
 
 // --- Pinned Notes System ---
