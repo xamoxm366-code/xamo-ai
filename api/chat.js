@@ -49,6 +49,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, an elite Principal Software Architect built exclusively by Zaeem.]
+[LIVE INFORMATION: You have a Google Search tool. For anything that changes over time (news, whether a person is alive or still in office, prices, scores, weather, releases, and other current events), search first and answer from the results. Name the sources you used. If the results do not settle the question, say so instead of guessing. Never say that you cannot access the internet.]
 [STRICT CODING DIRECTIVES:
 1. CODE CONTINUITY: When modifying, debugging, or extending existing code, ALWAYS preserve the exact project, game, and logic established in prior turns. NEVER replace the user's project with a generic or different template.
 2. FULL COMPLETION: Output 100% complete, working code in one shot. Never truncate, omit functions, or write placeholders like '// rest of code here'.
@@ -100,19 +101,45 @@ export default async function handler(req) {
     }
 
     const finalContents = cleanTurns.slice(-8);
+    const systemParts = { parts: [{ text: instruction }] };
 
-    const payload = {
-      systemInstruction: { parts: [{ text: instruction }] },
-      contents: finalContents,
-      generationConfig: {
-        temperature: 0.0,
-        topP: 0.85,
-        maxOutputTokens: 8192,
-        thinkingConfig: {
-          thinkingBudget: 0
+    const generation = {
+      temperature: 0.0,
+      topP: 0.85,
+      maxOutputTokens: 8192
+    };
+    const searchTools = [{ google_search: {} }];
+
+    // Tried in this order for each model. If one fails, the next is tried,
+    // so a search problem or a daily search limit still returns an answer.
+    const attempts = [
+      {
+        label: 'search',
+        body: {
+          systemInstruction: systemParts,
+          contents: finalContents,
+          generationConfig: { ...generation, thinkingConfig: { thinkingBudget: 0 } },
+          tools: searchTools
+        }
+      },
+      {
+        label: 'search-no-thinking',
+        body: {
+          systemInstruction: systemParts,
+          contents: finalContents,
+          generationConfig: generation,
+          tools: searchTools
+        }
+      },
+      {
+        label: 'plain',
+        body: {
+          systemInstruction: systemParts,
+          contents: finalContents,
+          generationConfig: generation
         }
       }
-    };
+    ];
 
     const MODELS = [
       'gemini-3.5-flash-lite',
@@ -123,35 +150,29 @@ export default async function handler(req) {
     let response = null;
     let lastErrorText = '';
 
+    modelLoop:
     for (const model of MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-      try {
-        let res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        // Automatic fallback if a model rejects thinkingConfig
-        if (!res.ok && res.status === 400) {
-          const fallbackPayload = JSON.parse(JSON.stringify(payload));
-          delete fallbackPayload.generationConfig.thinkingConfig;
-          res = await fetch(url, {
+      for (const attempt of attempts) {
+        try {
+          const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fallbackPayload)
+            body: JSON.stringify(attempt.body)
           });
-        }
 
-        if (res.ok) {
-          response = res;
-          break;
-        }
+          if (res.ok) {
+            console.log(`Gemini answered: model=${model}, mode=${attempt.label}`);
+            response = res;
+            break modelLoop;
+          }
 
-        lastErrorText = await res.text();
-      } catch (err) {
-        lastErrorText = err.message;
+          lastErrorText = await res.text();
+          console.log(`Gemini attempt failed: model=${model}, mode=${attempt.label}, status=${res.status}`);
+        } catch (err) {
+          lastErrorText = err.message;
+        }
       }
     }
 
