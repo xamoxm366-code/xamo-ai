@@ -2286,6 +2286,11 @@ function enhanceMarkdownOutput(container) {
 // --- Sidebar chat list: flat list, "View all", collapsible "Chats" header (Claude style) ---
 var chatListExpanded = false;
 
+function getSessionTimestamp(session) {
+  const n = Number(session.id);
+  return Number.isFinite(n) && n > 1000000000000 ? n : Date.now();
+}
+
 function buildSessionRow(session) {
   const isActive = String(session.id) === String(activeSessionId);
   const row = document.createElement('div');
@@ -2324,6 +2329,14 @@ function buildSessionRow(session) {
 }
 
 function renderSessions(filterText = "") {
+  try {
+    renderSessionsUnsafe(filterText);
+  } catch (err) {
+    console.error('Sidebar list could not be drawn:', err);
+  }
+}
+
+function renderSessionsUnsafe(filterText = "") {
   if (!chatList) return;
   chatList.innerHTML = "";
   const query = String(filterText || "").trim().toLowerCase();
@@ -2849,7 +2862,11 @@ function renderChatBox() {
     }
     chatBox.appendChild(div);
   });
-  if (window.hljs) hljs.highlightAll();
+  try {
+    if (window.hljs) hljs.highlightAll();
+  } catch (hlErr) {
+    console.warn('Code highlighting skipped:', hlErr);
+  }
   renderSessions(searchChatsInput ? searchChatsInput.value : "");
 }
 
@@ -3221,7 +3238,11 @@ if (form) {
       rawUserText: rawTypedText
     });
     
-    renderChatBox();
+    try {
+      renderChatBox();
+    } catch (drawErr) {
+      console.error('Chat drawing failed, sending anyway:', drawErr);
+    }
 
     saveCurrentSession().catch(() => {});
 
