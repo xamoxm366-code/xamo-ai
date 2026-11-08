@@ -2502,6 +2502,27 @@ async function retitleLegacySessions() {
 
 setTimeout(() => { retitleLegacySessions().catch(() => {}); }, 6000);
 
+// --- Live information (news, weather) from free sources ---
+function needsLiveInfo(text) {
+  return /\b(news|headlines?|breaking|happening|weather|forecast|latest|recent|current events|right now|this week)\b/i.test(text || '');
+}
+
+async function fetchLiveContextFor(text) {
+  try {
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+    const base = isLocalHost ? 'https://xamo-ai.vercel.app' : '';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(`${base}/api/live?q=${encodeURIComponent(String(text).slice(0, 200))}`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return '';
+    const data = await res.json();
+    return data.context || '';
+  } catch (e) {
+    return '';
+  }
+}
+
 // --- Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
@@ -3264,6 +3285,13 @@ async function triggerApiCall() {
     const hasAnyAttachment = currentChatHistory.some(m => !!m.file);
     const lastUserMessage = currentChatHistory.slice().reverse().find(m => m.role === 'user');
     const rawUserText = lastUserMessage?.rawUserText || "";
+
+    // Live news or weather from free sources, added only to this request (not saved in the chat)
+    const liveContext = needsLiveInfo(rawUserText) ? await fetchLiveContextFor(rawUserText) : '';
+    if (liveContext) {
+      const lastUserPayload = payloadHistory.slice().reverse().find(m => m.role === 'user');
+      if (lastUserPayload) lastUserPayload.parts = [{ text: liveContext }, ...lastUserPayload.parts];
+    }
 
     const requestBody = {
       systemInstruction: { parts: [{ text: dynamicSystemInstruction }] },
