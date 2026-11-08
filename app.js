@@ -1296,6 +1296,12 @@ if (authPasswordEyeBtn && authPasswordInput && authPasswordEyeIcon) {
 function setAuthMode(mode) {
   authMode = mode;
   hideAuthError();
+  // Google sign-in is shown for sign in and sign up, hidden on the password reset screen
+  const googleBtnEl = document.getElementById('google-auth-btn');
+  const googleDividerEl = document.getElementById('auth-google-divider');
+  const showGoogle = authMode !== 'forgot';
+  if (googleBtnEl) googleBtnEl.classList.toggle('hidden', !showGoogle);
+  if (googleDividerEl) googleDividerEl.classList.toggle('hidden', !showGoogle);
   if (!authModalTitle || !authModalDesc || !authSubmitBtn || !toggleAuthModeBtn || !authPasswordGroup) return;
 
   if (authMode === 'forgot') {
@@ -1306,14 +1312,14 @@ function setAuthMode(mode) {
     authSubmitBtn.querySelector('span').textContent = "Send Reset Link";
     toggleAuthModeBtn.textContent = "Back to Sign In";
   } else if (authMode === 'signup') {
-    authModalTitle.textContent = "Create Account";
+    authModalTitle.textContent = "Log in or sign up";
     authModalDesc.textContent = "Sync conversations securely across devices.";
     authPasswordGroup.classList.remove('hidden');
     if (forgotPasswordLink) forgotPasswordLink.classList.add('hidden');
     authSubmitBtn.querySelector('span').textContent = "Sign Up";
     toggleAuthModeBtn.textContent = "Already have an account? Sign In";
   } else {
-    authModalTitle.textContent = "Sign In to XAMO";
+    authModalTitle.textContent = "Log in or sign up";
     authModalDesc.textContent = "Sync conversations securely across devices.";
     authPasswordGroup.classList.remove('hidden');
     if (forgotPasswordLink) forgotPasswordLink.classList.remove('hidden');
@@ -1334,6 +1340,36 @@ if (toggleAuthModeBtn) {
     if (authMode === 'forgot') setAuthMode('signin');
     else if (authMode === 'signin') setAuthMode('signup');
     else setAuthMode('signin');
+  });
+}
+
+// --- Continue with Google (Supabase OAuth) ---
+async function signInWithGoogle() {
+  const banner = document.getElementById('auth-error-banner');
+  const errText = document.getElementById('auth-error-text');
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/',
+        // Always show Google's account chooser: saved accounts, plus "Use another account"
+        queryParams: { prompt: 'select_account' }
+      }
+    });
+    if (error) throw error;
+    // The browser now goes to Google and comes back signed in
+  } catch (err) {
+    if (errText) errText.textContent = `Google sign-in failed: ${err.message}`;
+    if (banner) banner.classList.remove('hidden');
+  }
+}
+
+const googleAuthButton = document.getElementById('google-auth-btn');
+if (googleAuthButton) {
+  googleAuthButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    signInWithGoogle();
   });
 }
 
@@ -2186,93 +2222,242 @@ function enhanceMarkdownOutput(container) {
   });
 }
 
-// --- Sidebar history: grouped by date, Gemini / Claude style ---
-function getSessionTimestamp(session) {
-  const n = Number(session.id);
-  return Number.isFinite(n) && n > 1000000000000 ? n : Date.now();
-}
+// --- Sidebar chat list: flat list, "View all", collapsible "Chats" header (Claude style) ---
+var chatListExpanded = false;
 
-function getSessionGroupLabel(ts) {
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (ts >= startToday) return 'Today';
-  if (ts >= startToday - 86400000) return 'Yesterday';
-  if (ts >= startToday - 7 * 86400000) return 'Previous 7 days';
-  return new Date(ts).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+function buildSessionRow(session) {
+  const isActive = String(session.id) === String(activeSessionId);
+  const row = document.createElement('div');
+  row.className = "group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-[13px] transition-colors duration-150 " +
+    (isActive ? "bg-slate-500/20" : "hover:bg-slate-500/10");
+  row.style.color = 'var(--text-main)';
+  row.style.opacity = isActive ? '1' : '0.8';
+
+  const bullet = document.createElement('span');
+  bullet.className = "w-2 h-2 rounded-full border border-slate-500 flex-shrink-0";
+
+  const titleSpan = document.createElement('span');
+  titleSpan.className = "truncate flex-1";
+  titleSpan.textContent = session.title;
+  titleSpan.title = session.title;
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.className = "flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-500/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all";
+  deleteBtn.title = "Delete conversation";
+  deleteBtn.setAttribute('aria-label', 'Delete conversation');
+  deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can text-[10px]"></i>';
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation();
+    deleteSession(session.id);
+  };
+
+  row.appendChild(bullet);
+  row.appendChild(titleSpan);
+  row.appendChild(deleteBtn);
+  row.onclick = () => {
+    loadSession(session.id);
+    if (window.innerWidth < 768) toggleSidebar();
+  };
+  return row;
 }
 
 function renderSessions(filterText = "") {
   if (!chatList) return;
   chatList.innerHTML = "";
-  const query = String(filterText || "").toLowerCase();
+  const query = String(filterText || "").trim().toLowerCase();
   const filtered = sessions
     .filter(s => s.title && s.title.toLowerCase().includes(query))
     .sort((a, b) => getSessionTimestamp(b) - getSessionTimestamp(a));
 
   if (filtered.length === 0) {
-    chatList.innerHTML = '<div class="px-3 py-8 text-center text-xs text-slate-500"><i class="fa-regular fa-comments text-xl mb-2 block opacity-60"></i>No conversations found</div>';
+    chatList.innerHTML = '<p class="px-3 py-3 text-xs text-slate-400">No conversations found</p>';
     return;
   }
 
-  let lastLabel = null;
-  filtered.forEach(session => {
-    const ts = getSessionTimestamp(session);
-    const label = getSessionGroupLabel(ts);
-    if (label !== lastLabel) {
-      const header = document.createElement('div');
-      header.className = "px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500";
-      header.textContent = label;
-      chatList.appendChild(header);
-      lastLabel = label;
-    }
+  const PREVIEW_COUNT = 8;
+  const showAll = chatListExpanded || query.length > 0;
+  const visible = showAll ? filtered : filtered.slice(0, PREVIEW_COUNT);
+  visible.forEach(session => chatList.appendChild(buildSessionRow(session)));
 
-    const isActive = String(session.id) === String(activeSessionId);
-    const row = document.createElement('div');
-    row.className = "group relative flex items-center gap-2 pl-3.5 pr-1.5 py-2 rounded-xl cursor-pointer text-[13px] transition-colors duration-150 " +
-      (isActive ? "bg-blue-500/10 text-slate-100 font-medium" : "text-slate-400 hover:bg-slate-500/10 hover:text-slate-200");
-
-    if (isActive) {
-      const bar = document.createElement('span');
-      bar.className = "absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-blue-500";
-      row.appendChild(bar);
-    }
-
-    const titleSpan = document.createElement('span');
-    titleSpan.className = "truncate flex-1";
-    titleSpan.textContent = session.title;
-    titleSpan.title = session.title;
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = "flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-500/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all";
-    deleteBtn.title = "Delete conversation";
-    deleteBtn.setAttribute('aria-label', 'Delete conversation');
-    deleteBtn.innerHTML = '<i class="fa-regular fa-trash-can text-[11px]"></i>';
-    deleteBtn.onclick = (e) => {
-      e.stopPropagation();
-      deleteSession(session.id);
+  if (!query && filtered.length > PREVIEW_COUNT) {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = "w-full mt-1.5 py-2 rounded-lg text-xs font-medium text-center bg-slate-500/15 hover:bg-slate-500/25 transition-colors cursor-pointer";
+    toggle.style.color = 'var(--text-main)';
+    toggle.textContent = chatListExpanded ? "Show less" : "View all";
+    toggle.onclick = () => {
+      chatListExpanded = !chatListExpanded;
+      renderSessions(searchChatsInput ? searchChatsInput.value : "");
     };
+    chatList.appendChild(toggle);
+  }
+}
 
-    row.appendChild(titleSpan);
-    row.appendChild(deleteBtn);
-    row.onclick = () => {
-      loadSession(session.id);
-      if (window.innerWidth < 768) toggleSidebar();
-    };
-    chatList.appendChild(row);
+// Header: the chevron collapses the list, the icon opens the search box
+const chatsCollapseBtn = document.getElementById('chats-collapse-btn');
+const chatsCollapseIcon = document.getElementById('chats-collapse-icon');
+const chatsSearchToggle = document.getElementById('chats-search-toggle');
+const chatSearchWrap = document.getElementById('chat-search-wrap');
+
+if (chatsCollapseBtn && chatList) {
+  chatsCollapseBtn.addEventListener('click', () => {
+    const collapsed = chatList.classList.toggle('hidden');
+    if (chatsCollapseIcon) chatsCollapseIcon.classList.toggle('-rotate-90', collapsed);
   });
 }
+
+if (chatsSearchToggle && chatSearchWrap) {
+  chatsSearchToggle.addEventListener('click', () => {
+    const opening = chatSearchWrap.classList.contains('hidden');
+    chatSearchWrap.classList.toggle('hidden', !opening);
+    const input = document.getElementById('search-chats');
+    if (opening) {
+      if (input) input.focus();
+    } else {
+      if (input) input.value = '';
+      renderSessions('');
+    }
+  });
+}
+
+// --- Chat titles: short, descriptive and unique ---
+function fallbackTitle(text) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ');
+  if (!cleaned) return 'New chat';
+  const short = cleaned.length > 40 ? cleaned.slice(0, 40).trim() + '...' : cleaned;
+  return short.charAt(0).toUpperCase() + short.slice(1);
+}
+
+function makeUniqueTitle(base, exceptId) {
+  const taken = new Set(
+    sessions
+      .filter(s => String(s.id) !== String(exceptId))
+      .map(s => String(s.title || '').toLowerCase())
+  );
+  let candidate = base;
+  let n = 2;
+  while (taken.has(candidate.toLowerCase())) {
+    candidate = `${base} (${n})`;
+    n++;
+  }
+  return candidate;
+}
+
+function cleanGeneratedTitle(raw) {
+  let t = String(raw || '').split('\n').map(s => s.trim()).find(Boolean) || '';
+  t = t.replace(/^(sure|here'?s|here is)[^:]*:\s*/i, '');
+  t = t.replace(/^title:\s*/i, '');
+  t = t.replace(/^["'“”‘’*#\-\s]+|["'“”‘’*#.!?\s]+$/g, '');
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return '';
+  return words.slice(0, 7).join(' ').slice(0, 48);
+}
+
+async function generateChatTitle(userText, replyText) {
+  try {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+    const body = {
+      systemInstruction: { parts: [{ text: "Write a short, specific title of 3 to 6 words that describes what this conversation is about. Output only the title: no quotes, no trailing punctuation, no emojis, no explanation." }] },
+      contents: [{
+        role: 'user',
+        parts: [{ text: `User message:\n${String(userText).slice(0, 800)}\n\nAssistant reply:\n${String(replyText || '').slice(0, 800)}` }]
+      }],
+      hasAttachment: false,
+      userPromptText: ''
+    };
+    const targetUrl = isLocal ? 'https://xamo-ai.vercel.app/api/chat' : '/api/chat';
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) return '';
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let text = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === '[DONE]') continue;
+        try {
+          const json = JSON.parse(dataStr);
+          const parts = json.candidates?.[0]?.content?.parts;
+          if (Array.isArray(parts)) {
+            for (const p of parts) {
+              if (!p.thought && p.text) text += p.text;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+    return cleanGeneratedTitle(text);
+  } catch (e) {
+    return '';
+  }
+}
+
+async function refineSessionTitle(sid, userText, replyText) {
+  const session = sessions.find(s => String(s.id) === String(sid));
+  if (!session) return;
+  const generated = await generateChatTitle(userText, replyText);
+  if (!generated) return;
+  const title = makeUniqueTitle(generated, sid);
+  session.title = title;
+  saveLocalSessions();
+  renderSessions(searchChatsInput ? searchChatsInput.value : "");
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('chats').update({ title: title }).eq('id', String(sid));
+    } catch (e) {}
+  }
+}
+
+// Gives older chats with cut-off titles ("hii...") a proper title, a few per page load
+async function retitleLegacySessions() {
+  const isLegacy = s => typeof s.title === 'string' && (s.title.endsWith('...') || /^new chat$/i.test(s.title));
+  const candidates = sessions
+    .filter(s => isLegacy(s) && Array.isArray(s.history) && s.history.some(m => m.role === 'model'))
+    .slice(0, 10);
+
+  for (const session of candidates) {
+    const userMsg = session.history.find(m => m.role === 'user');
+    const modelMsg = session.history.find(m => m.role === 'model');
+    const userText = userMsg ? (userMsg.rawUserText || (userMsg.file ? `[file: ${userMsg.file.name}]` : '')) : '';
+    const replyText = modelMsg && Array.isArray(modelMsg.parts) && modelMsg.parts[0] ? (modelMsg.parts[0].text || '') : '';
+    if (!userText) continue;
+    await refineSessionTitle(String(session.id), userText, replyText);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+}
+
+setTimeout(() => { retitleLegacySessions().catch(() => {}); }, 6000);
 
 // --- Session Storage ---
 async function saveCurrentSession() {
   if (currentChatHistory.length === 0) return;
   const firstUserMsg = currentChatHistory.find(m => m.role === 'user');
-  let title = "New Chat";
+  let title = "New chat";
   if (firstUserMsg) {
     if (firstUserMsg.rawUserText) {
-      title = firstUserMsg.rawUserText.slice(0, 26) + "...";
+      title = fallbackTitle(firstUserMsg.rawUserText);
     } else if (firstUserMsg.file) {
       title = firstUserMsg.file.name;
     }
+  }
+  const existingForTitle = activeSessionId ? sessions.find(s => String(s.id) === String(activeSessionId)) : null;
+  if (existingForTitle && existingForTitle.title) {
+    title = existingForTitle.title;
+  } else {
+    title = makeUniqueTitle(title, activeSessionId);
   }
 
   const cleanHistory = currentChatHistory.map(msg => {
@@ -2957,8 +3142,19 @@ async function triggerApiCall() {
     if (window.hljs) hljs.highlightAll();
 
     currentChatHistory.push({ role: 'model', parts: [{ text: fullText }] });
-    
-    saveCurrentSession().catch(() => {});
+
+    const firstUserForTitle = currentChatHistory.find(m => m.role === 'user');
+    const isFirstReply = currentChatHistory.filter(m => m.role === 'model').length === 1;
+    const titleSourceText = firstUserForTitle
+      ? (firstUserForTitle.rawUserText || (firstUserForTitle.file ? `[file: ${firstUserForTitle.file.name}]` : ''))
+      : '';
+    saveCurrentSession()
+      .then(() => {
+        if (isFirstReply && activeSessionId && titleSourceText) {
+          return refineSessionTitle(String(activeSessionId), titleSourceText, fullText);
+        }
+      })
+      .catch(() => {});
 
     const footerDiv = document.createElement('div');
     footerDiv.className = "flex items-center gap-4 mt-3 text-slate-400 text-sm flex-wrap";
