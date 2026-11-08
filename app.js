@@ -645,7 +645,7 @@ function executeAutonomousAction(actionType, param) {
       }
     }
   } else if (actionType === 'EXPORT_PDF') {
-    exportChatToPdf();
+    exportChatAsPdf();
   } else if (actionType === 'CLEAR_CHAT') {
     if (activeSessionId) {
       deleteSession(activeSessionId);
@@ -2920,42 +2920,180 @@ if (clearBtn) clearBtn.addEventListener('click', () => {
 
 if (searchChatsInput) searchChatsInput.addEventListener('input', (e) => renderSessions(e.target.value));
 
-if (exportBtn) {
-  exportBtn.addEventListener('click', () => {
-    if (currentChatHistory.length === 0) {
-      showXamoToast("No active conversation to export!");
-      return;
-    }
-    
-    let mdContent = "# XAMO AI Chat Export\n\n";
-    currentChatHistory.forEach(m => {
-      const isUser = m.role === 'user';
-      const roleHeader = isUser ? "### User\n" : "### XAMO\n";
-      
-      let messageContent = "";
-      if (isUser) {
-        messageContent = m.rawUserText 
-          || (m.parts && m.parts[0] ? m.parts[0].text : "") 
-          || (m.file ? `[Attached File: ${m.file.name}]` : "");
-      } else {
-        const rawModelText = (m.parts && m.parts[0] ? m.parts[0].text : "");
-        messageContent = rawModelText.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
-      }
+// --- Chat export as a formatted PDF download ---
+var xamoPdfStyleAdded = false;
 
-      mdContent += `${roleHeader}${messageContent}\n\n`;
-    });
+function addPdfStyles() {
+  if (xamoPdfStyleAdded) return;
+  xamoPdfStyleAdded = true;
+  const style = document.createElement('style');
+  style.id = 'xamo-pdf-style';
+  style.textContent = `
+    .xpdf-page { font-family: Arial, Helvetica, 'Segoe UI', sans-serif; color: #0f172a; background: #ffffff; font-size: 13px; line-height: 1.6; padding: 4px; }
+    .xpdf-header { border-bottom: 2px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 20px; }
+    .xpdf-brand { font-size: 11px; font-weight: 800; letter-spacing: .18em; color: #2563eb; text-transform: uppercase; }
+    .xpdf-title { font-size: 22px; font-weight: 800; margin-top: 6px; color: #0f172a; word-wrap: break-word; }
+    .xpdf-meta { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .xpdf-msg { border-radius: 14px; padding: 12px 16px; margin: 0 0 12px 0; page-break-inside: avoid; }
+    .xpdf-msg-user { background: #eef4ff; border: 1px solid #dbe7ff; margin-left: 70px; }
+    .xpdf-msg-ai { background: #ffffff; border: 1px solid #e5e7eb; margin-right: 24px; }
+    .xpdf-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+    .xpdf-label-user { color: #2563eb; }
+    .xpdf-label-ai { color: #059669; }
+    .xpdf-text { white-space: pre-wrap; word-wrap: break-word; }
+    .xpdf-md { word-wrap: break-word; }
+    .xpdf-md p { margin: 0 0 8px 0; }
+    .xpdf-md h1, .xpdf-md h2, .xpdf-md h3 { font-weight: 800; color: #0f172a; margin: 14px 0 6px 0; line-height: 1.3; }
+    .xpdf-md h1 { font-size: 18px; }
+    .xpdf-md h2 { font-size: 16px; }
+    .xpdf-md h3 { font-size: 14px; }
+    .xpdf-md ul, .xpdf-md ol { margin: 4px 0 8px 0; padding-left: 20px; }
+    .xpdf-md li { margin: 2px 0; }
+    .xpdf-md strong { font-weight: 700; }
+    .xpdf-md code { font-family: 'Courier New', Courier, monospace; font-size: 12px; background: #f1f5f9; padding: 1px 4px; border-radius: 4px; }
+    .xpdf-md pre { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-size: 11.5px; line-height: 1.5; margin: 8px 0; }
+    .xpdf-md pre code { background: none; color: inherit; padding: 0; font-size: 11.5px; }
+    .xpdf-md table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12px; }
+    .xpdf-md th, .xpdf-md td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    .xpdf-md th { background: #f1f5f9; font-weight: 700; }
+    .xpdf-md blockquote { border-left: 3px solid #cbd5e1; margin: 6px 0; padding-left: 10px; color: #475569; }
+    .xpdf-md a { color: #2563eb; text-decoration: underline; }
+    .xpdf-att { margin-bottom: 8px; }
+    .xpdf-att img { display: block; max-width: 100%; max-height: 340px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .xpdf-att-name { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .xpdf-footer { margin-top: 22px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; text-align: center; }
+  `;
+  document.head.appendChild(style);
+}
 
-    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `xamo-chat-${Date.now()}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showXamoToast("Chat exported as Markdown!");
+function loadHtml2Pdf() {
+  return new Promise((resolve, reject) => {
+    if (window.html2pdf) return resolve(window.html2pdf);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+    script.onload = () => (window.html2pdf ? resolve(window.html2pdf) : reject(new Error('PDF library is missing')));
+    script.onerror = () => reject(new Error('PDF library could not be loaded'));
+    document.head.appendChild(script);
   });
+}
+
+function pdfEscape(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
+function pdfMessageHtml(msg) {
+  const isUser = msg.role === 'user';
+  const label = isUser ? (userNickname || 'You') : 'XAMO AI';
+
+  let attachments = '';
+  if (msg.file) {
+    const name = pdfEscape(msg.file.name || 'Attached file');
+    const mime = String(msg.file.mimeType || '');
+    if (msg.file.category === 'image' && msg.file.base64 && /^image\/(png|jpe?g|gif|webp)$/i.test(mime)) {
+      attachments = `<div class="xpdf-att"><img src="data:${mime};base64,${msg.file.base64}" alt="${name}"><div class="xpdf-att-name">${name}</div></div>`;
+    } else {
+      attachments = `<div class="xpdf-att xpdf-att-name">Attached file: ${name}</div>`;
+    }
+  }
+
+  let content = '';
+  if (isUser) {
+    const text = msg.rawUserText || (msg.parts && msg.parts[0] ? msg.parts[0].text : '') || '';
+    content = text ? `<div class="xpdf-text">${pdfEscape(text)}</div>` : '';
+  } else {
+    const raw = (msg.parts && msg.parts[0] ? msg.parts[0].text : '') || '';
+    const cleaned = raw.replace(/\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g, '').trim();
+    if (cleaned) {
+      const html = (window.marked && window.DOMPurify)
+        ? DOMPurify.sanitize(marked.parse(cleaned))
+        : `<div class="xpdf-text">${pdfEscape(cleaned)}</div>`;
+      content = `<div class="xpdf-md">${html}</div>`;
+    }
+  }
+
+  return `
+    <div class="xpdf-msg ${isUser ? 'xpdf-msg-user' : 'xpdf-msg-ai'}">
+      <div class="xpdf-label ${isUser ? 'xpdf-label-user' : 'xpdf-label-ai'}">${pdfEscape(label)}</div>
+      ${attachments}${content}
+    </div>`;
+}
+
+function buildChatPdfDocument() {
+  const first = currentChatHistory.find(m => m.role === 'user');
+  const rawTitle = (first && (first.rawUserText || (first.file && first.file.name))) || 'XAMO chat';
+  const title = rawTitle.length > 70 ? rawTitle.slice(0, 70) + '...' : rawTitle;
+  const when = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const account = currentUser ? (currentUser.email || 'Signed-in account') : `Guest: ${userNickname || 'Guest'}`;
+  const count = currentChatHistory.length;
+
+  return `
+    <div class="xpdf-page">
+      <div class="xpdf-header">
+        <div class="xpdf-brand">XAMO AI</div>
+        <div class="xpdf-title">${pdfEscape(title)}</div>
+        <div class="xpdf-meta">${pdfEscape(account)} &middot; ${count} messages &middot; Exported ${pdfEscape(when)}</div>
+      </div>
+      ${currentChatHistory.map(pdfMessageHtml).join('')}
+      <div class="xpdf-footer">Exported from XAMO AI. AI answers can contain mistakes. Check important information before you rely on it.</div>
+    </div>`;
+}
+
+function pdfFileName() {
+  const first = currentChatHistory.find(m => m.role === 'user');
+  const base = String((first && first.rawUserText) || 'xamo-chat')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'xamo-chat';
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `XAMO-${base}-${stamp}.pdf`;
+}
+
+async function exportChatAsPdf() {
+  if (!currentChatHistory || currentChatHistory.length === 0) {
+    showXamoToast("No active conversation to export!");
+    return;
+  }
+
+  showXamoToast("Preparing your PDF...");
+  addPdfStyles();
+
+  let container = null;
+  try {
+    const html2pdf = await loadHtml2Pdf();
+
+    container = document.createElement('div');
+    container.style.width = '700px';
+    container.style.background = '#ffffff';
+    container.style.position = 'absolute';
+    container.style.left = '-10000px';
+    container.style.top = '0';
+    container.innerHTML = buildChatPdfDocument();
+    document.body.appendChild(container);
+
+    await html2pdf().set({
+      margin: [14, 12, 16, 12],
+      filename: pdfFileName(),
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['.xpdf-msg', '.xpdf-att', 'pre', 'table', 'img'] }
+    }).from(container.firstElementChild).save();
+
+    showXamoToast("PDF downloaded!");
+  } catch (err) {
+    console.error('PDF export failed:', err);
+    showXamoToast("PDF download failed. Opening the print view instead.");
+    exportChatToPdf();
+  } finally {
+    if (container) container.remove();
+  }
+}
+
+if (exportBtn) {
+  exportBtn.addEventListener('click', () => exportChatAsPdf());
 }
 
 // --- Search Bar Input & Slash Command Menu Engine ---
