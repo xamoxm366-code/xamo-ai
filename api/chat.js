@@ -15,6 +15,20 @@ function textFromGemini(data) {
   return parts.filter(p => p && p.text && !p.thought).map(p => p.text).join('');
 }
 
+// Lists the web pages Google Search used for the answer (only when search actually ran)
+function sourcesFrom(grounding) {
+  const chunks = (grounding?.groundingChunks || []).filter(c => c.web && c.web.uri);
+  if (chunks.length === 0) return '';
+  const seen = new Set();
+  const lines = [];
+  chunks.forEach(c => {
+    if (seen.has(c.web.uri) || lines.length >= 5) return;
+    seen.add(c.web.uri);
+    lines.push(`- ${c.web.title || 'Web source'}: ${c.web.uri}`);
+  });
+  return `\n\nSources:\n${lines.join('\n')}`;
+}
+
 // Wraps a full answer in the same event format the app already reads while streaming
 function sseFromText(text) {
   const event = { candidates: [{ content: { role: 'model', parts: [{ text }] } }] };
@@ -68,7 +82,7 @@ export default async function handler(req) {
 
     const instruction = `${rawInstruction}
 [IDENTITY: You are XAMO, an elite Principal Software Architect built exclusively by Zaeem.]
-[LIVE INFORMATION: You have a Google Search tool. For anything that changes over time (news, whether a person is alive or still in office, prices, scores, weather, releases, and other current events), search first and answer from the results. Name the sources you used. If the results do not settle the question, say so instead of guessing. Answer in normal sentences. Never write code, tool calls, or function calls as your answer unless the user asked for code. Never say that you cannot access the internet.]
+[LIVE INFORMATION: You have a Google Search tool. For anything that changes over time (news, whether a person is alive or still in office, prices, scores, weather, releases, and other current events), search first and answer from the results. Only name a source if you actually used search results, and never invent a source name or label. If the results do not settle the question, say so instead of guessing. Answer in normal sentences. Never write code, tool calls, or function calls as your answer unless the user asked for code. Never say that you cannot access the internet.]
 [STRICT CODING DIRECTIVES:
 1. CODE CONTINUITY: When modifying, debugging, or extending existing code, ALWAYS preserve the exact project, game, and logic established in prior turns. NEVER replace the user's project with a generic or different template.
 2. FULL COMPLETION: Output 100% complete, working code in one shot. Never truncate, omit functions, or write placeholders like '// rest of code here'.
@@ -108,7 +122,12 @@ export default async function handler(req) {
 
       if (cleanParts.length > 0) {
         if (cleanTurns.length > 0 && cleanTurns[cleanTurns.length - 1].role === validRole) {
-          cleanTurns[cleanTurns.length - 1].parts.push(...cleanParts);
+          if (validRole === 'user') {
+            // The earlier question got no answer, so only the newest question is sent
+            cleanTurns[cleanTurns.length - 1] = { role: 'user', parts: cleanParts };
+          } else {
+            cleanTurns[cleanTurns.length - 1].parts.push(...cleanParts);
+          }
         } else {
           cleanTurns.push({ role: validRole, parts: cleanParts });
         }
@@ -186,9 +205,11 @@ export default async function handler(req) {
 
           const data = await res.json();
           const text = textFromGemini(data);
+          const grounding = data?.candidates?.[0]?.groundingMetadata;
+          console.log(`Gemini grounding: model=${model}, mode=${attempt.label}, sources=${grounding?.groundingChunks?.length || 0}`);
           if (text.trim()) {
             console.log(`Gemini answered: model=${model}, mode=${attempt.label}`);
-            response = new Response(sseFromText(text), { headers: STREAM_HEADERS });
+            response = new Response(sseFromText(text + sourcesFrom(grounding)), { headers: STREAM_HEADERS });
             break modelLoop;
           }
 
@@ -202,10 +223,11 @@ export default async function handler(req) {
     }
 
     if (!response || !response.ok) {
-      return new Response(JSON.stringify({ error: `AI Gateway Error: ${lastErrorText}` }), {
-        status: response ? response.status : 503,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
+      console.log(`All Gemini options failed: ${lastErrorText}`);
+      response = new Response(
+        sseFromText('I could not get an answer just now. Please tap Regenerate to try again.'),
+        { headers: STREAM_HEADERS }
+      );
     }
 
     return new Response(response.body, { headers: STREAM_HEADERS });
