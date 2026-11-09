@@ -3595,7 +3595,9 @@ async function triggerApiCall() {
 
     const basePrompt = customPersonas[currentPersonaIndex] ? customPersonas[currentPersonaIndex].prompt : customPersonas[0].prompt;
     const userAddressing = userNickname ? `\nUser's Nickname: "${userNickname}".` : "";
-    const langInstruction = appSettings.language && appSettings.language !== 'auto' ? `\nRespond strictly in ${appSettings.language}.` : "";
+    const langInstruction = (appSettings.language && appSettings.language !== 'auto')
+      ? `\nRespond strictly in ${appSettings.language} until the user asks for a different language.`
+      : "\nReply in English. Do not switch languages because the user writes in another language. Only switch when the user explicitly asks for a language (for example 'reply in Hindi' or 'Hindi mein batao'), and keep that language until they ask for a change.";
     const liveClockInstruction = `\n[Reference System Clock: UTC ${currentDateUTC} | Local ${currentDateLocal} (${userTimeZone})]`;
 
     const dynamicSystemInstruction = `${basePrompt}${userAddressing}${langInstruction}${liveClockInstruction}`;
