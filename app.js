@@ -633,6 +633,8 @@ function executeAutonomousAction(actionType, param) {
     } else {
       showXamoToast(`Persona "${cleanParam}" not found.`);
     }
+  } else if (actionType === 'REMEMBER') {
+    if (cleanParam) saveMemory(cleanParam);
   } else if (actionType === 'PIN_NOTE') {
     if (cleanParam) {
       addPinnedNote(cleanParam);
@@ -2515,9 +2517,318 @@ async function retitleLegacySessions() {
 
 setTimeout(() => { retitleLegacySessions().catch(() => {}); }, 6000);
 
+// --- Personal memory and answer comparison ---
+const ACTION_TAG_RE = /\[\[ACTION:[A-Z_]+:[^\]]*\]\]/g;
+let userMemories = [];
+let userMemoriesOwner = null;
+let xamoPendingCompare = null;
+
+function memEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+// ---- Personal memory (signed-in users only; stored per account, private to the user) ----
+async function loadUserMemories(force = false) {
+  if (!currentUser || !supabaseClient) {
+    userMemories = [];
+    userMemoriesOwner = null;
+    return userMemories;
+  }
+  if (!force && userMemoriesOwner === currentUser.id) return userMemories;
+  const { data, error } = await supabaseClient
+    .from('user_memories')
+    .select('id, memory')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.warn('Memory could not be loaded:', error.message);
+    return userMemories;
+  }
+  userMemories = data || [];
+  userMemoriesOwner = currentUser.id;
+  return userMemories;
+}
+
+async function saveMemory(text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (!clean) return false;
+  if (!currentUser || !supabaseClient) {
+    showXamoToast('Sign in to use memory.');
+    return false;
+  }
+  await loadUserMemories();
+  if (userMemories.some(m => String(m.memory).toLowerCase() === clean.toLowerCase())) {
+    showXamoToast('Already in memory.');
+    return false;
+  }
+  const { data, error } = await supabaseClient
+    .from('user_memories')
+    .insert([{ user_id: currentUser.id, memory: clean }])
+    .select('id, memory')
+    .single();
+  if (error || !data) {
+    showXamoToast('Could not save to memory.');
+    return false;
+  }
+  userMemories.push(data);
+  renderMemoryList();
+  showXamoToast('Saved to memory.');
+  return true;
+}
+
+function renderMemoryList() {
+  const list = document.getElementById('memory-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!userMemories.length) {
+    const empty = document.createElement('p');
+    empty.className = 'text-xs opacity-60 text-center py-6 px-2';
+    empty.textContent = 'Nothing saved yet. Tell XAMO something to remember, like "remember my name is Jack", or add a note below.';
+    list.appendChild(empty);
+    return;
+  }
+  userMemories.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'flex items-start justify-between gap-3 rounded-xl border px-3 py-2';
+    row.style.borderColor = 'var(--border-main)';
+    row.style.backgroundColor = 'var(--bg-app)';
+    const text = document.createElement('span');
+    text.className = 'text-xs leading-relaxed break-words min-w-0';
+    text.textContent = item.memory;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'shrink-0 text-red-400 hover:bg-red-500/10 rounded-lg px-2 py-1 text-[11px]';
+    del.title = 'Forget this';
+    del.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+    del.onclick = () => forgetMemory(item.id);
+    row.appendChild(text);
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+async function forgetMemory(id) {
+  const { error } = await supabaseClient.from('user_memories').delete().eq('id', id);
+  if (error) {
+    showXamoToast('Could not forget that.');
+    return;
+  }
+  userMemories = userMemories.filter(m => m.id !== id);
+  renderMemoryList();
+}
+
+async function clearAllMemories() {
+  if (!currentUser || !supabaseClient) return;
+  if (!userMemories.length) {
+    showXamoToast('Memory is already empty.');
+    return;
+  }
+  const ok = await showXamoConfirm({
+    title: 'Clear all memory?',
+    message: 'XAMO will forget everything it has saved about you. This cannot be undone.',
+    confirmText: 'Clear memory',
+    danger: true,
+    requireText: 'CLEAR'
+  });
+  if (!ok) return;
+  const { error } = await supabaseClient.from('user_memories').delete().eq('user_id', currentUser.id);
+  if (error) {
+    showXamoToast('Could not clear memory.');
+    return;
+  }
+  userMemories = [];
+  renderMemoryList();
+  showXamoToast('Memory cleared.');
+}
+
+async function openMemoryModal() {
+  const modal = document.getElementById('memory-modal');
+  if (!modal) return;
+  if (!currentUser) {
+    showXamoToast('Sign in to use memory.');
+    return;
+  }
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  await loadUserMemories(true);
+  renderMemoryList();
+}
+
+function closeMemoryModal() {
+  const modal = document.getElementById('memory-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+
+async function addMemoryFromInput() {
+  const input = document.getElementById('memory-input');
+  const text = input ? input.value : '';
+  const saved = await saveMemory(text);
+  if (saved && input) input.value = '';
+}
+
+// Added to the latest question so the model can use what it knows about the user
+async function memoryNoteForRequest() {
+  if (!currentUser) return '';
+  await loadUserMemories();
+  if (!userMemories.length) return '';
+  return 'Known about the user (use only when relevant, and do not repeat it unless asked): ' +
+    userMemories.map(m => m.memory).join('; ');
+}
+
+// ---- Compare answers (opens only when the user taps Regenerate) ----
+async function readSseText(res) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let text = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === '[DONE]') continue;
+      try {
+        const json = JSON.parse(data);
+        const parts = json.candidates?.[0]?.content?.parts || [];
+        parts.forEach(p => {
+          if (p.text && !p.thought) text += p.text;
+        });
+      } catch (e) {}
+    }
+  }
+  return text.trim();
+}
+
+async function fetchAlternativeAnswer(answerIndex) {
+  const history = currentChatHistory.slice(0, answerIndex);
+  const contents = history.map(m => {
+    const parts = [];
+    const raw = m.role === 'user'
+      ? (m.rawUserText || (m.parts && m.parts[0] ? m.parts[0].text : '') || '')
+      : ((m.parts && m.parts[0] ? m.parts[0].text : '') || '').replace(ACTION_TAG_RE, '');
+    if (raw && raw.trim()) parts.push({ text: raw });
+    if (m.file && m.file.base64) parts.push({ inline_data: { mime_type: m.file.mimeType, data: m.file.base64 } });
+    return { role: m.role, parts };
+  }).filter(c => c.parts.length > 0);
+
+  let lastUserIndex = -1;
+  contents.forEach((c, i) => {
+    if (c.role === 'user') lastUserIndex = i;
+  });
+
+  if (lastUserIndex >= 0) {
+    const questionText = history.filter(m => m.role === 'user').pop()?.rawUserText || '';
+    const extras = [];
+    if (needsLiveInfo(questionText)) {
+      const live = await fetchLiveContextFor(questionText);
+      if (live) extras.push({ text: live });
+    }
+    const memoryNote = await memoryNoteForRequest();
+    if (memoryNote) extras.push({ text: memoryNote });
+    if (extras.length) contents[lastUserIndex].parts = [...extras, ...contents[lastUserIndex].parts];
+  }
+
+  const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+  const endpoint = (isLocalHost ? 'https://xamo-ai.vercel.app' : '') + '/api/chat';
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ systemInstruction: window.lastSystemInstruction || '', contents, variant: 'alt' })
+  });
+  if (!res.ok) return '';
+  return await readSseText(res);
+}
+
+async function compareLastAnswer() {
+  const answerIndex = currentChatHistory.length - 1;
+  const answer = currentChatHistory[answerIndex];
+  if (!answer || answer.role !== 'model') {
+    regenerateLastResponse();
+    return;
+  }
+  const currentText = ((answer.parts && answer.parts[0] ? answer.parts[0].text : '') || '').replace(ACTION_TAG_RE, '').trim();
+  showXamoToast('Writing a second answer...');
+  let newText = '';
+  try {
+    newText = ((await fetchAlternativeAnswer(answerIndex)) || '').replace(ACTION_TAG_RE, '').trim();
+  } catch (err) {
+    console.warn('Second answer failed:', err);
+  }
+  if (!newText) {
+    showXamoToast('Could not write a second answer. Please try again.');
+    return;
+  }
+  openCompare(currentText, newText, answerIndex);
+}
+
+function renderAnswerHtml(text) {
+  return (window.marked && window.DOMPurify)
+    ? DOMPurify.sanitize(marked.parse(text))
+    : memEsc(text).replace(/\n/g, '<br>');
+}
+
+function openCompare(currentText, newText, answerIndex) {
+  xamoPendingCompare = { answerIndex, newText };
+  document.getElementById('compare-left').innerHTML = renderAnswerHtml(currentText);
+  document.getElementById('compare-right').innerHTML = renderAnswerHtml(newText);
+  const modal = document.getElementById('compare-modal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeCompare() {
+  const modal = document.getElementById('compare-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+  xamoPendingCompare = null;
+}
+
+function useCompareAnswer() {
+  if (xamoPendingCompare) {
+    const msg = currentChatHistory[xamoPendingCompare.answerIndex];
+    if (msg && msg.role === 'model') {
+      msg.parts = [{ text: xamoPendingCompare.newText }];
+      saveCurrentSession().catch(() => {});
+      renderChatBox();
+    }
+  }
+  closeCompare();
+}
+
+// ---- Wiring ----
+document.getElementById('memory-btn')?.addEventListener('click', () => openMemoryModal());
+document.getElementById('memory-close-btn')?.addEventListener('click', closeMemoryModal);
+document.getElementById('memory-add-btn')?.addEventListener('click', addMemoryFromInput);
+document.getElementById('memory-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addMemoryFromInput();
+});
+document.getElementById('memory-clear-btn')?.addEventListener('click', clearAllMemories);
+document.getElementById('compare-close-btn')?.addEventListener('click', closeCompare);
+document.getElementById('compare-keep-btn')?.addEventListener('click', closeCompare);
+document.getElementById('compare-use-btn')?.addEventListener('click', useCompareAnswer);
+
 // --- Live information (news, weather) from free sources ---
 function needsLiveInfo(text) {
-  return /\b(news|headlines?|breaking|happening|weather|forecast|latest|recent|current events|right now|this week)\b/i.test(text || '');
+  return /\b(news|headlines?|breaking|happening|weather|forecast|latest|recent|current|currently|now|today|right now|this week|this year|2025|2026|alive|died|dead|death|passed away|still|won|winner|score|price|stock|rate|election|released|who is the|who are the)\b/i.test(text || '');
+}
+
+// A follow-up such as "what day did he pass away?" needs the previous question to be searchable
+function buildLiveQuestion(text) {
+  const userMessages = currentChatHistory.filter(m => m.role === 'user');
+  const previous = userMessages.length >= 2 ? (userMessages[userMessages.length - 2].rawUserText || '') : '';
+  const refersBack = /\b(he|she|they|him|her|them|it|this|that|his|hers|their|its)\b/i.test(text || '');
+  if (previous && refersBack) {
+    return `${previous.slice(0, 120)} ${text}`.slice(0, 220);
+  }
+  return text;
 }
 
 async function fetchLiveContextFor(text) {
@@ -2838,7 +3149,7 @@ function renderChatBox() {
       const regenBtn = document.createElement('button');
       regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
       regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
-      regenBtn.onclick = () => regenerateLastResponse();
+      regenBtn.onclick = () => compareLastAnswer();
       footerDiv.appendChild(regenBtn);
 
       footerDiv.appendChild(pinBtn);
@@ -3308,10 +3619,23 @@ async function triggerApiCall() {
     const rawUserText = lastUserMessage?.rawUserText || "";
 
     // Live news or weather from free sources, added only to this request (not saved in the chat)
-    const liveContext = needsLiveInfo(rawUserText) ? await fetchLiveContextFor(rawUserText) : '';
-    if (liveContext) {
+    const liveQuestion = buildLiveQuestion(rawUserText);
+    const needsLive = needsLiveInfo(liveQuestion);
+    const liveContext = needsLive ? await fetchLiveContextFor(liveQuestion) : '';
+    // If a live check was needed but failed, the model must not state recent facts as certain
+    const liveNote = liveContext || (needsLive
+      ? 'NOTE: Live sources could not be checked for this question. Do not state recent facts as certain. Say that your information may be out of date and suggest checking a current news source.'
+      : '');
+    if (liveNote) {
       const lastUserPayload = payloadHistory.slice().reverse().find(m => m.role === 'user');
-      if (lastUserPayload) lastUserPayload.parts = [{ text: liveContext }, ...lastUserPayload.parts];
+      if (lastUserPayload) lastUserPayload.parts = [{ text: liveNote }, ...lastUserPayload.parts];
+    }
+
+    window.lastSystemInstruction = dynamicSystemInstruction;
+    const memoryNote = await memoryNoteForRequest();
+    if (memoryNote) {
+      const lastUserWithMemory = payloadHistory.slice().reverse().find(m => m.role === 'user');
+      if (lastUserWithMemory) lastUserWithMemory.parts = [{ text: memoryNote }, ...lastUserWithMemory.parts];
     }
 
     const requestBody = {
@@ -3474,7 +3798,7 @@ async function triggerApiCall() {
     const regenBtn = document.createElement('button');
     regenBtn.className = "text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 ml-2 transition-colors";
     regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
-    regenBtn.onclick = () => regenerateLastResponse();
+    regenBtn.onclick = () => compareLastAnswer();
     footerDiv.appendChild(regenBtn);
 
     footerDiv.appendChild(pinBtn);
