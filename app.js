@@ -2903,7 +2903,7 @@ async function deletedAccountMessage(email) {
     if (error || !data) return '';
     return data === 'admin'
       ? 'Your account has been deleted by the XAMO AI team. Please sign up again.'
-      : 'Your account has been deleted. Please sign up again.';
+      : 'Your account has been deleted.';
   } catch (err) {
     return '';
   }
