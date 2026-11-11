@@ -1469,6 +1469,12 @@ if (authSubmitBtn) {
 
     try {
       if (authMode === 'forgot') {
+        const deletedReset = await deletedAccountMessage(email);
+        if (deletedReset) {
+          showAuthError(deletedReset);
+          return;
+        }
+
         if (resetEmailCooldown) {
           showAuthError("Please wait a moment before requesting another reset email.");
           return;
@@ -1544,7 +1550,7 @@ if (authSubmitBtn) {
           if (errMsg.includes('not confirmed') || errMsg.includes('email not confirmed')) {
             throw new Error("Please verify your email before signing in. Check your inbox.");
           } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid credentials')) {
-            throw new Error("Email or password is wrong. If your account was deleted, please verify your account first and sign up again.");
+            throw new Error((await deletedAccountMessage(email)) || "Email or password is wrong. Please check your credentials.");
           } else {
             throw error;
           }
@@ -2889,25 +2895,39 @@ if (guestDeleteBtn) {
   });
 }
 
-// A deleted account cannot come back through a new Google sign-in; the person must sign up again and verify
+// Tells a person that their account was deleted, and by whom. Returns '' if the account was not deleted.
+async function deletedAccountMessage(email) {
+  if (!supabaseClient || !email) return '';
+  try {
+    const { data, error } = await supabaseClient.rpc('deleted_account_status', { p_email: email.trim() });
+    if (error || !data) return '';
+    return data === 'admin'
+      ? 'Your account has been deleted by the XAMO AI team. Please sign up again.'
+      : 'Your account has been deleted. Please sign up again.';
+  } catch (err) {
+    return '';
+  }
+}
+
+// A deleted account cannot come back through a new Google sign-in; the person must sign up again
 async function blockDeletedAccountAfterSignIn(session) {
-  if (!supabaseClient || !session || !session.user || !session.user.email) return false;
-  const { data, error } = await supabaseClient.rpc('is_deleted_email', { p_email: session.user.email });
-  if (error || data !== true) return false;
-  try { await supabaseClient.rpc('delete_my_account'); } catch (e) {}
-  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) {}
+  if (!supabaseClient || !session || !session.user || !session.user.email) return '';
+  const message = await deletedAccountMessage(session.user.email);
+  if (!message) return '';
+  try { await supabaseClient.rpc('delete_my_account'); } catch (err) {}
+  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (err) {}
   clearSupabaseSessionStorage();
-  return true;
+  return message;
 }
 
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event !== 'SIGNED_IN' || !session) return;
-    blockDeletedAccountAfterSignIn(session).then(blocked => {
-      if (!blocked) return;
+    blockDeletedAccountAfterSignIn(session).then(message => {
+      if (!message) return;
       showXamoConfirm({
-        title: 'Please verify your account first and sign up',
-        message: 'This account was deleted. To use XAMO again, sign up with this email and verify it from your inbox. You will start with a new account and no previous chats.',
+        title: 'Your account was deleted',
+        message: message,
         confirmText: 'OK'
       }).then(() => location.reload());
     });
