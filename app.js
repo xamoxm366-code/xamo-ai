@@ -1544,7 +1544,7 @@ if (authSubmitBtn) {
           if (errMsg.includes('not confirmed') || errMsg.includes('email not confirmed')) {
             throw new Error("Please verify your email before signing in. Check your inbox.");
           } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid credentials')) {
-            throw new Error("Invalid email or password. Please check your credentials.");
+            throw new Error("Email or password is wrong. If your account was deleted, please verify your account first and sign up again.");
           } else {
             throw error;
           }
@@ -2851,9 +2851,72 @@ if (chatBox) {
   }, { passive: true });
 }
 
+// --- Guest data key, guest deletion, and deleted accounts ---
+function getGuestKey() {
+  let key = localStorage.getItem('xamo_guest_key');
+  if (!key || key.length < 16) {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    key = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem('xamo_guest_key', key);
+  }
+  return key;
+}
+
+const guestDeleteBtn = document.getElementById('guest-delete-btn');
+if (guestDeleteBtn) {
+  guestDeleteBtn.addEventListener('click', async () => {
+    if (currentUser) return;
+    const ok = await showXamoConfirm({
+      title: 'Delete this guest data permanently?',
+      message: 'All chats saved for this guest nickname will be deleted from the database and from this device. This cannot be undone.',
+      confirmText: 'Delete everything',
+      danger: true,
+      requireText: 'DELETE'
+    });
+    if (!ok) return;
+    const key = localStorage.getItem('xamo_guest_key');
+    if (supabaseClient && key) {
+      const { error } = await supabaseClient.rpc('delete_my_guest_data', { p_key: key, p_nickname: userNickname || 'Guest' });
+      if (error) {
+        showXamoToast(`Could not delete: ${error.message}`);
+        return;
+      }
+    }
+    ['xamo_guest_nickname', 'xamo_guest_sessions', 'xamo_active_session_id', 'xamo_pinned_notes', 'xamo_guest_key']
+      .forEach(k => localStorage.removeItem(k));
+    location.reload();
+  });
+}
+
+// A deleted account cannot come back through a new Google sign-in; the person must sign up again and verify
+async function blockDeletedAccountAfterSignIn(session) {
+  if (!supabaseClient || !session || !session.user || !session.user.email) return false;
+  const { data, error } = await supabaseClient.rpc('is_deleted_email', { p_email: session.user.email });
+  if (error || data !== true) return false;
+  try { await supabaseClient.rpc('delete_my_account'); } catch (e) {}
+  try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) {}
+  clearSupabaseSessionStorage();
+  return true;
+}
+
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event !== 'SIGNED_IN' || !session) return;
+    blockDeletedAccountAfterSignIn(session).then(blocked => {
+      if (!blocked) return;
+      showXamoConfirm({
+        title: 'Please verify your account first and sign up',
+        message: 'This account was deleted. To use XAMO again, sign up with this email and verify it from your inbox. You will start with a new account and no previous chats.',
+        confirmText: 'OK'
+      }).then(() => location.reload());
+    });
+  });
+}
+
 // --- Live information (news, weather) from free sources ---
 function needsLiveInfo(text) {
-  return /\b(news|headlines?|breaking|happening|weather|forecast|latest|recent|current|currently|now|today|right now|this week|this year|2025|2026|alive|died|dead|death|passed away|still|won|winner|score|price|stock|rate|election|released|who is the|who are the)\b/i.test(text || '');
+  return /\b(news|headlines?|breaking|happening|weather|forecast|latest|recent|current|currently|right now|today|this week|this year|2025|2026|alive|died|dead|death|passed away|still|won|winner|score|scores|price|prices|stock|election|released|who is the|who are the)\b/i.test(text || '');
 }
 
 // A follow-up such as "what day did he pass away?" needs the previous question to be searchable
@@ -2872,7 +2935,7 @@ async function fetchLiveContextFor(text) {
     const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
     const base = isLocalHost ? 'https://xamo-ai.vercel.app' : '';
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`${base}/api/live?q=${encodeURIComponent(String(text).slice(0, 200))}`, { signal: controller.signal });
     clearTimeout(timer);
     if (!res.ok) return '';
@@ -2952,6 +3015,7 @@ async function saveCurrentSession() {
         user_id: currentUser ? currentUser.id : null,
         user_email: currentUser ? currentUser.email : 'Guest',
         nickname: userNickname || 'Guest',
+        guest_key: currentUser ? null : getGuestKey(),
         title: title,
         history: cleanHistory,
         is_deleted_by_user: false,

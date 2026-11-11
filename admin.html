@@ -16,30 +16,29 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
     :root {
-      --bg: #07080c;
-      --panel: #0d0f15;
-      --panel-2: #12141c;
-      --panel-3: #181b25;
+      --bg: #06070b;
+      --panel: #0c0e14;
+      --panel-2: #11131b;
+      --panel-3: #171a24;
       --line: rgba(255, 255, 255, 0.07);
-      --line-strong: rgba(255, 255, 255, 0.14);
-      --text: #e7e9f0;
-      --muted: #8b91a3;
-      --accent: #7c5cff;
-      --accent-2: #3b82f6;
+      --line-strong: rgba(255, 255, 255, 0.15);
+      --text: #e8eaf1;
+      --muted: #8d93a6;
+      --dim: #5d6374;
+      --violet: #8b5cf6;
+      --blue: #3b82f6;
       --ok: #34d399;
       --bad: #f87171;
       --warn: #fbbf24;
-      --guest: #c084fc;
+      --guest: #e879f9;
     }
 
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      -webkit-font-smoothing: antialiased;
-      -webkit-text-size-adjust: 100%;
+      background: var(--bg); color: var(--text);
+      -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
       overflow: hidden;
     }
     .app-shell { height: 100vh; height: 100dvh; }
@@ -47,9 +46,9 @@
 
     .ambient {
       background:
-        radial-gradient(900px 500px at 15% -10%, rgba(124, 92, 255, 0.18), transparent 60%),
-        radial-gradient(800px 500px at 110% 10%, rgba(59, 130, 246, 0.14), transparent 60%),
-        radial-gradient(700px 500px at 50% 120%, rgba(245, 185, 66, 0.08), transparent 60%),
+        radial-gradient(900px 520px at 12% -12%, rgba(139, 92, 246, 0.2), transparent 60%),
+        radial-gradient(800px 520px at 108% 8%, rgba(59, 130, 246, 0.14), transparent 60%),
+        radial-gradient(700px 500px at 50% 125%, rgba(245, 158, 11, 0.07), transparent 60%),
         var(--bg);
     }
 
@@ -57,61 +56,63 @@
     .panel-2 { background: var(--panel-2); border: 1px solid var(--line); }
     .panel-3 { background: var(--panel-3); border: 1px solid var(--line); }
     .glass {
-      background: rgba(13, 15, 21, 0.8);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: rgba(12, 14, 20, 0.78);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--line);
     }
 
     /* ---------- Buttons ---------- */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      font-size: 12px; font-weight: 600; min-height: 34px; padding: 7px 12px;
+      font-size: 12px; font-weight: 600; min-height: 34px; padding: 7px 13px;
       border-radius: 12px; border: 1px solid var(--line); background: var(--panel-3);
       color: var(--text); transition: all .15s ease; cursor: pointer; white-space: nowrap; text-decoration: none;
     }
-    .btn:hover { background: #1e2230; border-color: var(--line-strong); }
-    .btn:disabled { opacity: .6; cursor: not-allowed; }
-    .btn-sm { min-height: 30px; font-size: 11px; padding: 5px 9px; border-radius: 10px; }
+    .btn:hover { background: #1d2130; border-color: var(--line-strong); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .btn-sm { min-height: 30px; font-size: 11px; padding: 5px 10px; border-radius: 10px; }
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      border-color: transparent; color: #fff;
-      box-shadow: 0 6px 20px -8px rgba(124, 92, 255, .7);
+      background: linear-gradient(135deg, var(--violet), var(--blue)); border-color: transparent; color: #fff;
+      box-shadow: 0 8px 22px -10px rgba(139, 92, 246, .8);
     }
-    .btn-primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+    .btn-primary:hover { filter: brightness(1.1); background: linear-gradient(135deg, var(--violet), var(--blue)); }
     .btn-danger { background: rgba(248, 113, 113, .08); border-color: rgba(248, 113, 113, .25); color: var(--bad); }
     .btn-danger:hover { background: rgba(248, 113, 113, .16); }
+    .btn-solid-danger { background: linear-gradient(135deg, #ef4444, #f97316); border-color: transparent; color: #fff; }
+    .btn-solid-danger:hover { filter: brightness(1.08); background: linear-gradient(135deg, #ef4444, #f97316); }
     .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
-    .btn-ghost:hover { background: rgba(255, 255, 255, .05); color: var(--text); }
+    .btn-ghost:hover { background: rgba(255, 255, 255, .05); color: var(--text); transform: none; }
     .thread-back { display: none; }
 
     /* ---------- Inputs ---------- */
     .input {
-      width: 100%; background: #0a0c11; border: 1px solid var(--line);
+      width: 100%; background: #090b10; border: 1px solid var(--line);
       border-radius: 12px; padding: 9px 12px; font-size: 12.5px; color: var(--text);
       outline: none; transition: border-color .15s, box-shadow .15s;
     }
-    .input:focus { border-color: rgba(124, 92, 255, .6); box-shadow: 0 0 0 3px rgba(124, 92, 255, .15); }
+    .input:focus { border-color: rgba(139, 92, 246, .6); box-shadow: 0 0 0 3px rgba(139, 92, 246, .15); }
+    .input::placeholder { color: var(--dim); }
 
     /* ---------- Navigation ---------- */
     .nav-item {
       display: flex; align-items: center; gap: 10px; width: 100%;
-      padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 500;
+      padding: 10px 12px; border-radius: 14px; font-size: 13px; font-weight: 500;
       color: var(--muted); background: transparent; border: 1px solid transparent;
       transition: all .15s; cursor: pointer; text-align: left;
     }
     .nav-item:hover { color: var(--text); background: rgba(255, 255, 255, .04); }
     .nav-item.active {
       color: #fff;
-      background: linear-gradient(135deg, rgba(124, 92, 255, .22), rgba(59, 130, 246, .14));
-      border-color: rgba(124, 92, 255, .35);
+      background: linear-gradient(135deg, rgba(139, 92, 246, .24), rgba(59, 130, 246, .14));
+      border-color: rgba(139, 92, 246, .38);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
     }
     .count {
       margin-left: auto; font-size: 10px; font-family: 'JetBrains Mono', monospace;
-      padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, .06); color: var(--muted);
+      padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, .07); color: var(--muted);
     }
 
-    /* Sidebar: hidden on phones, icon rail on tablets, full sidebar on laptops */
     .sidebar { display: none; }
     @media (min-width: 768px) {
       .sidebar { display: flex; flex-direction: column; width: 76px; flex-shrink: 0; }
@@ -121,49 +122,43 @@
       .sidebar .btn { padding: 9px 0; }
     }
     @media (min-width: 1100px) {
-      .sidebar { width: 248px; }
-      .sidebar .nav-item { justify-content: flex-start; padding: 9px 12px; }
-      .sidebar .brand { justify-content: flex-start; padding: 20px 20px; }
+      .sidebar { width: 252px; }
+      .sidebar .nav-item { justify-content: flex-start; padding: 10px 12px; }
+      .sidebar .brand { justify-content: flex-start; padding: 20px; }
       .sidebar .nav-label, .sidebar .count, .sidebar .brand-text, .sidebar .btn-label { display: inline; }
       .sidebar .btn { padding: 8px 12px; }
       .sidebar .owner-card { display: block; }
     }
 
-    /* Bottom tab bar for phones */
     .bottom-nav {
       display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
       padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-      background: rgba(13, 15, 21, .94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      background: rgba(12, 14, 20, .94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--line);
     }
     .bottom-nav .bnav-btn {
       flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
-      font-size: 10px; font-weight: 600; color: var(--muted); padding: 7px 0; border-radius: 12px;
+      font-size: 10px; font-weight: 600; color: var(--muted); padding: 7px 0; border-radius: 14px;
       background: transparent; border: 0; min-width: 0;
     }
     .bottom-nav .bnav-btn i { font-size: 16px; }
-    .bottom-nav .bnav-btn.active { color: #fff; background: rgba(124, 92, 255, .22); }
+    .bottom-nav .bnav-btn.active { color: #fff; background: rgba(139, 92, 246, .22); }
     @media (min-width: 768px) { .bottom-nav { display: none; } }
 
     /* ---------- Layout ---------- */
     .view { position: absolute; inset: 0; }
     .view-col { flex-direction: column; }
     .view-conv { flex-direction: column; }
-    @media (max-width: 767px) {
-      .view { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
-    }
-    @media (min-width: 768px) {
-      .view-conv { flex-direction: row; }
-    }
+    @media (max-width: 767px) { .view { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); } }
+    @media (min-width: 768px) { .view-conv { flex-direction: row; } }
 
-    /* Conversations: list and thread side by side on laptops/tablets, separate screens on phones */
     .conv-list { display: flex; flex-direction: column; min-height: 0; width: 100%; }
     .thread-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1; }
     @media (min-width: 768px) {
-      .conv-list { width: 300px; flex: 0 0 300px; border-right: 1px solid var(--line); }
+      .conv-list { width: 320px; flex: 0 0 320px; border-right: 1px solid var(--line); }
     }
     @media (min-width: 1100px) {
-      .conv-list { width: 360px; flex-basis: 360px; }
+      .conv-list { width: 370px; flex-basis: 370px; }
     }
     @media (max-width: 767px) {
       .thread-pane { display: none; }
@@ -172,52 +167,137 @@
       .view-conv.thread-open .thread-back { display: inline-flex; }
     }
 
-    /* ---------- Chips and small pieces ---------- */
+    /* ---------- Chips, avatars, tabs ---------- */
     .chip {
       font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500;
       padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap;
     }
     .chip-user { color: var(--ok); background: rgba(52, 211, 153, .08); border-color: rgba(52, 211, 153, .25); }
-    .chip-guest { color: var(--guest); background: rgba(192, 132, 252, .08); border-color: rgba(192, 132, 252, .25); }
+    .chip-guest { color: var(--guest); background: rgba(232, 121, 249, .08); border-color: rgba(232, 121, 249, .25); }
     .chip-del { color: var(--bad); background: rgba(248, 113, 113, .08); border-color: rgba(248, 113, 113, .25); }
     .chip-warn { color: var(--warn); background: rgba(251, 191, 36, .08); border-color: rgba(251, 191, 36, .25); }
     .chip-muted { color: var(--muted); background: rgba(255, 255, 255, .04); border-color: var(--line); }
+
+    .avatar {
+      width: 34px; height: 34px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; color: #fff; text-transform: uppercase;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+    }
+    .avatar-sm { width: 28px; height: 28px; border-radius: 10px; font-size: 11px; }
+    .avatar-md { width: 40px; height: 40px; border-radius: 14px; font-size: 15px; }
+    .avatar-lg { width: 48px; height: 48px; border-radius: 16px; font-size: 18px; }
+    .avatar-user { background: linear-gradient(135deg, #10b981, #06b6d4); }
+    .avatar-guest { background: linear-gradient(135deg, #a855f7, #ec4899); }
+    .avatar-admin { background: linear-gradient(135deg, #f59e0b, #f97316); }
+    .avatar-ai { background: linear-gradient(135deg, var(--violet), var(--blue)); }
 
     .tab {
       flex: 1; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 10px;
       color: var(--muted); background: transparent; border: 1px solid transparent;
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
-    .tab.active { color: #fff; background: var(--accent); box-shadow: 0 4px 14px -6px rgba(124, 92, 255, .8); }
+    .tab.active { color: #fff; background: linear-gradient(135deg, var(--violet), var(--blue)); box-shadow: 0 6px 16px -8px rgba(139, 92, 246, .9); }
 
-    .conv { padding: 11px 12px; border-radius: 14px; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
-    .conv:active { background: rgba(255, 255, 255, .04); }
-    .conv.active { background: var(--panel-3); border-color: rgba(124, 92, 255, .4); }
+    .conv {
+      padding: 12px; border-radius: 16px; cursor: pointer; border: 1px solid transparent;
+      transition: all .15s; margin-bottom: 4px;
+    }
+    .conv:hover { background: rgba(255, 255, 255, .03); }
+    .conv:active { background: rgba(255, 255, 255, .05); }
+    .conv.active {
+      background: linear-gradient(135deg, rgba(139, 92, 246, .14), rgba(59, 130, 246, .06));
+      border-color: rgba(139, 92, 246, .35);
+    }
 
     .stat-card {
-      border-radius: 18px; padding: 14px; position: relative; overflow: hidden;
-      background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .01)), var(--panel);
+      border-radius: 20px; padding: 14px; position: relative; overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .01)), var(--panel);
       border: 1px solid var(--line);
     }
     .stat-card .glow {
-      position: absolute; right: -20px; top: -20px; width: 90px; height: 90px;
-      border-radius: 999px; filter: blur(30px); opacity: .35;
+      position: absolute; right: -22px; top: -22px; width: 96px; height: 96px;
+      border-radius: 999px; filter: blur(32px); opacity: .4;
+    }
+    .stat-icon {
+      width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; border: 1px solid var(--line);
     }
 
-    .bubble-user { background: linear-gradient(180deg, #1f2331, #191c27); border: 1px solid var(--line-strong); }
-    .bubble-model { color: #dfe2ea; }
-    .bubble-model code:not(pre code) {
-      background: #1a1d28; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: .85em;
+    /* ---------- Conversation thread ---------- */
+    .thread-top {
+      min-height: 64px; padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+      background: rgba(12, 14, 20, .9); border-bottom: 1px solid var(--line); flex-shrink: 0;
     }
-    .bubble-model pre {
-      background: #0a0c11 !important; border: 1px solid var(--line); border-radius: 12px;
-      padding: 12px; overflow-x: auto; margin: .6rem 0;
+    @media (min-width: 768px) { .thread-top { padding: 10px 22px; } }
+    .thread-banner {
+      margin: 12px 16px 0; padding: 10px 14px; border-radius: 14px; font-size: 12px; line-height: 1.5;
+      background: rgba(248, 113, 113, .08); border: 1px solid rgba(248, 113, 113, .22); color: #fca5a5;
+      flex-shrink: 0;
     }
-    .bubble-model p { margin: .4rem 0; }
-    .bubble-model h1, .bubble-model h2, .bubble-model h3 { font-weight: 700; margin: .8rem 0 .4rem; color: #fff; }
-    .bubble-model ul { list-style: disc; padding-left: 1.2rem; }
-    .bubble-model ol { list-style: decimal; padding-left: 1.2rem; }
-    .bubble-model img { max-width: 100%; border-radius: 10px; }
+    .thread-scroll {
+      flex: 1; min-height: 0; overflow-y: auto; padding: 18px 14px 40px;
+      background: radial-gradient(700px 400px at 50% -10%, rgba(139, 92, 246, .06), transparent 70%);
+    }
+    @media (min-width: 768px) { .thread-scroll { padding: 24px 28px 48px; } }
+    .thread-inner { max-width: 820px; margin: 0 auto; }
+
+    .msg { display: flex; gap: 10px; margin: 16px 0; align-items: flex-start; }
+    .msg-user { justify-content: flex-end; }
+    .bubble { max-width: 84%; border-radius: 20px; padding: 11px 15px; font-size: 14px; line-height: 1.65; word-break: break-word; }
+    .bubble-user {
+      background: linear-gradient(135deg, #7c5cff, #3b82f6); color: #fff; white-space: pre-wrap;
+      border-bottom-right-radius: 7px; box-shadow: 0 12px 28px -14px rgba(124, 92, 255, .75);
+    }
+    .bubble-ai {
+      background: var(--panel-2); border: 1px solid var(--line); color: #e2e5ee;
+      border-bottom-left-radius: 7px; max-width: 100%;
+    }
+    .md p { margin: .45rem 0; }
+    .md ul { list-style: disc; padding-left: 1.25rem; margin: .4rem 0; }
+    .md ol { list-style: decimal; padding-left: 1.25rem; margin: .4rem 0; }
+    .md li { margin: .15rem 0; }
+    .md h1, .md h2, .md h3 { font-weight: 700; margin: .9rem 0 .4rem; color: #fff; }
+    .md strong { color: #fff; }
+    .md code:not(pre code) {
+      background: #161a25; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: .85em;
+    }
+    .md pre {
+      background: #080a0f !important; border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px; overflow-x: auto; margin: .6rem 0; font-size: 12.5px;
+    }
+    .md a { color: #a78bfa; text-decoration: underline; }
+    .md img { max-width: 100%; border-radius: 12px; }
+
+    .media-frame {
+      display: flex; flex-direction: column; max-width: min(360px, 84vw); border-radius: 18px; overflow: hidden;
+      border: 1px solid var(--line); background: var(--panel-2); padding: 0; text-align: left; cursor: pointer;
+      transition: border-color .15s, transform .15s;
+    }
+    .media-frame:hover { border-color: var(--line-strong); }
+    .media-frame img, .media-frame video { display: block; width: 100%; max-height: 300px; object-fit: contain; background: #000; }
+    .media-caption {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 11px; font-size: 11px; color: var(--muted);
+    }
+    .file-chip {
+      display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 16px;
+      background: var(--panel-2); border: 1px solid var(--line); max-width: 300px; text-align: left;
+      cursor: pointer; color: var(--text); font-size: 12px;
+    }
+    .file-chip:hover { border-color: var(--line-strong); }
+    .link-btn { color: #a78bfa; font-weight: 600; font-size: 11px; }
+
+    .empty-hero {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+      color: var(--muted); font-size: 13px; padding: 60px 20px; gap: 10px;
+    }
+    .empty-hero .hero-icon {
+      width: 64px; height: 64px; border-radius: 22px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; color: #a78bfa;
+      background: linear-gradient(135deg, rgba(139, 92, 246, .18), rgba(59, 130, 246, .08));
+      border: 1px solid rgba(139, 92, 246, .25);
+    }
 
     /* ---------- Accounts table (desktop) / cards (phones) ---------- */
     .acc-head { display: none; }
@@ -226,13 +306,13 @@
     .acc-row .cell { min-width: 0; font-size: 12.5px; }
     .acc-row .cell[data-label]::before {
       content: attr(data-label); display: block; font-size: 9.5px; text-transform: uppercase;
-      letter-spacing: .06em; color: var(--dim, #5d6374); margin-bottom: 2px;
+      letter-spacing: .06em; color: var(--dim); margin-bottom: 3px;
     }
     .acc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     @media (min-width: 900px) {
       .acc-head, .acc-row {
         display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, .9fr) 56px minmax(0, 1.2fr) minmax(0, 1.2fr) 190px;
+        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, .9fr) 56px minmax(0, 1.2fr) minmax(0, 1.2fr) 190px;
         align-items: center; gap: 12px; padding: 12px 16px;
       }
       .acc-head {
@@ -245,19 +325,20 @@
 
     /* ---------- Media ---------- */
     .media-card {
-      border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
+      border-radius: 18px; overflow: hidden; border: 1px solid var(--line);
       background: var(--panel-2); transition: transform .15s, border-color .15s; cursor: pointer;
     }
+    .media-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
     .media-card:active { transform: scale(.98); }
 
-    /* ---------- Modal ---------- */
+    /* ---------- Viewer modal ---------- */
     .modal-card {
       display: flex; flex-direction: column; gap: 12px; width: 100%;
-      max-width: 56rem; max-height: 92vh; border-radius: 16px;
+      max-width: 58rem; max-height: 92vh; border-radius: 20px;
     }
     #media-modal-body {
       flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center;
-      background: rgba(0, 0, 0, .4); border-radius: 12px; padding: 8px;
+      background: rgba(0, 0, 0, .45); border-radius: 14px; padding: 8px;
     }
     #media-modal-body img, #media-modal-body video { max-width: 100%; max-height: 100%; border-radius: 12px; }
     #media-modal-body iframe { width: 100%; height: 100%; min-height: 60vh; border: 0; border-radius: 12px; background: #fff; }
@@ -266,23 +347,44 @@
       .modal-card { height: 100%; max-height: 100%; max-width: 100%; border-radius: 0; }
     }
 
+    /* ---------- Confirm dialogs ---------- */
+    .dialog-backdrop {
+      position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center;
+      padding: 16px; background: rgba(3, 4, 8, .72); backdrop-filter: blur(6px); animation: fadeIn .18s ease;
+    }
+    .dialog-card {
+      width: 100%; max-width: 384px; padding: 24px; border-radius: 22px; text-align: center;
+      background: linear-gradient(180deg, #181b26, #0f1118); border: 1px solid var(--line-strong);
+      box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .75); animation: popIn .2s ease;
+    }
+    .dialog-icon {
+      width: 54px; height: 54px; border-radius: 17px; margin: 0 auto 14px; display: flex; align-items: center;
+      justify-content: center; font-size: 20px; background: rgba(139, 92, 246, .15); color: #a78bfa;
+    }
+    .dialog-icon.danger { background: rgba(248, 113, 113, .12); color: var(--bad); }
+    .dialog-title { font-size: 15px; font-weight: 700; }
+    .dialog-message { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+    .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+    .dialog-actions .btn { width: 100%; min-height: 40px; }
+    .shake { animation: shake .3s; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    @keyframes popIn { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: none; } }
+
     /* ---------- Toasts ---------- */
     #toast-root {
       position: fixed; z-index: 70; right: 16px; bottom: 16px;
-      width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px;
+      width: min(360px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px;
     }
     .toast {
-      width: 100%; font-size: 12px; padding: 10px 14px; border-radius: 12px;
+      width: 100%; font-size: 12px; padding: 11px 14px; border-radius: 14px;
       backdrop-filter: blur(10px); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, .6);
     }
     @media (max-width: 767px) {
       #toast-root { left: 12px; right: 12px; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); width: auto; }
     }
 
-    /* ---------- Login ---------- */
     .login-card { width: 100%; max-width: 24rem; }
 
-    /* ---------- Touch devices: bigger targets, no iOS zoom on inputs ---------- */
     @media (pointer: coarse) {
       .btn { min-height: 44px; font-size: 13px; }
       .btn-sm { min-height: 38px; font-size: 12px; }
@@ -306,8 +408,6 @@
       70% { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); }
       100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
     }
-
-    .glass h1 { min-width: 0; }
   </style>
 </head>
 <body class="ambient app-shell">
@@ -317,7 +417,7 @@
     <div class="login-card panel rounded-3xl p-6 sm:p-7 shadow-2xl fade-in">
       <div class="flex flex-col items-center text-center">
         <div id="login-icon-container" onclick="secretOwnerTap()" title="Admin security"
-             class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-amber-500/20 cursor-pointer">
+             class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-amber-500/25 cursor-pointer">
           <i class="fa-solid fa-crown"></i>
         </div>
         <h2 id="login-title" class="mt-4 text-lg font-bold tracking-tight">XAMO Command Center</h2>
@@ -351,10 +451,9 @@
   <div id="admin-view" class="h-full" style="display:none">
     <div class="h-full flex">
 
-      <!-- Sidebar: laptops full, tablets icons only, phones use the bottom bar -->
       <aside class="sidebar panel-2 border-r border-[var(--line)]">
         <div class="brand flex items-center gap-3 px-5 py-5">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/25 shrink-0">
             <i class="fa-solid fa-crown text-sm"></i>
           </div>
           <div class="brand-text min-w-0">
@@ -372,9 +471,12 @@
         </nav>
 
         <div class="mt-auto p-3 space-y-2">
-          <div class="owner-card panel rounded-xl p-3">
-            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Signed in as</div>
-            <div class="mono text-[11px] text-amber-400 truncate mt-1">xamoxm366@gmail.com</div>
+          <div class="owner-card panel rounded-2xl p-3 flex items-center gap-3">
+            <div class="avatar avatar-sm avatar-admin">X</div>
+            <div class="min-w-0">
+              <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Owner</div>
+              <div class="mono text-[11px] text-amber-400 truncate">xamoxm366@gmail.com</div>
+            </div>
           </div>
           <a href="/" class="btn w-full" title="Open XAMO"><i class="fa-solid fa-arrow-up-right-from-square"></i><span class="btn-label">Open XAMO</span></a>
           <button onclick="logoutAdmin()" class="btn btn-danger w-full" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i><span class="btn-label">Sign out</span></button>
@@ -383,12 +485,9 @@
 
       <div class="flex-1 min-w-0 flex flex-col">
 
-        <!-- Top bar -->
         <header class="glass h-14 px-3 sm:px-5 flex items-center justify-between gap-2 shrink-0">
           <div class="flex items-center gap-2.5 min-w-0">
-            <div class="md:hidden w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm shrink-0">
-              <i class="fa-solid fa-crown"></i>
-            </div>
+            <div class="md:hidden avatar avatar-sm avatar-admin">X</div>
             <h1 id="view-title" class="text-sm font-semibold truncate">Overview</h1>
             <span id="live-badge" class="chip chip-muted flex items-center gap-1.5 shrink-0">
               <span id="live-dot" class="live-dot"></span><span id="live-text">Connecting</span>
@@ -398,8 +497,8 @@
             <button id="refresh-btn" onclick="reloadAllData()" class="btn btn-sm" title="Refresh">
               <i id="refresh-icon" class="fa-solid fa-arrows-rotate"></i><span class="hidden sm:inline">Refresh</span>
             </button>
-            <button onclick="deleteAllChats()" class="btn btn-sm btn-danger" title="Purge all chats">
-              <i class="fa-solid fa-trash-can"></i><span class="hidden lg:inline">Purge all</span>
+            <button onclick="deleteAllChats()" class="btn btn-sm btn-danger" title="Delete all chats">
+              <i class="fa-solid fa-trash-can"></i><span class="hidden lg:inline">Delete all</span>
             </button>
             <div class="md:hidden">
               <button onclick="logoutAdmin()" class="btn btn-sm btn-danger" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -413,38 +512,43 @@
           <section id="view-overview" class="view view-col overflow-y-auto p-3 sm:p-4 md:p-6 gap-5" style="display:none">
             <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3">
               <div class="stat-card">
-                <div class="glow bg-blue-500"></div>
+                <div class="glow bg-violet-500"></div>
+                <div class="stat-icon bg-violet-500/10 text-violet-300 mb-3"><i class="fa-solid fa-comments"></i></div>
                 <div class="text-[11px] text-slate-400 font-medium">Conversations</div>
-                <div class="flex items-end justify-between mt-3"><span id="stat-total" class="text-2xl font-bold">0</span><i class="fa-solid fa-comments text-blue-400"></i></div>
+                <div id="stat-total" class="text-2xl font-bold mt-0.5">0</div>
               </div>
               <div class="stat-card">
                 <div class="glow bg-emerald-500"></div>
+                <div class="stat-icon bg-emerald-500/10 text-emerald-300 mb-3"><i class="fa-solid fa-user-shield"></i></div>
                 <div class="text-[11px] text-slate-400 font-medium">Email accounts</div>
-                <div class="flex items-end justify-between mt-3"><span id="stat-accounts" class="text-2xl font-bold text-emerald-400">0</span><i class="fa-solid fa-user-shield text-emerald-400"></i></div>
+                <div id="stat-accounts" class="text-2xl font-bold mt-0.5 text-emerald-400">0</div>
               </div>
               <div class="stat-card">
-                <div class="glow bg-purple-500"></div>
+                <div class="glow bg-fuchsia-500"></div>
+                <div class="stat-icon bg-fuchsia-500/10 text-fuchsia-300 mb-3"><i class="fa-solid fa-user-secret"></i></div>
                 <div class="text-[11px] text-slate-400 font-medium">Guest accounts</div>
-                <div class="flex items-end justify-between mt-3"><span id="stat-guests" class="text-2xl font-bold text-purple-400">0</span><i class="fa-solid fa-user-secret text-purple-400"></i></div>
+                <div id="stat-guests" class="text-2xl font-bold mt-0.5 text-fuchsia-400">0</div>
               </div>
               <div class="stat-card">
                 <div class="glow bg-sky-500"></div>
+                <div class="stat-icon bg-sky-500/10 text-sky-300 mb-3"><i class="fa-solid fa-message"></i></div>
                 <div class="text-[11px] text-slate-400 font-medium">Messages</div>
-                <div class="flex items-end justify-between mt-3"><span id="stat-messages" class="text-2xl font-bold text-sky-400">0</span><i class="fa-solid fa-message text-sky-400"></i></div>
+                <div id="stat-messages" class="text-2xl font-bold mt-0.5 text-sky-400">0</div>
               </div>
               <div class="stat-card">
                 <div class="glow bg-amber-500"></div>
+                <div class="stat-icon bg-amber-500/10 text-amber-300 mb-3"><i class="fa-solid fa-photo-film"></i></div>
                 <div class="text-[11px] text-slate-400 font-medium">Uploaded files</div>
-                <div class="flex items-end justify-between mt-3"><span id="stat-media" class="text-2xl font-bold text-amber-400">0</span><i class="fa-solid fa-photo-film text-amber-400"></i></div>
+                <div id="stat-media" class="text-2xl font-bold mt-0.5 text-amber-400">0</div>
               </div>
               <div class="stat-card">
                 <div class="glow bg-red-500"></div>
+                <div class="stat-icon bg-red-500/10 text-red-300 mb-3"><i class="fa-solid fa-trash-can"></i></div>
                 <div class="text-[11px] text-slate-400 font-medium">Deleted by users</div>
-                <div class="flex items-end justify-between mt-3"><span id="stat-deleted" class="text-2xl font-bold text-red-400">0</span><i class="fa-solid fa-trash-can text-red-400"></i></div>
+                <div id="stat-deleted" class="text-2xl font-bold mt-0.5 text-red-400">0</div>
               </div>
             </div>
 
-            <!-- Phone only: account info and sign out -->
             <div class="md:hidden panel rounded-2xl p-4 space-y-3">
               <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Signed in as</div>
               <div class="mono text-xs text-amber-400 break-all">xamoxm366@gmail.com</div>
@@ -455,14 +559,14 @@
             </div>
 
             <div class="grid gap-4 lg:grid-cols-5">
-              <div class="panel rounded-2xl p-4 lg:col-span-3 min-w-0">
+              <div class="panel rounded-3xl p-4 lg:col-span-3 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-sm font-semibold">Latest conversations</h3>
                   <button class="btn btn-sm btn-ghost" onclick="switchView('conversations')">View all <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
                 <div id="recent-list" class="space-y-1"></div>
               </div>
-              <div class="panel rounded-2xl p-4 lg:col-span-2 min-w-0">
+              <div class="panel rounded-3xl p-4 lg:col-span-2 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-sm font-semibold">Newest accounts</h3>
                   <button class="btn btn-sm btn-ghost" onclick="switchView('accounts')">View all <i class="fa-solid fa-arrow-right"></i></button>
@@ -479,7 +583,7 @@
               <div class="p-3 space-y-2.5 border-b border-[var(--line)]">
                 <div class="relative">
                   <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                  <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, username, title..." class="input pl-8">
+                  <input type="text" id="chat-search" oninput="renderChatList()" placeholder="Search email, nickname, title..." class="input pl-8">
                 </div>
                 <div class="flex gap-1 panel-3 p-1 rounded-xl">
                   <button class="tab active chat-filter" data-filter="all" onclick="setChatFilter('all')">All</button>
@@ -488,23 +592,25 @@
                   <button class="tab chat-filter" data-filter="deleted" onclick="setChatFilter('deleted')">Deleted</button>
                 </div>
               </div>
-              <div id="chats-container" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+              <div id="chats-container" class="flex-1 min-h-0 overflow-y-auto p-2">
                 <div class="p-6 text-center text-xs text-slate-500"><i class="fa-solid fa-circle-notch fa-spin mb-2"></i><div>Loading conversations...</div></div>
               </div>
             </aside>
 
             <div class="thread-pane">
-              <div class="h-14 px-3 sm:px-5 flex items-center justify-between gap-2 panel-2 border-b border-[var(--line)] shrink-0">
-                <div class="flex items-center gap-2 min-w-0">
-                  <button class="thread-back btn btn-sm btn-ghost" onclick="closeThreadMobile()" title="Back to list"><i class="fa-solid fa-arrow-left"></i></button>
-                  <span id="thread-user-badge" class="chip chip-muted px-2.5 py-1 text-xs truncate min-w-0">Select a conversation</span>
+              <div class="thread-top">
+                <button class="thread-back btn btn-sm btn-ghost" onclick="closeThreadMobile()" title="Back to list"><i class="fa-solid fa-arrow-left"></i></button>
+                <div id="thread-avatar" class="avatar avatar-md avatar-user" style="display:none"></div>
+                <div class="min-w-0 flex-1">
+                  <div id="thread-name" class="font-semibold text-sm truncate">Select a conversation</div>
+                  <div id="thread-meta" class="text-[11px] text-slate-500 truncate"></div>
                 </div>
                 <div id="thread-actions" class="hidden shrink-0">
                   <button data-action="delete-chat" class="btn btn-sm btn-danger" title="Delete chat"><i class="fa-solid fa-trash-can"></i><span class="hidden sm:inline">Delete</span></button>
                 </div>
               </div>
-              <div id="thread-title" class="px-3 sm:px-5 py-2 text-xs font-semibold text-slate-300 truncate border-b border-[var(--line)] panel shrink-0"></div>
-              <div id="messages-container" class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6"></div>
+              <div id="thread-banner" class="thread-banner hidden"></div>
+              <div id="messages-container" class="thread-scroll"></div>
             </div>
 
           </section>
@@ -522,7 +628,7 @@
               </div>
             </div>
             <div class="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 md:px-6 pb-6">
-              <div class="panel rounded-2xl overflow-hidden">
+              <div class="panel rounded-3xl overflow-hidden">
                 <div class="acc-head">
                   <div>Account</div><div>Username</div><div>Status</div><div>Chats</div><div>Signed up</div><div>Last sign-in</div><div class="text-right">Actions</div>
                 </div>
@@ -571,7 +677,6 @@
       </div>
     </div>
 
-    <!-- Bottom tab bar (phones only) -->
     <nav class="bottom-nav" aria-label="Main navigation">
       <button class="bnav-btn" data-nav="overview" onclick="switchView('overview')"><i class="fa-solid fa-gauge-high"></i><span>Home</span></button>
       <button class="bnav-btn" data-nav="conversations" onclick="switchView('conversations')"><i class="fa-solid fa-comments"></i><span>Chats</span></button>
@@ -599,6 +704,7 @@
     </div>
   </div>
 
+  <div id="dialog-root"></div>
   <div id="toast-root"></div>
 
   <script>
@@ -612,7 +718,6 @@
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       : null;
 
-    // Old keys from the previous version
     localStorage.removeItem("xamo_admin_device_security");
     localStorage.removeItem("xamo_admin_token");
 
@@ -669,13 +774,12 @@
       }
       if (fields) {
         fields.innerHTML = `
-          <div class="p-3.5 bg-[#0a0c11] border border-red-900/40 rounded-xl text-center">
+          <div class="p-3.5 bg-[#090b10] border border-red-900/40 rounded-xl text-center">
             <p class="text-[11px] text-slate-400">All sign-in attempts from this device are blocked.</p>
           </div>`;
       }
     }
 
-    // Tap the crown 5 times to open the owner recovery prompt
     window.secretOwnerTap = function () {
       crownTapCount++;
       if (crownTapCount >= 5) {
@@ -724,6 +828,11 @@
       })[ch]);
     }
 
+    function initialOf(name) {
+      const s = String(name || "").trim();
+      return (s.charAt(0) || "?").toUpperCase();
+    }
+
     function fmtDate(value) {
       if (!value) return "—";
       const d = new Date(value);
@@ -733,30 +842,93 @@
       });
     }
 
+    function shortDate(value) {
+      if (!value) return "—";
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return "—";
+      const sameDay = d.toDateString() === new Date().toDateString();
+      return sameDay
+        ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+        : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
     function setText(id, value) {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
     }
 
-    function emptyState(text) {
-      return `<div class="flex flex-col items-center justify-center text-center text-slate-500 text-xs py-10 px-4">
-        <i class="fa-solid fa-inbox text-2xl mb-2 text-slate-600"></i>${esc(text)}
-      </div>`;
+    function emptyState(text, icon = "fa-inbox") {
+      return `<div class="empty-hero"><div class="hero-icon"><i class="fa-solid ${icon}"></i></div><div>${esc(text)}</div></div>`;
     }
 
     function toast(message, type = "info") {
       const root = document.getElementById("toast-root");
       if (!root) return;
       const tones = {
-        error: "bg-red-950/95 text-red-300 border-red-500/30",
-        success: "bg-emerald-950/95 text-emerald-300 border-emerald-500/30",
+        error: "bg-red-950/95 text-red-200 border-red-500/30",
+        success: "bg-emerald-950/95 text-emerald-200 border-emerald-500/30",
         info: "bg-[#141722]/95 text-slate-200 border-white/15"
       };
       const el = document.createElement("div");
       el.className = "toast fade-in border " + (tones[type] || tones.info);
       el.textContent = message;
       root.appendChild(el);
-      setTimeout(() => el.remove(), 4000);
+      setTimeout(() => el.remove(), 4200);
+    }
+
+    // Styled replacement for the browser's confirm() and prompt() popups
+    function askConfirm({ title, message = "", confirmText = "Confirm", danger = false, requireText = "" }) {
+      return new Promise(resolve => {
+        const root = document.getElementById("dialog-root");
+        const wrap = document.createElement("div");
+        wrap.className = "dialog-backdrop";
+        wrap.innerHTML = `
+          <div class="dialog-card" role="dialog" aria-modal="true">
+            <div class="dialog-icon ${danger ? "danger" : ""}">
+              <i class="fa-solid ${danger ? "fa-triangle-exclamation" : "fa-circle-question"}"></i>
+            </div>
+            <h3 class="dialog-title"></h3>
+            <p class="dialog-message"></p>
+            ${requireText ? `<input type="text" class="input mt-4 text-center dialog-input" autocomplete="off">` : ""}
+            <div class="dialog-actions">
+              <button type="button" class="btn dialog-cancel">Cancel</button>
+              <button type="button" class="btn ${danger ? "btn-solid-danger" : "btn-primary"} dialog-ok"></button>
+            </div>
+          </div>`;
+        wrap.querySelector(".dialog-title").textContent = title;
+        wrap.querySelector(".dialog-message").textContent = message;
+        wrap.querySelector(".dialog-ok").textContent = confirmText;
+
+        const input = wrap.querySelector(".dialog-input");
+        if (input) input.placeholder = `Type ${requireText} to confirm`;
+
+        const finish = (value) => {
+          document.removeEventListener("keydown", onKey);
+          wrap.remove();
+          resolve(value);
+        };
+        const tryOk = () => {
+          if (input && input.value.trim() !== requireText) {
+            input.classList.remove("shake");
+            void input.offsetWidth;
+            input.classList.add("shake");
+            return;
+          }
+          finish(true);
+        };
+        const onKey = (e) => {
+          if (e.key === "Escape") finish(false);
+          if (e.key === "Enter") tryOk();
+        };
+
+        wrap.querySelector(".dialog-cancel").onclick = () => finish(false);
+        wrap.querySelector(".dialog-ok").onclick = tryOk;
+        wrap.addEventListener("click", (e) => { if (e.target === wrap) finish(false); });
+        document.addEventListener("keydown", onKey);
+
+        root.appendChild(wrap);
+        (input || wrap.querySelector(".dialog-ok")).focus();
+      });
     }
 
     function getHistory(chat) {
@@ -781,6 +953,10 @@
       return String(chat.nickname || "").trim() || "Guest";
     }
 
+    function chatOwnerName(chat) {
+      return isGuestChat(chat) ? guestNameOf(chat) : (chat.user_email || "User");
+    }
+
     function sortChats() {
       chatRecords.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
     }
@@ -802,7 +978,6 @@
       return "";
     }
 
-    // Media items are stored here so clicks look them up without putting big data into attributes
     let mediaStore = new Map();
     let mediaSeq = 0;
 
@@ -818,7 +993,7 @@
         name: file.name || "File",
         src: mediaSrc(file),
         text: typeof file.content === "string" ? file.content : "",
-        owner: chat ? (isGuestChat(chat) ? `Guest: ${guestNameOf(chat)}` : (chat.user_email || "User")) : "",
+        owner: chat ? chatOwnerName(chat) : "",
         chat: chat ? (chat.title || "Conversation") : "",
         date: chat ? chat.updated_at : null
       };
@@ -925,7 +1100,6 @@
           try { supabaseClient.auth.stopAutoRefresh(); } catch (e) {}
         }
       } catch (e) {}
-      // Remove the saved login from this browser even if the server call failed
       try {
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith("sb-") && key.includes("auth-token")) localStorage.removeItem(key);
@@ -978,7 +1152,7 @@
           chatRecords[idx] = row;
         } else {
           chatRecords.unshift(row);
-          toast(`New conversation: ${row.title || "Untitled"} (${isGuestChat(row) ? "Guest: " + guestNameOf(row) : row.user_email})`);
+          toast(`New conversation from ${chatOwnerName(row)}: ${row.title || "Untitled"}`);
         }
         if (activeChatRecord && String(activeChatRecord.id) === String(row.id)) {
           const changed = activeChatRecord.updated_at !== row.updated_at;
@@ -1130,45 +1304,30 @@
       setText("nav-count-guests", guestRecords.length);
     }
 
-    // ================= OVERVIEW =================
-    function renderOverview() {
-      const recent = chatRecords.slice(0, 8);
-      document.getElementById("recent-list").innerHTML = recent.length
-        ? recent.map(chatRowHtml).join("")
-        : emptyState("No conversations yet.");
-
-      const signups = profileRecords.slice(0, 6);
-      document.getElementById("recent-signups").innerHTML = signups.length
-        ? signups.map(p => `
-            <div class="flex items-center justify-between gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
-              <div class="min-w-0">
-                <div class="text-xs text-slate-100 truncate">${esc(p.email || "—")}</div>
-                <div class="text-[10px] text-slate-500">${esc(fmtDate(p.created_at))}</div>
-              </div>
-              ${p.email_confirmed ? '<span class="chip chip-user shrink-0">Verified</span>' : '<span class="chip chip-warn shrink-0">Unverified</span>'}
-            </div>`).join("")
-        : emptyState("No accounts yet.");
-    }
-
-    // ================= CONVERSATIONS =================
+    // ================= CONVERSATION LIST =================
     function chatRowHtml(chat) {
       const guest = isGuestChat(chat);
-      const who = guest ? `Guest: ${guestNameOf(chat)}` : (chat.user_email || "User");
+      const name = chatOwnerName(chat);
       const history = getHistory(chat);
       const hasMedia = history.some(m => m.file);
       const isActive = activeChatRecord && String(activeChatRecord.id) === String(chat.id);
 
       return `
         <div class="conv ${isActive ? "active" : ""}" data-action="open-chat" data-id="${esc(chat.id)}">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <span class="chip ${guest ? "chip-guest" : "chip-user"} truncate max-w-[70%]">${esc(who)}</span>
-            <span class="text-[10px] text-slate-500 shrink-0">${esc(fmtDate(chat.updated_at))}</span>
-          </div>
-          <div class="text-[13px] font-medium text-slate-100 truncate">${esc(chat.title || "Conversation")}</div>
-          <div class="flex items-center gap-2 mt-1.5 text-[10px] flex-wrap">
-            ${chat.is_deleted_by_user ? '<span class="chip chip-del">Deleted by user</span>' : ""}
-            ${hasMedia ? '<span class="chip chip-warn"><i class="fa-solid fa-paperclip mr-1"></i>Media</span>' : ""}
-            <span class="text-slate-500">${history.length} messages</span>
+          <div class="flex items-start gap-3">
+            <div class="avatar avatar-sm ${guest ? "avatar-guest" : "avatar-user"}">${esc(initialOf(name))}</div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[12.5px] font-semibold text-slate-100 truncate">${esc(guest ? "Guest · " + name : name)}</span>
+                <span class="text-[10px] text-slate-500 shrink-0">${esc(shortDate(chat.updated_at))}</span>
+              </div>
+              <div class="text-[12.5px] text-slate-300 truncate mt-0.5">${esc(chat.title || "Conversation")}</div>
+              <div class="flex items-center gap-1.5 mt-2 flex-wrap text-[10px]">
+                <span class="chip chip-muted">${history.length} msgs</span>
+                ${hasMedia ? '<span class="chip chip-warn"><i class="fa-solid fa-paperclip mr-1"></i>media</span>' : ""}
+                ${chat.is_deleted_by_user ? '<span class="chip chip-del">deleted by user</span>' : ""}
+              </div>
+            </div>
           </div>
         </div>`;
     }
@@ -1190,7 +1349,7 @@
       if (!rows.length) {
         list.innerHTML = emptyState(chatRecords.length
           ? "No conversations match this filter."
-          : "No conversations yet. They appear here as soon as someone chats.");
+          : "No conversations yet. They appear here as soon as someone chats.", "fa-comments");
         return;
       }
       list.innerHTML = rows.map(chatRowHtml).join("");
@@ -1202,6 +1361,7 @@
       renderChatList();
     }
 
+    // ================= THREAD =================
     function mediaInlineHtml(file, chat) {
       const item = fileToItem(file, chat);
       const key = registerMedia(item);
@@ -1209,23 +1369,20 @@
 
       if (item.kind === "image" && item.src) {
         return `
-          <div class="mb-2 p-2 panel-2 rounded-2xl max-w-[85%] sm:max-w-xs">
-            <img src="${esc(item.src)}" alt="${name}" loading="lazy" data-action="view-media" data-key="${key}"
-                 class="rounded-xl max-h-72 w-auto mx-auto cursor-zoom-in">
-            <div class="mono text-[10px] text-slate-500 mt-1.5 truncate text-center">${name}</div>
-          </div>`;
+          <button type="button" data-action="view-media" data-key="${key}" class="media-frame">
+            <img src="${esc(item.src)}" alt="${name}" loading="lazy">
+            <span class="media-caption"><span class="truncate">${name}</span><span class="link-btn">Open</span></span>
+          </button>`;
       }
 
       if (item.kind === "video" && item.src) {
         return `
-          <div class="mb-2 p-2.5 panel-2 rounded-2xl max-w-[92%] sm:max-w-md w-full">
-            <video controls playsinline preload="metadata" src="${esc(item.src)}" class="rounded-xl max-h-72 w-full bg-black"></video>
-            <div class="flex items-center justify-between gap-3 mt-2 px-1">
-              <span class="mono text-[11px] text-purple-300 truncate"><i class="fa-solid fa-film mr-1"></i>${name}</span>
-              <button data-action="view-media" data-key="${key}" class="text-[11px] text-blue-400 font-semibold shrink-0">
-                <i class="fa-solid fa-expand mr-1"></i>Open
-              </button>
-            </div>
+          <div class="media-frame" style="cursor:default">
+            <video controls playsinline preload="metadata" src="${esc(item.src)}"></video>
+            <span class="media-caption">
+              <span class="truncate"><i class="fa-solid fa-film mr-1 text-purple-300"></i>${name}</span>
+              <button type="button" data-action="view-media" data-key="${key}" class="link-btn">Full view</button>
+            </span>
           </div>`;
       }
 
@@ -1234,12 +1391,11 @@
         : "fa-file text-slate-400";
 
       return `
-        <button data-action="view-media" data-key="${key}"
-                class="mb-2 flex items-center gap-3 panel-2 px-3.5 py-2.5 rounded-xl text-left max-w-[85%] sm:max-w-xs transition">
+        <button type="button" data-action="view-media" data-key="${key}" class="file-chip">
           <i class="fa-solid ${icon} text-lg"></i>
           <span class="min-w-0">
-            <span class="block text-xs font-medium text-slate-200 truncate">${name}</span>
-            <span class="block text-[10px] text-slate-500 uppercase">${esc(item.kind)}</span>
+            <span class="block font-medium truncate">${name}</span>
+            <span class="block text-[10px] uppercase opacity-60">${esc(item.kind)}</span>
           </span>
         </button>`;
     }
@@ -1251,9 +1407,11 @@
 
       if (isUser) {
         return `
-          <div class="flex flex-col items-end my-4 fade-in">
-            ${media}
-            ${text ? `<div class="bubble-user text-slate-100 px-4 py-2.5 rounded-2xl rounded-br-md max-w-[88%] sm:max-w-[85%] text-[14px] leading-relaxed whitespace-pre-wrap break-words">${esc(text)}</div>` : ""}
+          <div class="msg msg-user fade-in">
+            <div class="flex flex-col items-end gap-2 min-w-0 max-w-full">
+              ${media}
+              ${text ? `<div class="bubble bubble-user">${esc(text)}</div>` : ""}
+            </div>
           </div>`;
       }
 
@@ -1264,9 +1422,12 @@
           : esc(text).replace(/\n/g, "<br>");
       }
       return `
-        <div class="flex flex-col items-start my-4 fade-in">
-          ${media}
-          ${html ? `<div class="bubble-model text-[14px] leading-relaxed max-w-full sm:max-w-[92%] break-words">${html}</div>` : ""}
+        <div class="msg msg-ai fade-in">
+          <div class="avatar avatar-sm avatar-ai">X</div>
+          <div class="min-w-0 flex-1 flex flex-col gap-2 items-start">
+            ${media}
+            ${html ? `<div class="bubble bubble-ai md">${html}</div>` : ""}
+          </div>
         </div>`;
     }
 
@@ -1275,44 +1436,65 @@
       const previousScroll = box.scrollTop;
       mediaStore.clear();
 
-      const badge = document.getElementById("thread-user-badge");
       const guest = isGuestChat(chat);
-      badge.className = "chip px-2.5 py-1 text-xs truncate min-w-0 " + (guest ? "chip-guest" : "chip-user");
-      badge.textContent = guest
-        ? `Guest: ${guestNameOf(chat)}`
-        : `${chat.user_email || "User"} · ${String(chat.nickname || "User")}`;
+      const name = chatOwnerName(chat);
+      const avatar = document.getElementById("thread-avatar");
+      avatar.style.display = "flex";
+      avatar.className = "avatar avatar-md " + (guest ? "avatar-guest" : "avatar-user");
+      avatar.textContent = initialOf(name);
 
-      setText("thread-title", (chat.is_deleted_by_user ? "[Deleted by user] " : "") + (chat.title || "Chat"));
+      setText("thread-name", guest ? `Guest · ${name}` : name);
+      const nickPart = guest ? "" : ` · nickname: ${chat.nickname || "none"}`;
+      setText("thread-meta", `${getHistory(chat).length} messages · last active ${fmtDate(chat.updated_at)}${nickPart}`);
+
+      const banner = document.getElementById("thread-banner");
+      if (chat.is_deleted_by_user) {
+        banner.classList.remove("hidden");
+        banner.innerHTML = '<i class="fa-solid fa-trash-can mr-1.5"></i>Deleted by the user in the app. It is still kept here for you, the admin.';
+      } else {
+        banner.classList.add("hidden");
+      }
       document.getElementById("thread-actions").classList.remove("hidden");
 
       const history = getHistory(chat);
       if (!history.length) {
-        box.innerHTML = emptyState("This conversation has no messages.");
+        box.innerHTML = `<div class="thread-inner">${emptyState("This conversation has no messages.", "fa-message")}</div>`;
         return;
       }
 
-      box.innerHTML = history.map(msg => renderMessageHtml(msg, chat)).join("");
+      box.innerHTML = `<div class="thread-inner">${history.map(msg => renderMessageHtml(msg, chat)).join("")}</div>`;
       box.scrollTop = keepScroll ? previousScroll : 0;
     }
 
     function clearThread() {
-      const badge = document.getElementById("thread-user-badge");
-      badge.className = "chip chip-muted px-2.5 py-1 text-xs truncate min-w-0";
-      badge.textContent = "Select a conversation";
-      setText("thread-title", "");
+      const avatar = document.getElementById("thread-avatar");
+      if (avatar) avatar.style.display = "none";
+      setText("thread-name", "Select a conversation");
+      setText("thread-meta", "");
+      document.getElementById("thread-banner").classList.add("hidden");
       document.getElementById("thread-actions").classList.add("hidden");
       document.getElementById("view-conversations").classList.remove("thread-open");
       document.getElementById("messages-container").innerHTML =
-        emptyState("Select any chat to read the full thread and open its attachments.");
+        `<div class="empty-hero" style="height:100%"><div class="hero-icon"><i class="fa-solid fa-comments"></i></div><div>Pick a conversation on the left to read it.</div></div>`;
     }
 
     async function deleteSelectedChat() {
       if (!activeChatRecord || !supabaseClient) return;
-      if (!confirm("Permanently delete this conversation from the database?")) return;
+      const ok = await askConfirm({
+        title: "Delete this conversation?",
+        message: "It will be permanently removed from the database. This can't be undone.",
+        confirmText: "Delete",
+        danger: true
+      });
+      if (!ok) return;
 
       const id = activeChatRecord.id;
-      const { error } = await supabaseClient.from("chats").delete().eq("id", id);
+      const { data, error } = await supabaseClient.from("chats").delete().eq("id", id).select("id");
       if (error) { toast(`Delete failed: ${error.message}`, "error"); return; }
+      if (!data || data.length === 0) {
+        toast("Nothing was deleted. Re-run the setup SQL so the admin delete permission exists.", "error");
+        return;
+      }
 
       chatRecords = chatRecords.filter(c => String(c.id) !== String(id));
       activeChatRecord = null;
@@ -1324,17 +1506,28 @@
     async function deleteAllChats() {
       if (!supabaseClient) return;
       if (!chatRecords.length) { toast("There are no conversations to delete."); return; }
-      if (!confirm(`Permanently delete ALL ${chatRecords.length} conversations? This cannot be undone.`)) return;
-      if (prompt("Type DELETE ALL to confirm:") !== "DELETE ALL") { toast("Purge cancelled."); return; }
 
-      const { error } = await supabaseClient.from("chats").delete().not("id", "is", null);
-      if (error) { toast(`Purge failed: ${error.message}`, "error"); return; }
+      const ok = await askConfirm({
+        title: `Delete all ${chatRecords.length} conversations?`,
+        message: "Every conversation will be permanently removed. This can't be undone.",
+        confirmText: "Delete everything",
+        danger: true,
+        requireText: "DELETE ALL"
+      });
+      if (!ok) { toast("Delete cancelled."); return; }
+
+      const { data, error } = await supabaseClient.from("chats").delete().not("id", "is", null).select("id");
+      if (error) { toast(`Delete failed: ${error.message}`, "error"); return; }
+      if (!data || data.length === 0) {
+        toast("Nothing was deleted. Re-run the setup SQL so the admin delete permission exists.", "error");
+        return;
+      }
 
       chatRecords = [];
       activeChatRecord = null;
       clearThread();
       renderCurrentView();
-      toast("All conversations deleted.", "success");
+      toast(`${data.length} conversations deleted.`, "success");
     }
 
     // ================= ACCOUNTS =================
@@ -1356,9 +1549,7 @@
       const rows = profileRecords.filter(p => !q || String(p.email || "").toLowerCase().includes(q));
 
       if (!rows.length) {
-        body.innerHTML = emptyState(profileRecords.length
-          ? "No accounts match your search."
-          : "No email accounts yet.");
+        body.innerHTML = emptyState(profileRecords.length ? "No accounts match your search." : "No email accounts yet.", "fa-user-shield");
         return;
       }
 
@@ -1367,9 +1558,12 @@
         const email = p.email || "";
         return `
           <div class="acc-row">
-            <div class="cell" data-label="Account">
-              <div class="font-medium text-slate-100 break-all">${esc(email || "—")}</div>
-              <div class="mono text-[10px] text-slate-500 mt-0.5">${esc(String(p.id).slice(0, 8))}…</div>
+            <div class="cell min-w-0 flex items-center gap-3" data-label="Account">
+              <div class="avatar avatar-sm avatar-user">${esc(initialOf(email))}</div>
+              <div class="min-w-0">
+                <div class="font-medium text-slate-100 break-all">${esc(email || "—")}</div>
+                <div class="mono text-[10px] text-slate-500 mt-0.5">${esc(String(p.id).slice(0, 8))}…</div>
+              </div>
             </div>
             <div class="cell text-slate-300 truncate" data-label="Username">${s.nick ? esc(s.nick) : '<span class="text-slate-600">—</span>'}</div>
             <div class="cell" data-label="Status">${p.email_confirmed ? '<span class="chip chip-user">Verified</span>' : '<span class="chip chip-warn">Unverified</span>'}</div>
@@ -1379,6 +1573,7 @@
             <div class="cell acc-actions">
               <button class="btn btn-sm" data-action="chats-for-email" data-email="${esc(email)}"><i class="fa-solid fa-comments"></i> Chats</button>
               <button class="btn btn-sm" data-action="reset-link" data-email="${esc(email)}"><i class="fa-solid fa-key"></i> Reset</button>
+              <button class="btn btn-sm btn-danger" data-action="delete-account" data-id="${esc(p.id)}" data-email="${esc(email)}"><i class="fa-solid fa-user-xmark"></i> Delete</button>
             </div>
           </div>`;
       }).join("");
@@ -1386,7 +1581,12 @@
 
     async function sendResetLink(email) {
       if (!email || !supabaseClient) return;
-      if (!confirm(`Send a password reset link to ${email}?\n\nThe user sets a new password themselves. You won't see it.`)) return;
+      const ok = await askConfirm({
+        title: "Send a reset link?",
+        message: `${email} will get an email with a link to choose a new password. You won't see the password.`,
+        confirmText: "Send link"
+      });
+      if (!ok) return;
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: RESET_REDIRECT });
       if (error) toast(`Could not send: ${error.message}`, "error");
       else toast(`Reset link sent to ${email}`, "success");
@@ -1410,35 +1610,57 @@
       const rows = guestRecords.filter(g => !q || String(g.username || "").toLowerCase().includes(q));
 
       if (!rows.length) {
-        grid.innerHTML = emptyState(guestRecords.length ? "No guests match your search." : "No guest accounts yet.");
+        grid.innerHTML = emptyState(guestRecords.length ? "No guests match your search." : "No guest accounts yet.", "fa-user-secret");
         return;
       }
 
       grid.innerHTML = rows.map(g => {
         const n = counts[g.username] || 0;
         return `
-          <div class="panel rounded-2xl p-4">
+          <div class="panel rounded-3xl p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-3 min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
-                  <i class="fa-solid fa-user-secret"></i>
-                </div>
+                <div class="avatar avatar-lg avatar-guest">${esc(initialOf(g.username))}</div>
                 <div class="min-w-0">
                   <div class="font-semibold text-slate-100 truncate">${esc(g.username)}</div>
-                  <div class="text-[10px] text-slate-500">Guest account</div>
+                  <div class="text-[10px] text-slate-500">Guest · saved by nickname</div>
                 </div>
               </div>
               <span class="chip chip-guest shrink-0">${n} chat${n === 1 ? "" : "s"}</span>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-4 text-[11px]">
-              <div class="panel-3 rounded-xl p-2.5 min-w-0"><div class="text-slate-500">First seen</div><div class="text-slate-200 mt-0.5 truncate">${esc(fmtDate(g.first_seen))}</div></div>
-              <div class="panel-3 rounded-xl p-2.5 min-w-0"><div class="text-slate-500">Last seen</div><div class="text-slate-200 mt-0.5 truncate">${esc(fmtDate(g.last_seen))}</div></div>
+              <div class="panel-3 rounded-2xl p-2.5 min-w-0"><div class="text-slate-500">First seen</div><div class="text-slate-200 mt-0.5 truncate">${esc(fmtDate(g.first_seen))}</div></div>
+              <div class="panel-3 rounded-2xl p-2.5 min-w-0"><div class="text-slate-500">Last seen</div><div class="text-slate-200 mt-0.5 truncate">${esc(fmtDate(g.last_seen))}</div></div>
             </div>
             <button class="btn btn-sm w-full mt-3" data-action="chats-for-guest" data-username="${esc(g.username)}">
               <i class="fa-solid fa-comments"></i> View chats
             </button>
+            <button class="btn btn-sm btn-danger w-full mt-2" data-action="delete-guest" data-username="${esc(g.username)}"><i class="fa-solid fa-trash-can"></i> Delete guest</button>
           </div>`;
       }).join("");
+    }
+
+    // ================= OVERVIEW =================
+    function renderOverview() {
+      const recent = chatRecords.slice(0, 8);
+      document.getElementById("recent-list").innerHTML = recent.length
+        ? recent.map(chatRowHtml).join("")
+        : emptyState("No conversations yet.", "fa-comments");
+
+      const signups = profileRecords.slice(0, 6);
+      document.getElementById("recent-signups").innerHTML = signups.length
+        ? signups.map(p => `
+            <div class="flex items-center justify-between gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="avatar avatar-sm avatar-user">${esc(initialOf(p.email))}</div>
+                <div class="min-w-0">
+                  <div class="text-xs text-slate-100 truncate">${esc(p.email || "—")}</div>
+                  <div class="text-[10px] text-slate-500">${esc(fmtDate(p.created_at))}</div>
+                </div>
+              </div>
+              ${p.email_confirmed ? '<span class="chip chip-user shrink-0">Verified</span>' : '<span class="chip chip-warn shrink-0">Unverified</span>'}
+            </div>`).join("")
+        : emptyState("No accounts yet.", "fa-user-shield");
     }
 
     // ================= MEDIA =================
@@ -1464,7 +1686,7 @@
       items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
       if (!items.length) {
-        grid.innerHTML = emptyState("No uploaded files match this filter.");
+        grid.innerHTML = emptyState("No uploaded files match this filter.", "fa-photo-film");
         return;
       }
 
@@ -1521,7 +1743,7 @@
       } else if (item.kind === "pdf" && item.src) {
         el = document.createElement("iframe");
         el.src = item.src;
-      } else if (item.kind === "text" && item.text) {
+      } else if ((item.kind === "text" || item.kind === "pdf") && item.text) {
         el = document.createElement("pre");
         el.textContent = item.text;
       }
@@ -1547,8 +1769,51 @@
       if (e.key === "Escape") closeMediaViewer();
     });
 
-    // ================= CLICK HANDLING =================
-    // One listener handles every button and row, so no user data is ever put into onclick code
+    // ================= PERMANENT DELETION =================
+async function deleteAccount(id, email) {
+  if (!supabaseClient || !id) return;
+  const ok = await askConfirm({
+    title: `Delete ${email || "this account"} permanently?`,
+    message: "The account, its chats, memory and profile are removed. The person must sign up again and verify their email to use XAMO. This cannot be undone.",
+    confirmText: "Delete account",
+    danger: true,
+    requireText: "DELETE"
+  });
+  if (!ok) return;
+  const { error } = await supabaseClient.rpc("admin_delete_account", { target: id });
+  if (error) {
+    toast(`Delete failed: ${error.message}`, "error");
+    return;
+  }
+  profileRecords = profileRecords.filter(p => String(p.id) !== String(id));
+  chatRecords = chatRecords.filter(c => String(c.user_id || "") !== String(id));
+  renderCurrentView();
+  toast(`${email || "Account"} deleted.`, "success");
+}
+
+async function deleteGuest(name) {
+  if (!supabaseClient) return;
+  const ok = await askConfirm({
+    title: `Delete guest "${name}" permanently?`,
+    message: "All of this guest's chats are removed. This cannot be undone.",
+    confirmText: "Delete guest",
+    danger: true,
+    requireText: "DELETE"
+  });
+  if (!ok) return;
+  const { error } = await supabaseClient.rpc("admin_delete_guest", { p_nickname: name });
+  if (error) {
+    toast(`Delete failed: ${error.message}`, "error");
+    return;
+  }
+  guestRecords = guestRecords.filter(g => g.username !== name);
+  chatRecords = chatRecords.filter(c => !(isGuestChat(c) && guestNameOf(c) === name));
+  renderCurrentView();
+  toast(`Guest "${name}" deleted.`, "success");
+}
+
+// ================= CLICK HANDLING =================
+    // One listener handles every button and row, so no user data is ever placed into onclick code
     document.addEventListener("click", (event) => {
       const el = event.target.closest("[data-action]");
       if (!el) return;
@@ -1568,6 +1833,12 @@
           break;
         case "reset-link":
           sendResetLink(el.dataset.email || "");
+          break;
+        case "delete-account":
+          deleteAccount(el.dataset.id, el.dataset.email || "");
+          break;
+        case "delete-guest":
+          deleteGuest(el.dataset.username || "");
           break;
         case "delete-chat":
           deleteSelectedChat();

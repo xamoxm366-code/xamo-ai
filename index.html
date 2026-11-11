@@ -15,6 +15,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 
@@ -160,6 +161,13 @@
     .gemini-response-container tr:last-child td { border-bottom: none; }
     .gemini-response-container td:last-child,
     .gemini-response-container th:last-child { border-right: none; }
+      /* Replies: slightly larger text; Arabic-script languages (Urdu, Kashmiri) use a readable script font */
+    .gemini-response-container { font-size: 1.05rem !important; }
+    .gemini-response-container.script-arabic {
+      font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif;
+      font-size: 1.2rem !important;
+      line-height: 2.3;
+    }
   </style>
 </head>
 <body class="h-[100dvh] flex overflow-hidden select-none">
@@ -300,7 +308,10 @@
             <i class="fa-solid fa-user-secret text-purple-400 text-sm flex-shrink-0"></i>
             <span class="truncate">Guest: <span id="guest-nickname-label" class="font-semibold"></span></span>
           </div>
-          <button id="guest-logout-btn" class="flex-shrink-0 text-[11px] font-semibold text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors cursor-pointer">Log out</button>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <button id="guest-delete-btn" type="button" class="text-[11px] font-semibold text-red-500 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors cursor-pointer" title="Delete this guest data permanently">Delete</button>
+            <button id="guest-logout-btn" class="text-[11px] font-semibold text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg transition-colors cursor-pointer">Log out</button>
+          </div>
         </div>
       </div>
 
