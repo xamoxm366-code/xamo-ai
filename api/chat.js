@@ -2,6 +2,9 @@ export const config = {
   runtime: 'edge',
 };
 
+// Questions with these words need current information, so Google Search is used for them
+const SEARCH_WORDS = /\b(news|headlines?|breaking|latest|recent|current|currently|right now|today|this week|this year|2025|2026|alive|died|dead|death|passed away|still|won|winner|score|scores|price|prices|stock|election|released|weather|forecast|who is the|who are the)\b/i;
+
 const STREAM_HEADERS = {
   'Content-Type': 'text/event-stream',
   'Cache-Control': 'no-cache, no-transform',
@@ -297,11 +300,33 @@ export default async function handler(req) {
     // Tried in this order for each model. Search answers are checked for text before
     // they are sent, so an empty answer moves on to the next option instead of
     // showing a blank reply.
-    const attempts = [
-      { label: 'search', tools: true, thinking: true, stream: false },
-      { label: 'search-no-thinking', tools: true, thinking: false, stream: false },
-      { label: 'plain', tools: false, thinking: false, stream: !translateTo }
-    ];
+    const questionText = (finalContents.filter(turn => turn.role === 'user').pop()?.parts || [])
+      .filter(p => p.text)
+      .map(p => p.text)
+      .join(' ');
+    const needsSearch = SEARCH_WORDS.test(questionText);
+
+    // Speed: ordinary questions stream straight away with thinking turned off.
+    // Search is used only when the question needs current information.
+    // Translated replies are written in one piece, and thinking is turned off for them too.
+    const attempts = translateTo
+      ? [
+          { label: 'search', tools: true, thinking: true, stream: false },
+          { label: 'search-no-thinking', tools: true, thinking: false, stream: false },
+          { label: 'plain', tools: false, thinking: true, stream: false }
+        ]
+      : needsSearch
+        ? [
+            { label: 'search', tools: true, thinking: true, stream: false },
+            { label: 'search-no-thinking', tools: true, thinking: false, stream: false },
+            { label: 'plain', tools: false, thinking: true, stream: true }
+          ]
+        : [
+            { label: 'fast', tools: false, thinking: true, stream: true },
+            { label: 'fast-default', tools: false, thinking: false, stream: true },
+            { label: 'search', tools: true, thinking: true, stream: false }
+          ];
+
 
     const MODELS = [
       'gemini-3.5-flash-lite',
