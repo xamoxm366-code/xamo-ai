@@ -15,6 +15,105 @@ function textFromGemini(data) {
   return parts.filter(p => p && p.text && !p.thought).map(p => p.text).join('');
 }
 
+// Writes the English answer again in the language chosen in Settings, in that language's own script
+const TRANSLATION_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash'
+];
+
+// Gemini text helper for the translation steps: tries each model in turn
+async function generateText(apiKey, models, systemText, userText, temperature) {
+  const requestBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemText }] },
+    contents: [{ role: 'user', parts: [{ text: userText }] }],
+    generationConfig: { temperature, topP: 0.9, maxOutputTokens: 8192 }
+  });
+  for (const model of models) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody
+      });
+      if (!res.ok) {
+        console.log(`Translation step failed: model=${model}, status=${res.status}`);
+        continue;
+      }
+      const text = textFromGemini(await res.json()).trim();
+      if (text) return text;
+    } catch (err) {
+      console.log(`Translation step error: model=${model}, ${err.message}`);
+    }
+  }
+  return '';
+}
+
+// Which writing system a language uses ('arabic', 'devanagari', or '' for others)
+function scriptFamily(language) {
+  const name = language.toLowerCase();
+  if (/urdu|kashmiri|sindhi|pashto|persian|farsi|arabic/.test(name)) return 'arabic';
+  if (/hindi|marathi|nepali|sanskrit|dogri|maithili|konkani|bodo/.test(name)) return 'devanagari';
+  return '';
+}
+
+// Checks that most of the letters are in the right writing system (code and URLs are ignored)
+function looksLikeScript(text, family) {
+  if (!family) return true;
+  const letters = text.match(/\p{L}/gu) || [];
+  if (letters.length === 0) return false;
+  const pattern = family === 'arabic' ? /[\u0600-\u06FF\u0750-\u077F]/ : /[\u0900-\u097F]/;
+  const inScript = letters.filter(ch => pattern.test(ch)).length;
+  return inScript / letters.length >= 0.6;
+}
+
+// Fixed words for common computer terms, so they are always written the same way
+const GLOSSARY = {
+  arabic: {
+    computer: 'کمپیوٹر', internet: 'انٹرنیٹ', app: 'ایپ', website: 'ویب سائٹ',
+    software: 'سافٹ ویئر', code: 'کوڈ', video: 'ویڈیو', phone: 'فون',
+    school: 'اسکول', password: 'پاس ورڈ'
+  },
+  devanagari: {
+    computer: 'कंप्यूटर', internet: 'इंटरनेट', app: 'ऐप', website: 'वेबसाइट',
+    software: 'सॉफ़्टवेयर', code: 'कोड', video: 'वीडियो', phone: 'फ़ोन',
+    school: 'स्कूल', password: 'पासवर्ड'
+  }
+};
+
+function glossaryNote(family) {
+  const entries = Object.entries(GLOSSARY[family] || {});
+  if (!entries.length) return '';
+  return ' Use exactly these words for these English terms: ' +
+    entries.map(([en, word]) => `${en} = ${word}`).join(', ') + '.';
+}
+
+// Step 1: draft translation. Step 2: native-style review. Step 3: script check.
+async function translateAnswer(englishText, language, apiKey) {
+  const family = scriptFamily(language);
+  const scriptName = family === 'arabic' ? ' (Perso-Arabic Nastaliq script)'
+    : family === 'devanagari' ? ' (Devanagari script)' : '';
+  const glossary = glossaryNote(family);
+
+  const draftSystem = `You are a professional translator. Translate the text the user sends into ${language}, written in the native script of ${language}${scriptName}. Use correct, standard grammar, correct gender and number agreement, correct postpositions, and natural everyday wording. Keep code, commands, file names, URLs, and technical terms that are normally used in English exactly as they are. Keep the Markdown formatting. Output only the translation.${glossary}`;
+  let draft = await generateText(apiKey, TRANSLATION_MODELS, draftSystem, englishText, 0.2);
+  if (!draft) return '';
+
+  if (!looksLikeScript(draft, family)) {
+    const retrySystem = draftSystem + ' Important: write every word in the ' +
+      (family === 'arabic' ? 'Arabic' : 'Devanagari') + ' alphabet, not in Latin letters (except code and URLs).';
+    draft = (await generateText(apiKey, TRANSLATION_MODELS, retrySystem, englishText, 0.1)) || draft;
+  }
+
+  const reviewSystem = `You are a careful native ${language} editor. The user sends an English original and a draft ${language} translation. Correct the draft so it is grammatically correct, natural, and easy to understand for everyday native speakers. Fix spelling, gender and number agreement, postpositions, and word choice. Keep the same meaning and the same Markdown formatting. Keep code, URLs, and English technical terms unchanged. Write only in the native script of ${language}. Output only the corrected ${language} text.${glossary}`;
+  const reviewed = await generateText(
+    apiKey, TRANSLATION_MODELS, reviewSystem,
+    `ENGLISH ORIGINAL:\n${englishText}\n\nDRAFT:\n${draft}`, 0.1
+  );
+  if (reviewed && looksLikeScript(reviewed, family)) return reviewed;
+  return looksLikeScript(draft, family) ? draft : '';
+}
+
 // Lists the web pages Google Search used for the answer (only when search actually ran)
 function sourcesFrom(grounding) {
   const chunks = (grounding?.groundingChunks || []).filter(c => c.web && c.web.uri);
@@ -109,7 +208,14 @@ export default async function handler(req) {
       ? systemInstruction
       : (systemInstruction?.parts?.[0]?.text || '');
 
-    const instruction = `${rawInstruction}
+    // For a language chosen in Settings (other than English), answer in English first and translate afterwards
+    const settingsLanguage = (rawInstruction.match(/Respond strictly in ([A-Za-z() ]+?) until the user asks/) || [])[1];
+    const translateTo = settingsLanguage && settingsLanguage.trim().toLowerCase() !== 'english' ? settingsLanguage.trim() : '';
+    const pass1Instruction = translateTo
+      ? rawInstruction.replace(/Respond strictly in [^\n]*? until the user asks for a different language\./, 'Answer in English using short, simple, clear sentences that translate easily.')
+      : rawInstruction;
+
+    const instruction = `${pass1Instruction}
 [IDENTITY: You are XAMO, an elite Principal Software Architect built exclusively by Zaeem.]
 [LIVE INFORMATION: You have a Google Search tool. For anything that changes over time (news, whether a person is alive or still in office, prices, scores, weather, releases, and other current events), search first and answer from the results. Only name a source if you actually used search results, and never invent a source name or label. If the results do not settle the question, say so instead of guessing. Answer in normal sentences. Never write code, tool calls, or function calls as your answer unless the user asked for code. Never say that you cannot access the internet.]
 [LANGUAGE: Follow the language instruction in the system prompt. Never switch language just because the user writes in another language. Only switch when the user explicitly asks for another language, and keep it until they ask again. If the instruction is Hindi, use standard, grammatically correct Hindi in Devanagari, with correct gender and number agreement, correct postpositions (ko, ne, se, mein, ka, ki, ke, par), and natural word order. If the instruction is Urdu, use grammatically correct, natural Urdu in Urdu script, with correct idioms and punctuation (the Urdu full stop, question mark and comma). If the instruction is Roman Hindi or Roman Urdu, write in Latin letters, readable and grammatically correct. If the instruction is English, reply in English only. Always write in the script of the language being used: Devanagari for Hindi, Perso-Arabic (Nastaliq) for Urdu and Kashmiri, and the native script for any other language, unless the instruction asks for Roman or Latin letters. When the language has been switched, use that language and its letters for every reply, not English letters. Never translate code, commands, file names, variable names, or technical terms that are normally used in English. If you are not sure of a word, use the most common correct form instead of inventing one. Keep the same language for the whole reply unless the user asks for a translation.]
@@ -194,7 +300,7 @@ export default async function handler(req) {
     const attempts = [
       { label: 'search', tools: true, thinking: true, stream: false },
       { label: 'search-no-thinking', tools: true, thinking: false, stream: false },
-      { label: 'plain', tools: false, thinking: false, stream: true }
+      { label: 'plain', tools: false, thinking: false, stream: !translateTo }
     ];
 
     const MODELS = [
@@ -246,7 +352,16 @@ export default async function handler(req) {
           console.log(`Gemini grounding: model=${model}, mode=${attempt.label}, sources=${grounding?.groundingChunks?.length || 0}`);
           if (text.trim()) {
             console.log(`Gemini answered: model=${model}, mode=${attempt.label}`);
-            response = new Response(sseFromText(text + sourcesFrom(grounding)), { headers: STREAM_HEADERS });
+            let finalText = text;
+            if (translateTo) {
+              const actionTags = (text.match(/\[\[ACTION:[^\]]*\]\]/g) || []).join(' ');
+              const englishBody = text.replace(/\[\[ACTION:[^\]]*\]\]/g, '').trim();
+              const translated = await translateAnswer(englishBody, translateTo, apiKey);
+              finalText = translated
+                ? translated + (actionTags ? `\n${actionTags}` : '')
+                : `${text}\n\n(A ${translateTo} translation is not available right now, so this answer is in English.)`;
+            }
+            response = new Response(sseFromText(finalText + sourcesFrom(grounding)), { headers: STREAM_HEADERS });
             break modelLoop;
           }
 
