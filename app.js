@@ -769,7 +769,8 @@ function updateScrollDownBtn() {
   const btn = document.getElementById('scroll-down-dock-btn');
   if (!btn || !chatBox) return;
 
-  if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+  const sidebarCoversChat = window.innerWidth < 768 && sidebar && !sidebar.classList.contains('-translate-x-full');
+  if (sidebarCoversChat) {
     hideScrollDownBtn();
     return;
   }
@@ -788,11 +789,11 @@ function updateScrollDownBtn() {
   const scrollOffset = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
   if (scrollOffset > 140) {
     btn.classList.add('visible');
-    
+    // Hide the arrow again after 3 seconds without scrolling
     if (scrollVanishTimer) clearTimeout(scrollVanishTimer);
     scrollVanishTimer = setTimeout(() => {
       btn.classList.remove('visible');
-    }, 1500);
+    }, 3000);
   } else {
     hideScrollDownBtn();
   }
@@ -2815,6 +2816,41 @@ document.getElementById('compare-close-btn')?.addEventListener('click', closeCom
 document.getElementById('compare-keep-btn')?.addEventListener('click', closeCompare);
 document.getElementById('compare-use-btn')?.addEventListener('click', useCompareAnswer);
 
+// --- Script-aware display for replies (Arabic-script languages such as Urdu and Kashmiri) ---
+const ARABIC_SCRIPT_RE = /[\u0600-\u06FF\u0750-\u077F]/;
+let scriptMarkPending = false;
+
+function markScriptOfReplies() {
+  document.querySelectorAll('.gemini-response-container').forEach(el => {
+    const arabic = ARABIC_SCRIPT_RE.test(el.textContent || '');
+    el.classList.toggle('script-arabic', arabic);
+    el.dir = 'auto';
+  });
+}
+
+new MutationObserver(() => {
+  if (scriptMarkPending) return;
+  scriptMarkPending = true;
+  requestAnimationFrame(() => {
+    scriptMarkPending = false;
+    markScriptOfReplies();
+  });
+}).observe(document.body, { childList: true, subtree: true, characterData: true });
+
+// --- Chat scrolling: follow new replies while they stream in, unless the user scrolls up ---
+let followReplies = true;
+
+function scrollToBottomIfFollowing() {
+  if (!chatBox || !followReplies) return;
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+if (chatBox) {
+  chatBox.addEventListener('scroll', () => {
+    followReplies = (chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight) < 140;
+  }, { passive: true });
+}
+
 // --- Live information (news, weather) from free sources ---
 function needsLiveInfo(text) {
   return /\b(news|headlines?|breaking|happening|weather|forecast|latest|recent|current|currently|now|today|right now|this week|this year|2025|2026|alive|died|dead|death|passed away|still|won|winner|score|price|stock|rate|election|released|who is the|who are the)\b/i.test(text || '');
@@ -3579,6 +3615,7 @@ async function triggerApiCall() {
   botDiv.appendChild(responseContent);
   
   if (chatBox) {
+    followReplies = true;
     chatBox.appendChild(botDiv);
     botDiv.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3693,6 +3730,7 @@ async function triggerApiCall() {
                   }
                   fullText += p.text;
                   responseContent.innerHTML = parseMarkdownSafely(fullText);
+                  scrollToBottomIfFollowing();
                 }
               }
             }
@@ -3704,6 +3742,7 @@ async function triggerApiCall() {
     if (!fullText) {
       responseContent.classList.remove('animate-pulse');
       responseContent.innerHTML = `<span class="text-slate-400 text-xs italic">Response complete.</span>`;
+      scrollToBottomIfFollowing();
     }
 
     const actionMatches = [...fullText.matchAll(/\[\[ACTION:([A-Z_]+):(.*?)\]\]/g)];
